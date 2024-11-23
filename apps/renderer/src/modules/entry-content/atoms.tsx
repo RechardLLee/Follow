@@ -1,4 +1,6 @@
+import { getStorageNS } from "@follow/utils/ns"
 import { atom } from "jotai"
+import { atomWithStorage } from "jotai/utils"
 
 import { createAtomHooks } from "~/lib/jotai"
 
@@ -28,3 +30,7 @@ export const [
   getEntryContentPlaceholderLogoShow,
   setEntryContentPlaceholderLogoShow,
 ] = createAtomHooks(atom(true))
+
+export const [, , , , getTranslationCache, setTranslationCache] = createAtomHooks(
+  atomWithStorage(getStorageNS("translation-cache"), {} as Record<string, string>),
+)

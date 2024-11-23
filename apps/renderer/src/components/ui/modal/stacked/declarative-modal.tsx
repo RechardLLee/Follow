@@ -1,14 +1,12 @@
+import { cn } from "@follow/utils/utils"
 import { AnimatePresence } from "framer-motion"
 import type { FC, ReactNode } from "react"
 import { useId, useMemo } from "react"
 
 import { jotaiStore } from "~/lib/jotai"
-import { cn } from "~/lib/utils"
 
 import { modalStackAtom } from "./atom"
-import { MODAL_STACK_Z_INDEX } from "./constants"
 import { ModalInternal } from "./modal"
-import { ModalOverlay } from "./overlay"
 import type { ModalProps } from "./types"
 
 export interface DeclarativeModalProps extends Omit<ModalProps, "content"> {
@@ -40,12 +38,9 @@ const DeclarativeModalImpl: FC<DeclarativeModalProps> = ({
   return (
     <AnimatePresence>
       {open && (
-        <>
-          <ModalInternal isTop onClose={onOpenChange} index={index} item={item}>
-            {children}
-          </ModalInternal>
-          <ModalOverlay zIndex={MODAL_STACK_Z_INDEX - 1 + index} />
-        </>
+        <ModalInternal isTop onClose={onOpenChange} index={index} item={item}>
+          {children}
+        </ModalInternal>
       )}
     </AnimatePresence>
   )

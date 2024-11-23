@@ -1,5 +1,9 @@
 import { COPY_MAP } from "~/constants"
 
+type Shortcuts = Record<
+  string,
+  Record<string, { name: I18nKeysForShortcuts; key: string; extra?: string }>
+>
 export const shortcuts = {
   feeds: {
     add: {
@@ -23,6 +27,14 @@ export const shortcuts = {
     showShortcuts: {
       name: "keys.layout.showShortcuts",
       key: "H",
+    },
+    toggleWideMode: {
+      name: "keys.layout.toggleWideMode",
+      key: "Meta+[",
+    },
+    zenMode: {
+      name: "keys.layout.zenMode",
+      key: "Control+Shift+Z",
     },
   },
   entries: {
@@ -69,6 +81,10 @@ export const shortcuts = {
       name: "keys.entry.copyLink",
       key: "Shift+Meta+C",
     },
+    copyTitle: {
+      name: "keys.entry.copyTitle",
+      key: "Shift+Meta+B",
+    },
     tip: {
       name: "keys.entry.tip",
       key: "Shift+Meta+T",
@@ -92,7 +108,13 @@ export const shortcuts = {
       key: "Space",
     },
   },
-} as const
+  misc: {
+    quickSearch: {
+      name: "keys.misc.quickSearch",
+      key: "Meta+K",
+    },
+  },
+} as const satisfies Shortcuts
 
 export const shortcutsType: { [key in keyof typeof shortcuts]: I18nKeysForShortcuts } = {
   feeds: "keys.type.feeds",
@@ -100,4 +122,5 @@ export const shortcutsType: { [key in keyof typeof shortcuts]: I18nKeysForShortc
   entries: "keys.type.entries",
   entry: "keys.type.entry",
   audio: "keys.type.audio",
+  misc: "keys.type.misc",
 }

@@ -1,12 +1,17 @@
+import fs from "node:fs"
+import fsp from "node:fs/promises"
 import path from "node:path"
 
 import { getRendererHandlers } from "@egoist/tipc/main"
 import { callWindowExpose } from "@follow/shared/bridge"
 import type { BrowserWindow } from "electron"
-import { app, clipboard, dialog, screen } from "electron"
+import { app, clipboard, dialog, screen, shell } from "electron"
 
 import { registerMenuAndContextMenu } from "~/init"
-import { clearAllData } from "~/lib/cleaner"
+import { clearAllData, getCacheSize } from "~/lib/cleaner"
+import { store, StoreKey } from "~/lib/store"
+import { registerAppTray } from "~/lib/tray"
+import { logger } from "~/logger"
 
 import { isWindows11 } from "../env"
 import { downloadFile } from "../lib/download"
@@ -220,11 +225,94 @@ export const appRoute = {
   switchAppLocale: t.procedure.input<string>().action(async ({ input }) => {
     i18n.changeLanguage(input)
     registerMenuAndContextMenu()
+    registerAppTray()
 
     app.commandLine.appendSwitch("lang", input)
   }),
 
   clearAllData: t.procedure.action(clearAllData),
+
+  saveToObsidian: t.procedure
+    .input<{
+      url: string
+      title: string
+      content: string
+      author: string
+      publishedAt: string
+      vaultPath: string
+    }>()
+    .action(async ({ input }) => {
+      try {
+        const { url, title, content, author, publishedAt, vaultPath } = input
+
+        const fileName = `${(title || publishedAt).trim().slice(0, 20).replaceAll("/", "-")}.md`
+        const filePath = path.join(vaultPath, fileName)
+        const exists = fs.existsSync(filePath)
+        if (exists) {
+          return { success: false, error: "File already exists" }
+        }
+
+        const markdown = `---
+url: ${url}
+author: ${author}
+publishedAt: ${publishedAt}
+---
+
+# ${title}
+
+${content}
+`
+
+        await fsp.writeFile(filePath, markdown, "utf-8")
+        return { success: true }
+      } catch (error) {
+        console.error("Failed to save to Obsidian:", error)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        return { success: false, error: errorMessage }
+      }
+    }),
+
+  getCacheSize: t.procedure.action(async () => {
+    return getCacheSize()
+  }),
+  openCacheFolder: t.procedure.action(async () => {
+    const dir = path.join(app.getPath("userData"), "cache")
+    shell.openPath(dir)
+  }),
+  getCacheLimit: t.procedure.action(async () => {
+    return store.get(StoreKey.CacheSizeLimit)
+  }),
+
+  clearCache: t.procedure.action(async () => {
+    const cachePath = path.join(app.getPath("userData"), "cache", "Cache_Data")
+    if (process.platform === "win32") {
+      // Request elevation on Windows
+
+      try {
+        // Create a bat file to delete cache with elevated privileges
+        const batPath = path.join(app.getPath("temp"), "clear_cache.bat")
+        await fsp.writeFile(batPath, `@echo off\nrd /s /q "${cachePath}"\ndel "%~f0"`, "utf-8")
+
+        // Execute the bat file with admin privileges
+        await shell.openPath(batPath)
+        return
+      } catch (err) {
+        logger.error("Failed to clear cache with elevation", { error: err })
+      }
+    }
+    await fsp.rm(cachePath, { recursive: true, force: true }).catch(() => {
+      logger.error("Failed to clear cache")
+    })
+  }),
+
+  limitCacheSize: t.procedure.input<number>().action(async ({ input }) => {
+    logger.info("set limitCacheSize", input)
+    if (input === 0) {
+      store.delete(StoreKey.CacheSizeLimit)
+    } else {
+      store.set(StoreKey.CacheSizeLimit, input)
+    }
+  }),
 }
 
 interface Sender extends Electron.WebContents {

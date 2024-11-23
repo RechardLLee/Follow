@@ -5,7 +5,7 @@ import { useGeneralSettingKey } from "~/atoms/settings/general"
 import { useUISettingValue } from "~/atoms/settings/ui"
 import { I18N_LOCALE_KEY } from "~/constants"
 import { useReduceMotion } from "~/hooks/biz/useReduceMotion"
-import { useSyncThemeark } from "~/hooks/common"
+import { useSyncTheme } from "~/hooks/common"
 import { langChain } from "~/i18n"
 import { tipcClient } from "~/lib/client"
 import { loadLanguageAndApply } from "~/lib/load-language"
@@ -13,7 +13,7 @@ import { feedUnreadActions } from "~/store/unread"
 
 const useUISettingSync = () => {
   const setting = useUISettingValue()
-  useSyncThemeark()
+  useSyncTheme()
   useInsertionEffect(() => {
     const root = document.documentElement
     root.style.fontSize = `${setting.uiTextSize}px`
@@ -44,12 +44,6 @@ const useUISettingSync = () => {
     }
     return
   }, [setting.showDockBadge])
-
-  useEffect(() => {
-    if (setting.voice) {
-      tipcClient?.setVoice(setting.voice)
-    }
-  }, [setting.voice])
 }
 
 const useUXSettingSync = () => {
@@ -78,9 +72,19 @@ const useLanguageSync = () => {
     }
   }, [language])
 }
+const useGeneralSettingSync = () => {
+  const voice = useGeneralSettingKey("voice")
+  useEffect(() => {
+    if (voice) {
+      tipcClient?.setVoice(voice)
+    }
+  }, [voice])
+}
+
 export const SettingSync = () => {
   useUISettingSync()
   useUXSettingSync()
   useLanguageSync()
+  useGeneralSettingSync()
   return null
 }

@@ -1,9 +1,15 @@
-import type { ReactNode } from "react"
-import { Fragment, memo, useCallback, useEffect, useRef, useState } from "react"
+import { useMobile } from "@follow/components/hooks/useMobile.js"
+import { KbdCombined } from "@follow/components/ui/kbd/Kbd.js"
+import { nextFrame, preventDefault } from "@follow/utils/dom"
+import { cn } from "@follow/utils/utils"
+import { Fragment, memo, useCallback, useEffect, useRef } from "react"
 import { useHotkeys } from "react-hotkeys-hook"
 
+import type { FollowMenuItem } from "~/atoms/context-menu"
+import { useContextMenuState } from "~/atoms/context-menu"
 import {
   ContextMenu,
+  ContextMenuCheckboxItem,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuPortal,
@@ -13,83 +19,68 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "~/components/ui/context-menu"
-import { KbdCombined } from "~/components/ui/kbd/Kbd"
 import { HotKeyScopeMap } from "~/constants"
 import { useSwitchHotKeyScope } from "~/hooks/common"
-import { nextFrame } from "~/lib/dom"
-import type { NativeMenuItem } from "~/lib/native-menu"
-import { CONTEXT_MENU_SHOW_EVENT_KEY } from "~/lib/native-menu"
 
 export const ContextMenuProvider: Component = ({ children }) => (
   <>
     {children}
-
     <Handler />
   </>
 )
 
 const Handler = () => {
   const ref = useRef<HTMLSpanElement>(null)
-
-  const [node, setNode] = useState([] as ReactNode[] | ReactNode)
-
-  const [open, setOpen] = useState(false)
+  const [contextMenuState, setContextMenuState] = useContextMenuState()
 
   const switchHotkeyScope = useSwitchHotKeyScope()
 
   useEffect(() => {
-    if (!open) return
+    if (!contextMenuState.open) return
     switchHotkeyScope("Menu")
     return () => {
       switchHotkeyScope("Home")
     }
-  }, [open, switchHotkeyScope])
+  }, [contextMenuState.open, switchHotkeyScope])
 
   useEffect(() => {
-    const fakeElement = ref.current
-    if (!fakeElement) return
-    const handler = (e: unknown) => {
-      const bizEvent = e as {
-        detail?: {
-          items: NativeMenuItem[]
-          x: number
-          y: number
-        }
-      }
-      if (!bizEvent.detail) return
+    if (!contextMenuState.open) return
+    const triggerElement = ref.current
+    if (!triggerElement) return
+    // [ContextMenu] Add ability to control
+    // https://github.com/radix-ui/primitives/issues/1307#issuecomment-1689754796
+    triggerElement.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: contextMenuState.position.x,
+        clientY: contextMenuState.position.y,
+      }),
+    )
+  }, [contextMenuState])
 
-      if (!("items" in bizEvent.detail) || !("x" in bizEvent.detail) || !("y" in bizEvent.detail)) {
-        return
-      }
-      if (!Array.isArray(bizEvent.detail?.items)) return
-
-      setNode(bizEvent.detail.items.map((item, index) => <Item key={index} item={item} />))
-
-      fakeElement.dispatchEvent(
-        new MouseEvent("contextmenu", {
-          bubbles: true,
-          cancelable: true,
-          clientX: bizEvent.detail.x,
-          clientY: bizEvent.detail.y,
-        }),
-      )
-    }
-
-    document.addEventListener(CONTEXT_MENU_SHOW_EVENT_KEY, handler)
-    return () => {
-      document.removeEventListener(CONTEXT_MENU_SHOW_EVENT_KEY, handler)
-    }
-  }, [])
+  const handleOpenChange = useCallback(
+    (state: boolean) => {
+      if (state) return
+      if (!contextMenuState.open) return
+      setContextMenuState({ open: false })
+      contextMenuState.abortController.abort()
+    },
+    [contextMenuState, setContextMenuState],
+  )
 
   return (
-    <ContextMenu onOpenChange={setOpen}>
+    <ContextMenu onOpenChange={handleOpenChange}>
       <ContextMenuTrigger className="hidden" ref={ref} />
-      <ContextMenuContent>{node}</ContextMenuContent>
+      <ContextMenuContent onContextMenu={preventDefault}>
+        {contextMenuState.open &&
+          contextMenuState.menuItems.map((item, index) => <Item key={index} item={item} />)}
+      </ContextMenuContent>
     </ContextMenu>
   )
 }
 
-const Item = memo(({ item }: { item: NativeMenuItem }) => {
+const Item = memo(({ item }: { item: FollowMenuItem }) => {
   const onClick = useCallback(() => {
     if ("click" in item) {
       // Here we need to delay one frame,
@@ -107,26 +98,36 @@ const Item = memo(({ item }: { item: NativeMenuItem }) => {
     preventDefault: true,
   })
 
+  const isMobile = useMobile()
+
   switch (item.type) {
     case "separator": {
       return <ContextMenuSeparator />
     }
     case "text": {
-      const Wrapper = item.submenu ? ContextMenuSubTrigger : ContextMenuItem
+      const Wrapper = item.submenu
+        ? ContextMenuSubTrigger
+        : typeof item.checked === "boolean"
+          ? ContextMenuCheckboxItem
+          : ContextMenuItem
 
       const Sub = item.submenu ? ContextMenuSub : Fragment
+
       return (
         <Sub>
           <Wrapper
             ref={itemRef}
-            disabled={item.enabled === false || (item.click === undefined && !item.submenu)}
+            disabled={item.disabled || (item.click === undefined && !item.submenu)}
             onClick={onClick}
             className="flex items-center gap-2"
+            checked={item.checked}
           >
-            {item.icon}
-            {item.label}
+            {!!item.icon && (
+              <span className="absolute left-2 flex items-center justify-center">{item.icon}</span>
+            )}
+            <span className={cn(item.icon && "pl-6")}>{item.label}</span>
 
-            {!!item.shortcut && (
+            {!!item.shortcut && !isMobile && (
               <div className="ml-auto pl-4">
                 <KbdCombined joint>{item.shortcut}</KbdCombined>
               </div>

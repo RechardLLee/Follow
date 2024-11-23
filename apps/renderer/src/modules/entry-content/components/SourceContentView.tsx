@@ -1,3 +1,4 @@
+import { IN_ELECTRON } from "@follow/shared/constants"
 import { AnimatePresence } from "framer-motion"
 import { useEffect, useRef, useState } from "react"
 
@@ -7,21 +8,11 @@ import { softSpringPreset } from "~/components/ui/constants/spring"
 
 import { EntryContentLoading } from "../loading"
 
-const ViewTag = window.electron ? "webview" : "iframe"
+const ViewTag = IN_ELECTRON ? "webview" : "iframe"
 const variants = {
   hidden: { x: "100%" },
   visible: { x: 0 },
   exit: { x: "100%" },
-}
-
-const Banner = () => {
-  return (
-    <div className="z-50 w-full bg-yellow-600 p-3 text-white">
-      <div className="text-center">
-        <p>Some websites can't be displayed here. Download desktop app to view it.</p>
-      </div>
-    </div>
-  )
 }
 
 export const SourceContentView = ({ src }: { src: string }) => {
@@ -47,7 +38,6 @@ export const SourceContentView = ({ src }: { src: string }) => {
 
   return (
     <>
-      {!window.electron && <Banner />}
       <div className="relative flex size-full flex-col">
         {loading && (
           <div className="center mt-16 min-w-0">
@@ -80,6 +70,7 @@ export const SourceContentPanel = ({ src }: { src: string | null }) => {
     <AnimatePresence>
       {showSourceContent && src && (
         <m.div
+          data-hide-in-print
           className="absolute left-0 top-0 z-[1] size-full bg-theme-background"
           initial="hidden"
           animate="visible"

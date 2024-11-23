@@ -1,10 +1,13 @@
+import { usePageVisibility } from "@follow/hooks"
+import { IN_ELECTRON } from "@follow/shared/constants"
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef } from "react"
 
-import { usePageVisibility } from "~/hooks/common"
+import { useGeneralSettingKey } from "~/atoms/settings/general"
 import { appLog } from "~/lib/log"
 
-const slateTime = 600000 // 10min
+const defaultStaleTime = 600_000 // 10min
+const maxStaleTime = 6 * 60 * (60 * 1000) // 6hr
 
 export class ElectronCloseEvent extends Event {
   static type = "electron-close"
@@ -19,6 +22,10 @@ export class ElectronShowEvent extends Event {
   }
 }
 
+const useSlateTime = () => {
+  const reduceRefetch = useGeneralSettingKey("reduceRefetch")
+  return reduceRefetch ? maxStaleTime : defaultStaleTime
+}
 /**
  * Add a event listener to invalidate all queries
  */
@@ -41,6 +48,8 @@ const InvalidateQueryProviderElectron = () => {
     }
   }, [queryClient])
 
+  const slateTime = useSlateTime()
+
   useEffect(() => {
     const handler = () => {
       const now = Date.now()
@@ -49,8 +58,13 @@ const InvalidateQueryProviderElectron = () => {
           `Window switch to visible, but skip invalidation, ${currentTimeRef.current ? now - currentTimeRef.current : 0}`,
         )
       } else {
-        appLog("Window switch to visible, invalidate all queries")
-        queryClient.invalidateQueries()
+        appLog("Window switch to visible, invalidate all queries except entries")
+        queryClient.invalidateQueries({
+          predicate(query) {
+            // Ignore entries queries
+            return query.queryKey[0] !== "entries"
+          },
+        })
       }
       currentTimeRef.current = 0
     }
@@ -76,6 +90,8 @@ const InvalidateQueryProviderWebApp = () => {
 
   const pageVisibility = usePageVisibility()
 
+  const slateTime = useSlateTime()
+
   useEffect(() => {
     if (currentVisibilityRef.current === pageVisibility) {
       return
@@ -96,6 +112,6 @@ const InvalidateQueryProviderWebApp = () => {
   return null
 }
 
-export const InvalidateQueryProvider = window.electron
+export const InvalidateQueryProvider = IN_ELECTRON
   ? InvalidateQueryProviderElectron
   : InvalidateQueryProviderWebApp

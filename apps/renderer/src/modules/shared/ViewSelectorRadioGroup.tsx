@@ -1,14 +1,21 @@
-import { forwardRef } from "react"
+import { Card, CardContent, CardHeader } from "@follow/components/ui/card/index.jsx"
+import { views } from "@follow/constants"
+import type { EntryModelSimple, FeedModel } from "@follow/models"
+import { cn } from "@follow/utils/utils"
+import { cloneElement, forwardRef } from "react"
 
-import { Card, CardHeader } from "~/components/ui/card"
-import { views } from "~/constants"
 import { useI18n } from "~/hooks/common"
-import { cn } from "~/lib/utils"
+
+import { EntryItemStateless } from "../entry-column/item"
 
 export const ViewSelectorRadioGroup = forwardRef<
   HTMLInputElement,
-  React.InputHTMLAttributes<HTMLInputElement>
->(({ className, ...rest }, ref) => {
+  {
+    entries?: EntryModelSimple[]
+    feed?: FeedModel
+    view?: number
+  } & React.InputHTMLAttributes<HTMLInputElement>
+>(({ entries, feed, view, className, ...rest }, ref) => {
   const t = useI18n()
 
   return (
@@ -35,12 +42,21 @@ export const ViewSelectorRadioGroup = forwardRef<
                 "whitespace-nowrap",
               )}
             >
-              <span className="text-lg">{view.icon}</span>
-              {t(view.name)}
+              {cloneElement(view.icon, {
+                className: `text-lg ${view.icon?.props?.className ?? ""}`,
+              })}
+              <span className="hidden lg:inline">{t(view.name)}</span>
             </label>
           </div>
         ))}
       </CardHeader>
+      {!!feed && !!entries && (
+        <CardContent className="space-y-2 p-2">
+          {entries.slice(0, 2).map((entry) => (
+            <EntryItemStateless entry={entry} feed={feed} view={view} key={entry.guid} />
+          ))}
+        </CardContent>
+      )}
     </Card>
   )
 })

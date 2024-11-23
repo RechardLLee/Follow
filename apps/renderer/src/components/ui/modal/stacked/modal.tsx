@@ -1,9 +1,17 @@
+import { Divider } from "@follow/components/ui/divider/index.js"
+import { RootPortalProvider } from "@follow/components/ui/portal/provider.js"
+import { EllipsisHorizontalTextWithTooltip } from "@follow/components/ui/typography/index.js"
+import { ZIndexProvider } from "@follow/components/ui/z-index/index.js"
+import { useRefValue } from "@follow/hooks"
+import { nextFrame, preventDefault, stopPropagation } from "@follow/utils/dom"
+import { cn, getOS } from "@follow/utils/utils"
 import * as Dialog from "@radix-ui/react-dialog"
-import { useAnimationControls, useDragControls } from "framer-motion"
+import type { BoundingBox } from "framer-motion"
 import { produce } from "immer"
-import { useSetAtom } from "jotai"
+import { useAtomValue, useSetAtom } from "jotai"
+import { selectAtom } from "jotai/utils"
 import { Resizable } from "re-resizable"
-import type { PointerEventHandler, PropsWithChildren, SyntheticEvent } from "react"
+import type { FC, PropsWithChildren, SyntheticEvent } from "react"
 import {
   createElement,
   forwardRef,
@@ -23,19 +31,19 @@ import { AppErrorBoundary } from "~/components/common/AppErrorBoundary"
 import { SafeFragment } from "~/components/common/Fragment"
 import { m } from "~/components/common/Motion"
 import { ErrorComponentType } from "~/components/errors/enum"
-import { isElectronBuild } from "~/constants"
+import { ElECTRON_CUSTOM_TITLEBAR_HEIGHT, isElectronBuild } from "~/constants"
 import { useSwitchHotKeyScope } from "~/hooks/common"
-import { nextFrame, stopPropagation } from "~/lib/dom"
-import { cn } from "~/lib/utils"
 
-import { Divider } from "../../divider"
-import { RootPortalProvider } from "../../portal/provider"
 import { modalStackAtom } from "./atom"
 import { MODAL_STACK_Z_INDEX, modalMontionConfig } from "./constants"
 import type { CurrentModalContentProps, ModalActionsInternal } from "./context"
-import { CurrentModalContext } from "./context"
-import { useResizeableModal } from "./hooks"
-import type { ModalProps } from "./types"
+import { CurrentModalContext, CurrentModalStateContext } from "./context"
+import { useModalAnimate } from "./internal/use-animate"
+import { useModalResizeAndDrag } from "./internal/use-drag"
+import { useModalSelect } from "./internal/use-select"
+import { useModalSubscriber } from "./internal/use-subscriber"
+import { ModalOverlay } from "./overlay"
+import type { ModalOverlayOptions, ModalProps } from "./types"
 
 const DragBar = isElectronBuild ? (
   <span className="drag-region fixed left-0 right-36 top-0 h-8" />
@@ -47,10 +55,15 @@ export const ModalInternal = memo(
       item: ModalProps & { id: string }
       index: number
 
-      isTop: boolean
+      isTop?: boolean
+      isBottom?: boolean
+      overlayOptions?: ModalOverlayOptions
       onClose?: (open: boolean) => void
     } & PropsWithChildren
-  >(function Modal({ item, index, onClose: onPropsClose, children, isTop }, ref) {
+  >(function Modal(
+    { item, overlayOptions, onClose: onPropsClose, children, isTop, index, isBottom },
+    ref,
+  ) {
     const {
       CustomModalComponent,
       modalClassName,
@@ -93,8 +106,8 @@ export const ModalInternal = memo(
     )
 
     const opaque = useUISettingKey("modalOpaque")
+    const modalSettingOverlay = useUISettingKey("modalOverlay")
 
-    const zIndexStyle = useMemo(() => ({ zIndex: MODAL_STACK_Z_INDEX + index + 1 }), [index])
     const dismiss = useCallback(
       (e: SyntheticEvent) => {
         e.stopPropagation()
@@ -105,68 +118,29 @@ export const ModalInternal = memo(
     )
 
     const modalElementRef = useRef<HTMLDivElement>(null)
-
     const {
-      handlePointDown: handleResizeEnable,
+      handleDrag,
+      handleResizeStart,
+      handleResizeStop,
+      relocateModal,
+      preferDragDir,
       isResizeable,
       resizeableStyle,
-    } = useResizeableModal(modalElementRef, {
-      enableResizeable: resizeable,
+
+      dragController,
+    } = useModalResizeAndDrag(modalElementRef, {
+      resizeable,
+      draggable,
     })
-    const animateController = useAnimationControls()
-    useEffect(() => {
-      nextFrame(() => {
-        animateController.start(modalMontionConfig.animate)
-      })
-    }, [animateController])
-    const noticeModal = useCallback(() => {
-      animateController
-        .start({
-          scale: 1.05,
-          transition: {
-            duration: 0.06,
-          },
-        })
-        .then(() => {
-          animateController.start({
-            scale: 1,
-          })
-        })
-    }, [animateController])
 
-    const dragController = useDragControls()
-    const handleDrag: PointerEventHandler<HTMLDivElement> = useCallback(
-      (e) => {
-        if (draggable) {
-          dragController.start(e)
-        }
-      },
-      [dragController, draggable],
-    )
+    const { noticeModal, animateController } = useModalAnimate(!!isTop)
 
-    useEffect(() => {
-      if (isTop) return
-      animateController.start({
-        scale: 0.96,
-        y: 10,
-      })
-      return () => {
-        try {
-          animateController.stop()
-          animateController.start({
-            scale: 1,
-            y: 0,
-          })
-        } catch {
-          /* empty */
-        }
-      }
-    }, [isTop])
-
-    const modalContentRef = useRef<HTMLDivElement>(null)
+    const getIndex = useEventCallback(() => index)
+    const [modalContentRef, setModalContentRef] = useState<HTMLDivElement | null>(null)
     const ModalProps: ModalActionsInternal = useMemo(
       () => ({
         dismiss: close,
+        getIndex,
         setClickOutSideToDismiss: (v) => {
           setStack((state) =>
             produce(state, (draft) => {
@@ -178,28 +152,29 @@ export const ModalInternal = memo(
           )
         },
       }),
-      [close, item.id, setStack],
+      [close, getIndex, item.id, setStack],
     )
+    useModalSubscriber(item.id, ModalProps)
 
     const ModalContextProps = useMemo<CurrentModalContentProps>(
       () => ({
         ...ModalProps,
-        ref: modalContentRef,
+        ref: { current: modalContentRef },
       }),
-      [ModalProps],
+      [ModalProps, modalContentRef],
     )
 
-    const edgeElementRef = useRef<HTMLDivElement>(null)
+    const [edgeElementRef, setEdgeElementRef] = useState<HTMLDivElement | null>(null)
 
     const finalChildren = useMemo(
       () => (
         <AppErrorBoundary errorType={ErrorComponentType.Modal}>
-          <RootPortalProvider value={edgeElementRef.current as HTMLElement}>
+          <RootPortalProvider value={edgeElementRef as HTMLElement}>
             {children ?? createElement(content, ModalProps)}
           </RootPortalProvider>
         </AppErrorBoundary>
       ),
-      [ModalProps, children, content],
+      [ModalProps, children, content, edgeElementRef],
     )
 
     useEffect(() => {
@@ -209,37 +184,17 @@ export const ModalInternal = memo(
       }
     }, [currentIsClosing])
 
-    const switchHotkeyScope = useSwitchHotKeyScope()
-    useEffect(() => {
-      switchHotkeyScope("Modal")
-      return () => {
-        switchHotkeyScope("Home")
-      }
-    }, [switchHotkeyScope])
+    useShortcutScope()
 
-    const modalStyle = useMemo(
-      () => ({ ...zIndexStyle, ...resizeableStyle }),
-      [resizeableStyle, zIndexStyle],
-    )
-    const isSelectingRef = useRef(false)
-    const handleSelectStart = useCallback(() => {
-      isSelectingRef.current = true
-    }, [])
-    const handleDetectSelectEnd = useCallback(() => {
-      nextFrame(() => {
-        if (isSelectingRef.current) {
-          isSelectingRef.current = false
-        }
-      })
-    }, [])
-
+    const modalStyle = resizeableStyle
+    const { handleSelectStart, handleDetectSelectEnd, isSelectingRef } = useModalSelect()
     const handleClickOutsideToDismiss = useCallback(
       (e: SyntheticEvent) => {
         if (isSelectingRef.current) return
         const fn = modal ? (clickOutsideToDismiss && canClose ? dismiss : noticeModal) : undefined
         fn?.(e)
       },
-      [canClose, clickOutsideToDismiss, dismiss, modal, noticeModal],
+      [canClose, clickOutsideToDismiss, dismiss, modal, noticeModal, isSelectingRef],
     )
 
     const openAutoFocus = useCallback(
@@ -250,38 +205,74 @@ export const ModalInternal = memo(
       },
       [autoFocus],
     )
+
+    const measureDragConstraints = useCallback((constraints: BoundingBox) => {
+      if (getOS() === "Windows") {
+        return {
+          ...constraints,
+          top: constraints.top + ElECTRON_CUSTOM_TITLEBAR_HEIGHT,
+        }
+      }
+      return constraints
+    }, [])
+
     useImperativeHandle(ref, () => modalElementRef.current!)
+    const currentModalZIndex = MODAL_STACK_Z_INDEX + index * 2
+
+    const Overlay = (
+      <ModalOverlay
+        zIndex={currentModalZIndex - 1}
+        blur={overlayOptions?.blur}
+        hidden={
+          item.overlay ? currentIsClosing : !(modalSettingOverlay && isBottom) || currentIsClosing
+        }
+      />
+    )
+
+    const mutateableEdgeElementRef = useRefValue(edgeElementRef)
+
     if (CustomModalComponent) {
       return (
         <Wrapper>
           <Dialog.Root open onOpenChange={onClose} modal={modal}>
             <Dialog.Portal>
+              {Overlay}
               <Dialog.DialogTitle className="sr-only">{title}</Dialog.DialogTitle>
-              <Dialog.Content asChild onOpenAutoFocus={openAutoFocus}>
+              <Dialog.Content
+                ref={setModalContentRef}
+                asChild
+                aria-describedby={undefined}
+                onPointerDownOutside={preventDefault}
+                onOpenAutoFocus={openAutoFocus}
+              >
                 <div
-                  ref={edgeElementRef}
+                  ref={setEdgeElementRef}
                   className={cn(
-                    "no-drag-region fixed z-20",
+                    "no-drag-region fixed",
                     modal ? "inset-0 overflow-auto" : "left-0 top-0",
                     currentIsClosing ? "!pointer-events-none" : "!pointer-events-auto",
                     modalContainerClassName,
                   )}
+                  style={{
+                    zIndex: currentModalZIndex,
+                  }}
                   onPointerUp={handleDetectSelectEnd}
                   onClick={handleClickOutsideToDismiss}
                   onFocus={stopPropagation}
-                  style={zIndexStyle}
+                  tabIndex={-1}
                 >
                   {DragBar}
                   <div
                     className={cn("contents", modalClassName)}
                     onClick={stopPropagation}
+                    tabIndex={-1}
                     ref={modalElementRef}
                     onSelect={handleSelectStart}
                     onKeyUp={handleDetectSelectEnd}
                   >
-                    <CurrentModalContext.Provider value={ModalContextProps}>
+                    <ModalContext modalContextProps={ModalContextProps} isTop={!!isTop}>
                       <CustomModalComponent>{finalChildren}</CustomModalComponent>
-                    </CurrentModalContext.Provider>
+                    </ModalContext>
                   </div>
                 </div>
               </Dialog.Content>
@@ -297,12 +288,18 @@ export const ModalInternal = memo(
       <Wrapper>
         <Dialog.Root modal={modal} open onOpenChange={onClose}>
           <Dialog.Portal>
-            <Dialog.Content asChild onOpenAutoFocus={openAutoFocus}>
+            {Overlay}
+            <Dialog.Content
+              ref={setModalContentRef}
+              asChild
+              aria-describedby={undefined}
+              onPointerDownOutside={preventDefault}
+              onOpenAutoFocus={openAutoFocus}
+            >
               <div
-                ref={edgeElementRef}
-                style={zIndexStyle}
+                ref={setEdgeElementRef}
                 className={cn(
-                  "fixed z-20 flex",
+                  "fixed flex",
                   modal ? "inset-0 overflow-auto" : "left-0 top-0",
                   currentIsClosing && "!pointer-events-none",
                   modalContainerClassName,
@@ -311,6 +308,10 @@ export const ModalInternal = memo(
                 onFocus={stopPropagation}
                 onPointerUp={handleDetectSelectEnd}
                 onClick={handleClickOutsideToDismiss}
+                style={{
+                  zIndex: currentModalZIndex,
+                }}
+                tabIndex={-1}
               >
                 {DragBar}
 
@@ -330,51 +331,55 @@ export const ModalInternal = memo(
                     "border border-slate-200 dark:border-neutral-800",
                     modalClassName,
                   )}
+                  tabIndex={-1}
                   onClick={stopPropagation}
                   onSelect={handleSelectStart}
                   onKeyUp={handleDetectSelectEnd}
-                  drag
+                  drag={draggable && (preferDragDir || draggable)}
                   dragControls={dragController}
                   dragElastic={0}
                   dragListener={false}
                   dragMomentum={false}
-                  dragConstraints={edgeElementRef}
+                  dragConstraints={mutateableEdgeElementRef}
+                  onMeasureDragConstraints={measureDragConstraints}
                   whileDrag={{
                     cursor: "grabbing",
                   }}
                 >
                   <ResizeSwitch
-                    enable={{
-                      bottomRight: true,
-                    }}
-                    onResizeStart={handleResizeEnable}
+                    // enable={resizableOnly("bottomRight")}
+                    onResizeStart={handleResizeStart}
+                    onResizeStop={handleResizeStop}
                     defaultSize={resizeDefaultSize}
                     className="flex grow flex-col"
                   >
                     <div
-                      className={cn(
-                        "relative flex items-center",
-                        "max-h-[70vh] min-w-[300px] max-w-[90vw] lg:max-h-[calc(100vh-20rem)] lg:max-w-[70vw]",
-                      )}
+                      className={"relative flex items-center"}
                       onPointerDownCapture={handleDrag}
-                      onPointerDown={handleResizeEnable}
+                      onPointerDown={relocateModal}
                     >
-                      <Dialog.Title className="flex max-w-full shrink-0 grow items-center gap-2 px-4 py-1 text-lg font-semibold">
-                        {icon && <span className="size-4">{icon}</span>}
-                        <span className="truncate">{title}</span>
+                      <Dialog.Title className="flex w-0 max-w-full grow items-center gap-2 px-4 py-1 text-lg font-semibold">
+                        {!!icon && <span className="size-4">{icon}</span>}
+                        <EllipsisHorizontalTextWithTooltip className="truncate">
+                          <span>{title}</span>
+                        </EllipsisHorizontalTextWithTooltip>
                       </Dialog.Title>
                       {canClose && (
-                        <Dialog.DialogClose className="center p-2" tabIndex={1} onClick={close}>
+                        <Dialog.DialogClose
+                          className="center z-[1] p-2"
+                          tabIndex={1}
+                          onClick={close}
+                        >
                           <i className="i-mgc-close-cute-re" />
                         </Dialog.DialogClose>
                       )}
                     </div>
                     <Divider className="my-2 shrink-0 border-slate-200 opacity-80 dark:border-neutral-800" />
 
-                    <div className="min-h-0 shrink grow overflow-auto px-4 py-2">
-                      <CurrentModalContext.Provider value={ModalContextProps}>
+                    <div className="-mx-2 min-h-0 shrink grow overflow-auto px-6 py-2">
+                      <ModalContext modalContextProps={ModalContextProps} isTop={!!isTop}>
                         {finalChildren}
-                      </CurrentModalContext.Provider>
+                      </ModalContext>
                     </div>
                   </ResizeSwitch>
                 </m.div>
@@ -386,3 +391,43 @@ export const ModalInternal = memo(
     )
   }),
 )
+
+const useShortcutScope = () => {
+  const switchHotkeyScope = useSwitchHotKeyScope()
+  useEffect(() => {
+    switchHotkeyScope("Modal")
+    return () => {
+      switchHotkeyScope("Home")
+    }
+  }, [switchHotkeyScope])
+}
+
+const ModalContext: FC<
+  PropsWithChildren & {
+    modalContextProps: CurrentModalContentProps
+    isTop: boolean
+  }
+> = ({ modalContextProps, isTop, children }) => {
+  const { getIndex } = modalContextProps
+  const zIndex = useAtomValue(
+    useMemo(
+      () => selectAtom(modalStackAtom, (v) => v.length + MODAL_STACK_Z_INDEX + getIndex() + 1),
+      [getIndex],
+    ),
+  )
+
+  return (
+    <CurrentModalContext.Provider value={modalContextProps}>
+      <CurrentModalStateContext.Provider
+        value={useMemo(
+          () => ({
+            isTop: !!isTop,
+          }),
+          [isTop],
+        )}
+      >
+        <ZIndexProvider zIndex={zIndex}>{children}</ZIndexProvider>
+      </CurrentModalStateContext.Provider>
+    </CurrentModalContext.Provider>
+  )
+}

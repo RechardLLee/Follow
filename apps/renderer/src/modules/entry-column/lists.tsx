@@ -1,3 +1,4 @@
+import { EmptyIcon } from "@follow/components/icons/empty.jsx"
 import type { HTMLMotionProps } from "framer-motion"
 import type { DOMAttributes, FC } from "react"
 import { forwardRef, memo, useCallback } from "react"
@@ -7,14 +8,15 @@ import { GroupedVirtuoso, Virtuoso } from "react-virtuoso"
 
 import { useGeneralSettingKey } from "~/atoms/settings/general"
 import { m } from "~/components/common/Motion"
-import { EmptyIcon } from "~/components/icons/empty"
 import { ReactVirtuosoItemPlaceholder } from "~/components/ui/placeholder"
+import { ENTRY_COLUMN_LIST_SCROLLER_ID } from "~/constants/dom"
 import { useRouteParams } from "~/hooks/biz/useRouteParams"
 import { useEntry } from "~/store/entry"
 import { isListSubscription } from "~/store/subscription"
 
 import { DateItem } from "./components/DateItem"
 import { EntryColumnShortcutHandler } from "./EntryColumnShortcutHandler"
+import type { VirtuosoComponentProps } from "./index"
 
 export const EntryListContent = forwardRef<HTMLDivElement>((props, ref) => (
   <div className="px-2" {...props} ref={ref} />
@@ -48,7 +50,7 @@ type BaseEntryProps = {
   virtuosoRef: React.RefObject<VirtuosoHandle>
   refetch: () => void
 }
-type EntryListProps = VirtuosoProps<string, unknown> & {
+type EntryListProps = VirtuosoProps<string, VirtuosoComponentProps> & {
   groupCounts?: number[]
 } & BaseEntryProps
 export const EntryList: FC<EntryListProps> = memo(
@@ -76,7 +78,12 @@ export const EntryList: FC<EntryListProps> = memo(
             ref={virtuosoRef}
           />
         ) : (
-          <Virtuoso onKeyDown={handleKeyDown} {...virtuosoOptions} ref={virtuosoRef} />
+          <Virtuoso
+            id={ENTRY_COLUMN_LIST_SCROLLER_ID}
+            onKeyDown={handleKeyDown}
+            {...virtuosoOptions}
+            ref={virtuosoRef}
+          />
         )}
         <EntryColumnShortcutHandler
           refetch={refetch}
@@ -90,12 +97,14 @@ export const EntryList: FC<EntryListProps> = memo(
 
 const EntryGroupedList = forwardRef<
   VirtuosoHandle,
-  VirtuosoProps<string, unknown> &
+  VirtuosoProps<string, VirtuosoComponentProps> &
     DOMAttributes<HTMLDivElement> & {
       groupCounts: number[]
     }
 >(({ groupCounts, itemContent, onKeyDown, data, totalCount, ...virtuosoOptions }, ref) => (
   <GroupedVirtuoso
+    id={ENTRY_COLUMN_LIST_SCROLLER_ID}
+    className="z-0"
     ref={ref}
     groupContent={useCallback(
       (index: number) => {

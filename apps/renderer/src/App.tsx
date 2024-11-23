@@ -1,21 +1,22 @@
-import { env } from "@follow/shared/env"
-import { useEffect, useLayoutEffect } from "react"
+import { isMobile } from "@follow/components/hooks/useMobile.js"
+import { IN_ELECTRON } from "@follow/shared/constants"
+import { cn, getOS } from "@follow/utils/utils"
+import { useEffect } from "react"
 import { Outlet } from "react-router-dom"
 
 import { queryClient } from "~/lib/query-client"
 
 import { useAppIsReady } from "./atoms/app"
 import { useUISettingKey } from "./atoms/settings/ui"
-import { applyAfterReadyCallbacks } from "./initialize/queue.js"
+import { navigateEntry } from "./hooks/biz/useNavigateEntry"
+import { applyAfterReadyCallbacks } from "./initialize/queue"
+import { removeAppSkeleton } from "./lib/app"
 import { appLog } from "./lib/log"
-import { cn, getOS } from "./lib/utils"
-import { Titlebar } from "./modules/app/Titlebar.js"
+import { Titlebar } from "./modules/app/Titlebar"
+import { useRegisterFollowCommands } from "./modules/command/use-register-follow-commands"
 import { RootProviders } from "./providers/root-providers"
 import { handlers } from "./tipc"
 
-if (import.meta.env.DEV) {
-  console.info("[renderer] env loaded:", env)
-}
 function App() {
   useEffect(() => {
     const cleanup = handlers?.invalidateQuery.listen((queryKey) => {
@@ -24,29 +25,17 @@ function App() {
       })
     })
 
+    handlers?.navigateEntry.listen((options) => {
+      navigateEntry(options)
+    })
+
     return cleanup
   }, [])
 
-  useLayoutEffect(() => {
-    // Electron app register in app scope, but web app should register in window scope
-    if (window.electron) return
-    const handleOpenSettings = (e) => {
-      if (e.key === "," && (e.metaKey || e.ctrlKey)) {
-        window.router.showSettings()
-        e.preventDefault()
-      }
-    }
-    document.addEventListener("keydown", handleOpenSettings)
-
-    return () => {
-      document.removeEventListener("keydown", handleOpenSettings)
-    }
-  }, [])
-
-  const windowsElectron = window.electron && getOS() === "Windows"
+  const windowsElectron = IN_ELECTRON && getOS() === "Windows"
   return (
     <RootProviders>
-      {window.electron && (
+      {IN_ELECTRON && (
         <div
           className={cn(
             "drag-region fixed inset-x-0 top-0 h-12 shrink-0",
@@ -66,14 +55,28 @@ function App() {
 const AppLayer = () => {
   const appIsReady = useAppIsReady()
 
+  useRegisterFollowCommands()
   useEffect(() => {
+    removeAppSkeleton()
+
     const doneTime = Math.trunc(performance.now())
-    window.posthog?.capture("ui_render_init", {
+    window.analytics?.capture("ui_render_init", {
       time: doneTime,
     })
     appLog("App is ready", `${doneTime}ms`)
 
     applyAfterReadyCallbacks()
+
+    if (isMobile()) {
+      const handler = (e: MouseEvent) => {
+        e.preventDefault()
+      }
+      document.addEventListener("contextmenu", handler)
+
+      return () => {
+        document.removeEventListener("contextmenu", handler)
+      }
+    }
   }, [appIsReady])
 
   return appIsReady ? <Outlet /> : <AppSkeleton />
@@ -96,4 +99,5 @@ const AppSkeleton = () => {
     </div>
   )
 }
-export default App
+
+export { App as Component }

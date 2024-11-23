@@ -1,16 +1,6 @@
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation } from "@tanstack/react-query"
-import { useEffect, useMemo, useRef } from "react"
-import { useForm } from "react-hook-form"
-import { useTranslation } from "react-i18next"
-import { toast } from "sonner"
-import { z } from "zod"
-
-import { FollowSummary } from "~/components/feed-summary"
-import { Logo } from "~/components/icons/logo"
-import { Autocomplete } from "~/components/ui/auto-completion"
-import { Button } from "~/components/ui/button"
-import { Card, CardHeader } from "~/components/ui/card"
+import { Logo } from "@follow/components/icons/logo.jsx"
+import { Button } from "@follow/components/ui/button/index.js"
+import { Card, CardHeader } from "@follow/components/ui/card/index.jsx"
 import {
   Form,
   FormControl,
@@ -19,18 +9,29 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "~/components/ui/form"
-import { Input } from "~/components/ui/input"
-import { LoadingCircle } from "~/components/ui/loading"
-import { useCurrentModal } from "~/components/ui/modal"
-import { Switch } from "~/components/ui/switch"
+} from "@follow/components/ui/form/index.jsx"
+import { Input } from "@follow/components/ui/input/index.js"
+import { LoadingCircle } from "@follow/components/ui/loading/index.jsx"
+import { Switch } from "@follow/components/ui/switch/index.jsx"
+import { FeedViewType } from "@follow/constants"
+import type { EntryModelSimple, FeedModel } from "@follow/models/types"
+import { cn } from "@follow/utils/utils"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useMutation } from "@tanstack/react-query"
+import { useEffect, useMemo, useRef } from "react"
+import { useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
+import { z } from "zod"
+
+import { Autocomplete } from "~/components/ui/auto-completion"
+import { useCurrentModal } from "~/components/ui/modal/stacked/hooks"
 import { useAuthQuery, useI18n } from "~/hooks/common"
 import { apiClient } from "~/lib/api-fetch"
 import { tipcClient } from "~/lib/client"
-import { FeedViewType } from "~/lib/enum"
 import { getFetchErrorMessage, toastFetchError } from "~/lib/error-parser"
 import { getNewIssueUrl } from "~/lib/issues"
-import { cn } from "~/lib/utils"
+import { FollowSummary } from "~/modules/feed/feed-summary"
 import { feed as feedQuery, useFeed } from "~/queries/feed"
 import { subscription as subscriptionQuery } from "~/queries/subscriptions"
 import { useFeedByIdOrUrl } from "~/store/feed"
@@ -45,20 +46,18 @@ const formSchema = z.object({
   isPrivate: z.boolean().optional(),
   title: z.string().optional(),
 })
+export type FeedFormDataValuesType = z.infer<typeof formSchema>
 
-const defaultValue = { view: FeedViewType.Articles.toString() } as z.infer<typeof formSchema>
+const defaultValue = { view: FeedViewType.Articles.toString() } as FeedFormDataValuesType
+
 export const FeedForm: Component<{
   url?: string
   id?: string
-  isList?: boolean
-
-  defaultValues?: z.infer<typeof formSchema>
-
+  defaultValues?: FeedFormDataValuesType
   asWidget?: boolean
-
   onSuccess?: () => void
-}> = ({ id: _id, defaultValues = defaultValue, url, asWidget, onSuccess, isList }) => {
-  const queryParams = { id: _id, url, isList }
+}> = ({ id: _id, defaultValues = defaultValue, url, asWidget, onSuccess }) => {
+  const queryParams = { id: _id, url }
 
   const feedQuery = useFeed(queryParams)
 
@@ -66,7 +65,7 @@ export const FeedForm: Component<{
   const feed = useFeedByIdOrUrl({
     id,
     url,
-  })
+  }) as FeedModel
 
   const hasSub = useSubscriptionByFeedId(feed?.id || "")
   const isSubscribed = !!feedQuery.data?.subscription || hasSub
@@ -96,6 +95,8 @@ export const FeedForm: Component<{
             asWidget,
             onSuccess,
             subscriptionData: feedQuery.data?.subscription,
+            entries: feedQuery.data?.entries,
+            feed,
           }}
         />
       ) : feedQuery.isLoading ? (
@@ -139,6 +140,8 @@ export const FeedForm: Component<{
                       "```",
                     ].join("\n"),
                     title: `Error in fetching feed: ${id ?? url}`,
+                    target: "discussion",
+                    category: "feed-expired",
                   }),
                   "_blank",
                 )
@@ -162,13 +165,13 @@ export const FeedForm: Component<{
 const FeedInnerForm = ({
   defaultValues,
   id,
-  url,
   asWidget,
   onSuccess,
   subscriptionData,
+  feed,
+  entries,
 }: {
   defaultValues?: z.infer<typeof formSchema>
-  url?: string
   id?: string
   asWidget?: boolean
   onSuccess?: () => void
@@ -178,21 +181,16 @@ const FeedInnerForm = ({
     isPrivate?: boolean
     title?: string | null
   }
+  feed: FeedModel
+  entries?: EntryModelSimple[]
 }) => {
   const subscription = useSubscriptionByFeedId(id || "") || subscriptionData
   const isSubscribed = !!subscription
   const buttonRef = useRef<HTMLButtonElement>(null)
-  const feed = useFeedByIdOrUrl({ id, url })!
-  const isList = feed?.type === "list"
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: isList
-      ? {
-          ...defaultValues,
-          view: feed.view.toString(),
-        }
-      : defaultValues,
+    defaultValues,
   })
 
   const { setClickOutSideToDismiss, dismiss } = useCurrentModal()
@@ -213,12 +211,12 @@ const FeedInnerForm = ({
   const followMutation = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
       const body = {
-        ...(isList ? { listId: feed.id } : { url: feed.url }),
+        url: feed.url,
         view: Number.parseInt(values.view),
         category: values.category,
         isPrivate: values.isPrivate,
         title: values.title,
-        ...(isSubscribed && !isList && { feedId: feed.id }),
+        feedId: feed.id,
       }
       const $method = isSubscribed ? apiClient.subscriptions.$patch : apiClient.subscriptions.$post
 
@@ -251,7 +249,7 @@ const FeedInnerForm = ({
 
       onSuccess?.()
     },
-    async onError(err) {
+    onError(err) {
       toastFetchError(err)
     },
   })
@@ -266,10 +264,12 @@ const FeedInnerForm = ({
 
   const suggestions = useMemo(
     () =>
-      categories.data?.map((i) => ({
-        name: i,
-        value: i,
-      })) || [],
+      (
+        categories.data?.map((i) => ({
+          name: i,
+          value: i,
+        })) || []
+      ).sort((a, b) => a.name.localeCompare(b.name)),
     [categories.data],
   )
 
@@ -282,22 +282,6 @@ const FeedInnerForm = ({
       </Card>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col gap-y-4">
-          <FormField
-            control={form.control}
-            name="view"
-            render={() => (
-              <FormItem>
-                <FormLabel>{t("feed_form.view")}</FormLabel>
-
-                <ViewSelectorRadioGroup
-                  {...form.register("view")}
-                  disabled={isList}
-                  className={cn(isList && "opacity-60")}
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
           <FormField
             control={form.control}
             name="title"
@@ -314,36 +298,33 @@ const FeedInnerForm = ({
               </FormItem>
             )}
           />
-          {!isList && (
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
+          <FormField
+            control={form.control}
+            name="category"
+            render={({ field }) => (
+              <FormItem>
+                <div>
+                  <FormLabel>{t("feed_form.category")}</FormLabel>
+                  <FormDescription>{t("feed_form.category_description")}</FormDescription>
+                </div>
+                <FormControl>
                   <div>
-                    <FormLabel>{t("feed_form.category")}</FormLabel>
-                    <FormDescription>{t("feed_form.category_description")}</FormDescription>
+                    <Autocomplete
+                      maxHeight={window.innerHeight < 600 ? 120 : 240}
+                      suggestions={suggestions}
+                      {...(field as any)}
+                      onSuggestionSelected={(suggestion) => {
+                        if (suggestion) {
+                          field.onChange(suggestion.value)
+                        }
+                      }}
+                    />
                   </div>
-                  <FormControl>
-                    <div>
-                      <Autocomplete
-                        maxHeight={window.innerHeight < 600 ? 120 : 240}
-                        portal
-                        suggestions={suggestions}
-                        {...(field as any)}
-                        onSuggestionSelected={(suggestion) => {
-                          if (suggestion) {
-                            field.onChange(suggestion.value)
-                          }
-                        }}
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <FormField
             control={form.control}
             name="isPrivate"
@@ -365,19 +346,24 @@ const FeedInnerForm = ({
               </FormItem>
             )}
           />
-          {isList && !!feed.fee && !isSubscribed && (
-            <div>
-              <FormLabel className="flex items-center gap-1">
-                {t("feed_form.fee")}{" "}
-                <div className="ml-2 flex scale-[0.85] items-center gap-1">
-                  {feed.fee}
-                  <i className="i-mgc-power size-4 text-accent" />
-                </div>
-              </FormLabel>
-              <FormDescription className="mt-0.5">{t("feed_form.fee_description")}</FormDescription>
-            </div>
-          )}
-          <div className="flex flex-1 items-end justify-end gap-4">
+          <FormField
+            control={form.control}
+            name="view"
+            render={() => (
+              <FormItem className="mb-16">
+                <FormLabel>{t("feed_form.view")}</FormLabel>
+
+                <ViewSelectorRadioGroup
+                  {...form.register("view")}
+                  entries={entries}
+                  feed={feed}
+                  view={Number(form.getValues("view"))}
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="absolute inset-x-0 bottom-0 flex flex-1 items-center justify-end gap-4 bg-theme-background p-4">
             {isSubscribed && (
               <Button
                 type="button"
@@ -391,13 +377,7 @@ const FeedInnerForm = ({
               </Button>
             )}
             <Button ref={buttonRef} type="submit" isLoading={followMutation.isPending}>
-              {isSubscribed
-                ? t("feed_form.update")
-                : isList && feed.fee
-                  ? t("feed_form.follow_with_fee", {
-                      fee: feed.fee,
-                    })
-                  : t("feed_form.follow")}
+              {isSubscribed ? t("feed_form.update") : t("feed_form.follow")}
             </Button>
           </div>
         </form>

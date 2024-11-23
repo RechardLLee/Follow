@@ -1,5 +1,10 @@
+import { ActionButton } from "@follow/components/ui/button/index.js"
+import { useScrollViewElement } from "@follow/components/ui/scroll-area/hooks.js"
+import { FeedViewType } from "@follow/constants"
+import { stopPropagation } from "@follow/utils/dom"
+import { cn } from "@follow/utils/utils"
+import { throttle } from "es-toolkit/compat"
 import { m } from "framer-motion"
-import { throttle } from "lodash-es"
 import type { FC, PropsWithChildren } from "react"
 import {
   cloneElement,
@@ -11,17 +16,13 @@ import {
   useRef,
   useState,
 } from "react"
+import { Trans } from "react-i18next"
 import { useDebounceCallback } from "usehooks-ts"
 
 import { SafeFragment } from "~/components/common/Fragment"
-import { ActionButton } from "~/components/ui/button"
 import { RelativeDay } from "~/components/ui/datetime"
-import { useScrollViewElement } from "~/components/ui/scroll-area/hooks"
 import { IconScaleTransition } from "~/components/ux/transition/icon"
 import { useRouteParams } from "~/hooks/biz/useRouteParams"
-import { stopPropagation } from "~/lib/dom"
-import { FeedViewType } from "~/lib/enum"
-import { cn } from "~/lib/utils"
 import { isListSubscription } from "~/store/subscription"
 
 import { useMarkAllByRoute } from "../hooks/useMarkAll"
@@ -63,8 +64,8 @@ const useSticky = () => {
 }
 export const DateItem = memo(({ date, view }: { date: string; view: FeedViewType }) => {
   const className = cn(
-    "pt-2",
-    `relative z-10 -mx-2 flex items-center gap-1 bg-background px-4 text-base font-bold text-zinc-800 dark:text-neutral-400`,
+    "lg:pt-2",
+    `relative -mx-2 flex items-center gap-1 bg-background px-4 text-base font-bold text-zinc-800 dark:text-neutral-400`,
   )
 
   if (view === FeedViewType.SocialMedia) {
@@ -133,14 +134,15 @@ const DateItemInner: FC<{
         <ActionButton
           tooltip={
             <span>
-              Mark
-              <span> </span>
-              {useMemo(
-                () => cloneElement(RelativeElement, { layoutId: tooltipId.current }),
-                [RelativeElement],
-              )}
-              <span> </span>
-              as read
+              <Trans
+                i18nKey="mark_all_read_button.mark_as_read"
+                components={{
+                  which: useMemo(
+                    () => cloneElement(RelativeElement, { layoutId: tooltipId.current }),
+                    [RelativeElement],
+                  ),
+                }}
+              />
             </span>
           }
           onClick={() => {
@@ -163,9 +165,12 @@ const DateItemInner: FC<{
 
         {confirmMark ? (
           <div className="animate-mask-in" key="a">
-            Mark
-            <span> </span>
-            {RelativeElement} as read?
+            <Trans
+              i18nKey="mark_all_read_button.confirm_mark_all"
+              components={{
+                which: <>{RelativeElement}</>,
+              }}
+            />
           </div>
         ) : (
           RelativeElement

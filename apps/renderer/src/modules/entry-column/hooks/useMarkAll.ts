@@ -10,7 +10,7 @@ export interface MarkAllFilter {
 }
 export const useMarkAllByRoute = (filter?: MarkAllFilter) => {
   const routerParams = useRouteParams()
-  const { feedId, view } = routerParams
+  const { feedId, view, inboxId } = routerParams
   const folderIds = useFolderFeedsByFeedId({
     feedId,
     view,
@@ -21,7 +21,13 @@ export const useMarkAllByRoute = (filter?: MarkAllFilter) => {
 
     if (typeof routerParams.feedId === "number" || routerParams.isAllFeeds) {
       subscriptionActions.markReadByView(view, filter)
-    } else if (folderIds) {
+    } else if (inboxId) {
+      subscriptionActions.markReadByFeedIds({
+        inboxId,
+        view,
+        filter,
+      })
+    } else if (folderIds?.length) {
       subscriptionActions.markReadByFeedIds({
         feedIds: folderIds,
         view,

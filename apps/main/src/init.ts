@@ -1,29 +1,36 @@
 import path from "node:path"
 
-import { registerIpcMain } from "@egoist/tipc/main"
+import { getRendererHandlers, registerIpcMain } from "@egoist/tipc/main"
+import { PushReceiver } from "@eneris/push-receiver"
 import { APP_PROTOCOL } from "@follow/shared/constants"
-import { app, nativeTheme, shell } from "electron"
+import { env } from "@follow/shared/env"
+import type { MessagingData } from "@follow/shared/hono"
+import { app, nativeTheme, Notification, shell } from "electron"
 import contextMenu from "electron-context-menu"
 
 import { getIconPath } from "./helper"
+import { checkAndCleanCodeCache, clearCacheCronJob } from "./lib/cleaner"
 import { t } from "./lib/i18n"
 import { store } from "./lib/store"
+import { updateNotificationsToken } from "./lib/user"
+import { logger } from "./logger"
 import { registerAppMenu } from "./menu"
+import type { RendererHandlers } from "./renderer-handlers"
 import { initializeSentry } from "./sentry"
 import { router } from "./tipc"
+import { createMainWindow, getMainWindow } from "./window"
 
-const appFolder = {
-  prod: "Follow",
-  dev: "Follow (dev)",
+if (process.argv.length === 3 && process.argv[2].startsWith("follow-dev:")) {
+  process.env.NODE_ENV = "development"
 }
-
 const isDev = process.env.NODE_ENV === "development"
 
 /**
  * Mandatory and fast initializers for the app
  */
 export function initializeAppStage0() {
-  app.setPath("appData", path.join(app.getPath("appData"), isDev ? appFolder.dev : appFolder.prod))
+  if (isDev) app.setPath("appData", path.join(app.getPath("appData"), "Follow (dev)"))
+  initializeSentry()
 }
 export const initializeAppStage1 = () => {
   if (process.defaultApp) {
@@ -35,8 +42,6 @@ export const initializeAppStage1 = () => {
   } else {
     app.setAsDefaultProtocolClient(APP_PROTOCOL)
   }
-
-  initializeSentry()
 
   registerIpcMain(router)
 
@@ -53,6 +58,10 @@ export const initializeAppStage1 = () => {
   // code. You can also put them in separate files and require them here.
 
   registerMenuAndContextMenu()
+
+  registerPushNotifications()
+  clearCacheCronJob()
+  checkAndCleanCodeCache()
 }
 
 let contextMenuDisposer: () => void
@@ -68,7 +77,7 @@ export const registerMenuAndContextMenu = () => {
     showCopyImageAddress: true,
     showCopyImage: true,
     showInspectElement: isDev,
-    showSelectAll: false,
+    showSelectAll: true,
     showCopyVideoAddress: true,
     showSaveVideoAs: true,
 
@@ -109,7 +118,94 @@ export const registerMenuAndContextMenu = () => {
             shell.openExternal(params.linkURL)
           },
         },
+        {
+          role: "undo",
+          label: t("menu.undo"),
+          accelerator: "CmdOrCtrl+Z",
+          visible: params.isEditable,
+        },
+        {
+          role: "redo",
+          label: t("menu.redo"),
+          accelerator: "CmdOrCtrl+Shift+Z",
+          visible: params.isEditable,
+        },
       ]
     },
   })
+}
+
+const registerPushNotifications = async () => {
+  if (!env.VITE_FIREBASE_CONFIG) {
+    return
+  }
+
+  const credentialsKey = "notifications-credentials"
+  const persistentIdsKey = "notifications-persistent-ids"
+  const credentials = store.get(credentialsKey)
+  const persistentIds = store.get(persistentIdsKey)
+
+  updateNotificationsToken()
+
+  const instance = new PushReceiver({
+    debug: true,
+    firebase: JSON.parse(env.VITE_FIREBASE_CONFIG),
+    persistentIds: persistentIds || [],
+    credentials: credentials || null,
+    bundleId: "is.follow",
+    chromeId: "is.follow",
+  })
+  logger.info(
+    `PushReceiver initialized with credentials ${JSON.stringify(credentials)} and firebase config ${env.VITE_FIREBASE_CONFIG}`,
+  )
+
+  instance.onReady(() => {
+    logger.info("PushReceiver ready")
+  })
+
+  instance.onCredentialsChanged(({ newCredentials }) => {
+    logger.info(`PushReceiver credentials changed to ${newCredentials?.fcm?.token}`)
+    updateNotificationsToken(newCredentials)
+  })
+
+  instance.onNotification((notification) => {
+    logger.info(`PushReceiver received notification: ${JSON.stringify(notification.message.data)}`)
+    const data = notification.message.data as MessagingData
+    switch (data.type) {
+      case "new-entry": {
+        const notification = new Notification({
+          title: data.title,
+          body: data.description,
+        })
+        notification.on("click", () => {
+          let mainWindow = getMainWindow()
+          if (!mainWindow) {
+            mainWindow = createMainWindow()
+          }
+          mainWindow.restore()
+          mainWindow.focus()
+          const handlers = getRendererHandlers<RendererHandlers>(mainWindow.webContents)
+          handlers.navigateEntry.send({
+            feedId: data.feedId,
+            entryId: data.entryId,
+            view: Number.parseInt(data.view),
+          })
+        })
+        notification.show()
+        break
+      }
+      default: {
+        break
+      }
+    }
+    store.set(persistentIdsKey, instance.persistentIds)
+  })
+
+  try {
+    await instance.connect()
+  } catch (error) {
+    logger.error(`PushReceiver error: ${error instanceof Error ? error.stack : error}`)
+  }
+
+  logger.info("PushReceiver connected")
 }

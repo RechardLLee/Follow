@@ -1,15 +1,15 @@
+import { Chain } from "@follow/utils/chain"
+import { EventBus } from "@follow/utils/event-bus"
+import { getStorageNS } from "@follow/utils/ns"
 import i18next from "i18next"
 import { atom } from "jotai"
 import { initReactI18next } from "react-i18next"
 
-import { EventBus } from "~/lib/event-bus"
-
 import { defaultNS, ns } from "./@types/constants"
 import { defaultResources } from "./@types/default-resource"
 import { getGeneralSettings } from "./atoms/settings/general"
-import { Chain } from "./lib/chain"
+import { isDev } from "./constants"
 import { jotaiStore } from "./lib/jotai"
-import { getStorageNS } from "./lib/ns"
 
 export const i18nAtom = atom(i18next)
 
@@ -42,14 +42,17 @@ export const initI18n = async () => {
   const i18next = jotaiStore.get(i18nAtom)
 
   const lang = getGeneralSettings().language
-  const cache = LocaleCache.shared.get(lang)
 
   const mergedResources = {
     ...defaultResources,
   }
 
-  if (cache) {
-    mergedResources[lang] = cache
+  let cache = null as any
+  if (!isDev) {
+    cache = LocaleCache.shared.get(lang)
+    if (cache) {
+      mergedResources[lang] = cache
+    }
   }
 
   await i18next.use(initReactI18next).init({
@@ -85,7 +88,7 @@ if (import.meta.hot) {
   )
 }
 
-declare module "~/lib/event-bus" {
+declare module "@follow/utils/event-bus" {
   interface CustomEvent {
     I18N_UPDATE: string
   }

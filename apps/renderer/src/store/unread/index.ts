@@ -1,5 +1,6 @@
+import type { FeedViewType } from "@follow/constants"
+
 import { apiClient } from "~/lib/api-fetch"
-import type { FeedViewType } from "~/lib/enum"
 import { FeedUnreadService } from "~/services"
 
 import { createZustandStore } from "../utils/helper"
@@ -62,11 +63,16 @@ class FeedUnreadActions {
     return data
   }
 
+  /**
+   * @returns previous value
+   */
   incrementByFeedId(feedId: string, inc: number) {
     const state = get()
     const cur = state.data[feedId]
+    const nextValue = Math.max(0, (cur || 0) + inc)
 
-    this.internal_setValue([[feedId, Math.max(0, (cur || 0) + inc)]])
+    this.internal_setValue([[feedId, nextValue]])
+    return cur
   }
 
   updateByFeedId(feedId: string, unread: number) {

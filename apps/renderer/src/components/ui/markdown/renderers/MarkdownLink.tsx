@@ -1,37 +1,24 @@
-import { useMemo } from "react"
-
-import { FeedViewType } from "~/lib/enum"
-import { useEntryContentContext } from "~/modules/entry-content/hooks"
-import { useFeedByIdSelector } from "~/store/feed"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipPortal,
+  TooltipTrigger,
+} from "@follow/components/ui/tooltip/index.jsx"
+import { useCorrectZIndex } from "@follow/components/ui/z-index/ctx.js"
+import { useContext } from "react"
 
 import type { LinkProps } from "../../link"
-import { Tooltip, TooltipContent, TooltipPortal, TooltipTrigger } from "../../tooltip"
-import { ensureAndRenderTimeStamp } from "../utils"
+import { MarkdownRenderActionContext } from "../context"
 
-const safeUrl = (url: string, baseUrl: string) => {
-  try {
-    return new URL(url, baseUrl).href
-  } catch {
-    return url
-  }
-}
 export const MarkdownLink = (props: LinkProps) => {
-  const { view, feedId } = useEntryContentContext()
-
-  const feedSiteUrl = useFeedByIdSelector(feedId, (feed) =>
-    "siteUrl" in feed ? feed.siteUrl : undefined,
+  const { transformUrl, isAudio, ensureAndRenderTimeStamp } = useContext(
+    MarkdownRenderActionContext,
   )
 
-  const populatedFullHref = useMemo(() => {
-    const { href } = props
-    if (!href) return "#"
+  const populatedFullHref = transformUrl(props.href)
 
-    if (href.startsWith("http")) return href
-    if (href.startsWith("/") && feedSiteUrl) return safeUrl(href, feedSiteUrl)
-    return href
-  }, [feedSiteUrl, props])
-
-  const parseTimeStamp = view === FeedViewType.Audios
+  const parseTimeStamp = isAudio(populatedFullHref)
+  const zIndex = useCorrectZIndex(0)
   if (parseTimeStamp) {
     const childrenText = props.children
 
@@ -45,6 +32,7 @@ export const MarkdownLink = (props: LinkProps) => {
     <Tooltip delayDuration={0}>
       <TooltipTrigger asChild>
         <a
+          draggable="false"
           className="follow-link--underline font-semibold text-foreground no-underline"
           href={populatedFullHref}
           title={props.title}
@@ -60,7 +48,7 @@ export const MarkdownLink = (props: LinkProps) => {
       </TooltipTrigger>
       {!!props.href && (
         <TooltipPortal>
-          <TooltipContent align="start" className="break-all" side="bottom">
+          <TooltipContent align="start" className="break-all" style={{ zIndex }} side="bottom">
             {populatedFullHref}
           </TooltipContent>
         </TooltipPortal>

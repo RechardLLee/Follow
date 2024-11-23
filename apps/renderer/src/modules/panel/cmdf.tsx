@@ -2,22 +2,25 @@
  * @see https://github.com/toeverything/AFFiNE/blob/98e35384a6f71bf64c668b8f13afcaf28c9b8e97/packages/frontend/core/src/modules/find-in-page/view/find-in-page-modal.tsx
  * @copyright AFFiNE, Follow
  */
+import { RootPortal } from "@follow/components/ui/portal/index.jsx"
+import { useInputComposition, useRefValue } from "@follow/hooks"
 import { useSubscribeElectronEvent } from "@follow/shared/event"
+import { nextFrame } from "@follow/utils/dom"
 import { AnimatePresence, m } from "framer-motion"
 import type { FC } from "react"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useDebounceCallback, useEventCallback } from "usehooks-ts"
 
 import { softSpringPreset } from "~/components/ui/constants/spring"
-import { useInputComposition, useRefValue } from "~/hooks/common"
 import { tipcClient } from "~/lib/client"
-import { nextFrame } from "~/lib/dom"
 import { observeResize } from "~/lib/observe-resize"
 
 const CmdFImpl: FC<{
   onClose: () => void
 }> = ({ onClose }) => {
   const [value, setValue] = useState("")
+  const [activeMatchOrdinal, setActiveMatchOrdinal] = useState(0)
+  const [matches, setMatches] = useState(0)
 
   const currentValue = useRefValue(value)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -87,6 +90,10 @@ const CmdFImpl: FC<{
               forward: dir === "forward",
             },
           })
+          .then((result) => {
+            setMatches(result?.matches || 0)
+            setActiveMatchOrdinal(result?.activeMatchOrdinal || 0)
+          })
           .finally(() => {
             if (searchId === searchIdRef.current) {
               setIsSearching(false)
@@ -117,7 +124,7 @@ const CmdFImpl: FC<{
         e.preventDefault()
         nativeSearch(value)
       }}
-      className="center shadow-perfect fixed right-8 top-12 z-[1000] size-9 w-64 gap-2 rounded-2xl border bg-zinc-50/90 pl-3 pr-2 backdrop-blur duration-200 focus-within:border-accent dark:bg-neutral-800/80"
+      className="center shadow-perfect fixed right-8 top-12 size-9 w-64 gap-2 rounded-2xl border bg-zinc-50/90 pl-3 pr-2 backdrop-blur duration-200 focus-within:border-accent dark:bg-neutral-800/80"
     >
       <div className="relative h-full grow">
         <input
@@ -147,6 +154,11 @@ const CmdFImpl: FC<{
         />
       </div>
       <div className="center gap-1 [&>*]:opacity-80">
+        {!!value && matches > 0 && activeMatchOrdinal > 0 && (
+          <span>
+            {activeMatchOrdinal}/{matches}
+          </span>
+        )}
         <button
           type="button"
           className="center hover:opacity-90"
@@ -238,21 +250,24 @@ export const CmdF = () => {
     setShow(true)
   })
   return (
-    <AnimatePresence>
-      {show && (
-        <m.div
-          initial={{ opacity: 0.8, y: -150 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -150 }}
-          transition={softSpringPreset}
-        >
-          <CmdFImpl
-            onClose={() => {
-              setShow(false)
-            }}
-          />
-        </m.div>
-      )}
-    </AnimatePresence>
+    <RootPortal>
+      <AnimatePresence>
+        {show && (
+          <m.div
+            className="fixed top-0 w-full"
+            initial={{ opacity: 0.8, y: -150 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -150 }}
+            transition={softSpringPreset}
+          >
+            <CmdFImpl
+              onClose={() => {
+                setShow(false)
+              }}
+            />
+          </m.div>
+        )}
+      </AnimatePresence>
+    </RootPortal>
   )
 }

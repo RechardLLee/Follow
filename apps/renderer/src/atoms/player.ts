@@ -1,9 +1,10 @@
+import { getStorageNS } from "@follow/utils/ns"
 import { noop } from "foxact/noop"
 import { atomWithStorage, createJSONStorage } from "jotai/utils"
 import type { SyncStorage } from "jotai/vanilla/utils/atomWithStorage"
 
+import { getRouteParams } from "~/hooks/biz/useRouteParams"
 import { createAtomHooks } from "~/lib/jotai"
-import { getStorageNS } from "~/lib/ns"
 
 type PlayerAtomValue = {
   show: boolean
@@ -16,6 +17,8 @@ type PlayerAtomValue = {
   isMute?: boolean
   volume?: number
   playbackRate?: number
+  /** the listId from the route to indicate that the audio is triggered from a list */
+  listId?: string
 }
 
 const playerInitialValue: PlayerAtomValue = {
@@ -26,13 +29,15 @@ const playerInitialValue: PlayerAtomValue = {
 }
 
 const jsonStorage = createJSONStorage<PlayerAtomValue>()
+let hydrationDone = false
 const patchedLocalStorage: SyncStorage<PlayerAtomValue> = {
   setItem: jsonStorage.setItem,
   getItem: (key, initialValue) => {
     const value = jsonStorage.getItem(key, initialValue)
-    if (value) {
+    if (value && !hydrationDone) {
       // patch status to `paused` when hydration
       value.status = "paused"
+      hydrationDone = true
     }
     return value
   },
@@ -66,11 +71,14 @@ export const AudioPlayer = {
       return
     }
 
+    const routeParams = getRouteParams()
+
     setAudioPlayerAtomValue({
       ...curV,
       ...v,
       status: "loading",
       show: true,
+      listId: routeParams.listId,
     })
 
     if (this.audio.src !== v.src) {

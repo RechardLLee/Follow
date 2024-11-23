@@ -1,13 +1,13 @@
+import { Button } from "@follow/components/ui/button/index.js"
 import type { FC } from "react"
 
 import { attachOpenInEditor } from "~/lib/dev"
 
 import type { AppErrorFallbackProps } from "../common/AppErrorBoundary"
 import { FeedbackIssue } from "../common/ErrorElement"
-import { Button } from "../ui/button"
 import { parseError, useResetErrorWhenRouteChange } from "./helper"
 
-export const PageErrorFallback: FC<AppErrorFallbackProps> = (props) => {
+const PageErrorFallback: FC<AppErrorFallbackProps> = (props) => {
   const { message, stack } = parseError(props.error)
   useResetErrorWhenRouteChange(props.resetError)
   return (
@@ -38,8 +38,10 @@ export const PageErrorFallback: FC<AppErrorFallbackProps> = (props) => {
           </Button>
         </div>
 
-        <FeedbackIssue message={message!} stack={stack} />
+        <FeedbackIssue message={message!} stack={stack} error={props.error} />
       </div>
     </div>
   )
 }
+
+export default PageErrorFallback

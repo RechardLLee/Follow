@@ -1,11 +1,11 @@
 import { useMutation } from "@tanstack/react-query"
+import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
 import { useAuthQuery } from "~/hooks/common"
 import { apiClient } from "~/lib/api-fetch"
 import { defineQuery } from "~/lib/defineQuery"
 import { getFetchErrorMessage, toastFetchError } from "~/lib/error-parser"
-import { useSettingModal } from "~/modules/settings/modal/hooks"
 
 export const wallet = {
   get: ({ userId }: { userId?: string } = {}) =>
@@ -42,13 +42,31 @@ export const wallet = {
         },
       ),
   },
+
+  ranking: {
+    get: () =>
+      defineQuery(
+        ["wallet", "ranking"],
+        async () => {
+          const res = await apiClient.wallets.ranking.$get()
+          return res.data
+        },
+        {
+          rootKey: ["wallet", "ranking"],
+        },
+      ),
+  },
 }
 
-export const useWallet = ({ userId }: { userId?: string } = {}) =>
-  useAuthQuery(wallet.get({ userId }), { enabled: !!userId })
+export const useWallet = () =>
+  useAuthQuery(wallet.get(), {
+    refetchOnMount: true,
+  })
 
 export const useWalletTransactions = (query: Parameters<typeof wallet.transactions.get>[0] = {}) =>
   useAuthQuery(wallet.transactions.get(query))
+
+export const useWalletRanking = () => useAuthQuery(wallet.ranking.get())
 
 export const useCreateWalletMutation = () =>
   useMutation({
@@ -69,7 +87,7 @@ export const useClaimCheck = () =>
   })
 
 export const useClaimWalletDailyRewardMutation = () => {
-  const settingModalPresent = useSettingModal()
+  const navigate = useNavigate()
 
   return useMutation({
     mutationKey: ["claimWalletDailyReward"],
@@ -80,13 +98,10 @@ export const useClaimWalletDailyRewardMutation = () => {
     onSuccess() {
       wallet.get().invalidate()
       wallet.claimCheck().invalidate()
-      window.posthog?.capture("daily_reward_claimed")
+      window.analytics?.capture("daily_reward_claimed")
 
       toast(
-        <div
-          className="flex items-center gap-1 text-lg"
-          onClick={() => settingModalPresent("wallet")}
-        >
+        <div className="flex items-center gap-1 text-lg" onClick={() => navigate("/power")}>
           <i className="i-mgc-power text-accent animate-flip" />
         </div>,
         {
@@ -112,7 +127,7 @@ export const useWalletTipMutation = () =>
     onSuccess(_, variables) {
       wallet.get().invalidate()
       wallet.transactions.get().invalidate()
-      window.posthog?.capture("tip_sent", {
+      window.analytics?.capture("tip_sent", {
         amount: variables.amount,
         entryId: variables.entryId,
       })

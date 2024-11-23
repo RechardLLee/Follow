@@ -1,4 +1,6 @@
-import type { Element, Text } from "hast"
+import { MemoedDangerousHTMLStyle } from "@follow/components/common/MemoedDangerousHTMLStyle.jsx"
+import { Checkbox } from "@follow/components/ui/checkbox/index.jsx"
+import type { Element, Parent, Text } from "hast"
 import type { Schema } from "hast-util-sanitize"
 import type { Components } from "hast-util-to-jsx-runtime"
 import { toJsxRuntime } from "hast-util-to-jsx-runtime"
@@ -13,14 +15,16 @@ import rehypeStringify from "rehype-stringify"
 import { unified } from "unified"
 import type { Node } from "unist"
 import { visit } from "unist-util-visit"
+import { visitParents } from "unist-util-visit-parents"
 import { VFile } from "vfile"
 
 import { ShadowDOM } from "~/components/common/ShadowDOM"
-import { Checkbox } from "~/components/ui/checkbox"
 import { ShikiHighLighter } from "~/components/ui/code-highlighter"
+import { LazyKateX } from "~/components/ui/katex/lazy"
 import { MarkdownBlockImage, MarkdownLink, MarkdownP } from "~/components/ui/markdown/renderers"
-import { BlockError } from "~/components/ui/markdown/renderers/BlockErrorBoundary"
+import { useIsInParagraphContext } from "~/components/ui/markdown/renderers/ctx"
 import { createHeadingRenderer } from "~/components/ui/markdown/renderers/Heading"
+import { MarkdownInlineImage } from "~/components/ui/markdown/renderers/InlineImage"
 import { Media } from "~/components/ui/media"
 
 function markInlineImage(node?: Element) {
@@ -31,27 +35,50 @@ function markInlineImage(node?: Element) {
   }
 }
 
-export type MediaInfo = Record<string, { width?: number; height?: number }>
+/**
+ * Remove the last <br> element in the tree
+ */
+function rehypeTrimEndBrElement() {
+  function trim(tree: Parent): void {
+    if (!Array.isArray(tree.children) || tree.children.length === 0) {
+      return
+    }
+
+    for (let i = tree.children.length - 1; i >= 0; i--) {
+      const item = tree.children[i]
+      if (item.type === "element") {
+        if (item.tagName === "br") {
+          tree.children.pop()
+          continue
+        } else {
+          trim(item)
+        }
+      }
+      break
+    }
+  }
+  return trim
+}
 
 export const parseHtml = (
   content: string,
   options?: Partial<{
     renderInlineStyle: boolean
     noMedia?: boolean
-    mediaInfo?: MediaInfo
   }>,
 ) => {
   const file = new VFile(content)
   const { renderInlineStyle = false, noMedia = false } = options || {}
 
   const rehypeSchema: Schema = { ...defaultSchema }
+  rehypeSchema.tagNames = [...rehypeSchema.tagNames!, "math"]
 
   if (noMedia) {
     rehypeSchema.tagNames = rehypeSchema.tagNames?.filter(
       (tag) => tag !== "img" && tag !== "picture",
     )
   } else {
-    rehypeSchema.tagNames = [...rehypeSchema.tagNames!, "video", "style"]
+    rehypeSchema.tagNames = [...rehypeSchema.tagNames!, "video", "style", "figure"]
     rehypeSchema.attributes = {
       ...rehypeSchema.attributes,
       "*": renderInlineStyle
@@ -64,7 +91,7 @@ export const parseHtml = (
   const pipeline = unified()
     .use(rehypeParse, { fragment: true })
     .use(rehypeSanitize, rehypeSchema)
-
+    .use(rehypeTrimEndBrElement)
     .use(rehypeInferDescriptionMeta)
     .use(rehypeStringify)
 
@@ -99,20 +126,32 @@ export const parseHtml = (
             markInlineImage(node)
             return createElement(MarkdownLink, { ...props } as any)
           },
-          img: ({ ...props }) => {
-            return createElement(Img, {
-              ...props,
-              width: props.src ? options?.mediaInfo?.[props.src]?.width : props.width,
-              height: props.src ? options?.mediaInfo?.[props.src]?.height : props.height,
-            })
-          },
+          img: Img,
 
-          h1: createHeadingRenderer(1),
-          h2: createHeadingRenderer(2),
-          h3: createHeadingRenderer(3),
-          h4: createHeadingRenderer(4),
-          h5: createHeadingRenderer(5),
-          h6: createHeadingRenderer(6),
+          h1: (props) => {
+            markInlineImage(props.node)
+            return createHeadingRenderer(1)(props)
+          },
+          h2: (props) => {
+            markInlineImage(props.node)
+            return createHeadingRenderer(2)(props)
+          },
+          h3: (props) => {
+            markInlineImage(props.node)
+            return createHeadingRenderer(3)(props)
+          },
+          h4: (props) => {
+            markInlineImage(props.node)
+            return createHeadingRenderer(4)(props)
+          },
+          h5: (props) => {
+            markInlineImage(props.node)
+            return createHeadingRenderer(5)(props)
+          },
+          h6: (props) => {
+            markInlineImage(props.node)
+            return createHeadingRenderer(6)(props)
+          },
           style: Style,
 
           video: ({ node, ...props }) =>
@@ -131,6 +170,16 @@ export const parseHtml = (
             markInlineImage(node)
             return createElement("span", props, props.children)
           },
+          b: ({ node, ...props }) => {
+            markInlineImage(node)
+            return createElement("b", props, props.children)
+          },
+          i: ({ node, ...props }) => {
+            markInlineImage(node)
+            return createElement("i", props, props.children)
+          },
+          // @ts-expect-error
+          math: Math,
           hr: ({ node, ...props }) =>
             createElement("hr", {
               ...props,
@@ -164,7 +213,8 @@ export const parseHtml = (
                 ? propsChildren.find((i) => i.type === "code")
                 : propsChildren
 
-              if (!children) return null
+              // Don't process not code block
+              if (!children) return createElement("pre", props, props.children)
 
               if (
                 "type" in children &&
@@ -173,20 +223,18 @@ export const parseHtml = (
               ) {
                 language = children.props.className.replace("language-", "")
               }
-              const code = "props" in children && children.props.children
+              const code = ("props" in children && children.props.children) || children
               if (!code) return null
 
               try {
                 codeString = extractCodeFromHtml(renderToString(code))
               } catch (error) {
-                return createElement(BlockError, {
-                  error,
-                  message: "Code Block Render Error",
-                })
+                console.error("Code Block Render Error", error)
+                return createElement("pre", props, props.children)
               }
             }
 
-            if (!codeString) return null
+            if (!codeString) return createElement("pre", props, props.children)
 
             return createElement(ShikiHighLighter, {
               code: codeString.trimEnd(),
@@ -214,26 +262,27 @@ export const parseHtml = (
 const Img: Components["img"] = ({ node, ...props }) => {
   const nextProps = {
     ...props,
+    preferOrigin: true,
     proxy: { height: 0, width: 700 },
   }
-  if (node?.properties.inline) {
-    return createElement(Media, {
-      type: "photo",
-      ...nextProps,
+  const widthPx = Number.parseInt(props.width as string)
 
-      mediaContainerClassName: tw`max-w-full inline rounded-md`,
-      popper: true,
-      className: tw`inline`,
-      showFallback: true,
-    })
-  }
-
-  return createElement(MarkdownBlockImage, nextProps)
+  return createElement(
+    node?.properties.inline && (Number.isNaN(widthPx) || widthPx < 600)
+      ? MarkdownInlineImage
+      : MarkdownBlockImage,
+    nextProps,
+  )
 }
 
-function extractCodeFromHtml(htmlString: string) {
+export function extractCodeFromHtml(htmlString: string) {
   const tempDiv = document.createElement("div")
   tempDiv.innerHTML = htmlString
+
+  const hasPre = tempDiv.querySelector("pre")
+  if (!hasPre) {
+    tempDiv.innerHTML = `<pre><code>${htmlString}</code></pre>`
+  }
 
   // 1. line break via <div />
   const divElements = tempDiv.querySelectorAll("div")
@@ -262,6 +311,14 @@ function extractCodeFromHtml(htmlString: string) {
       if (spanAsLineBreak) break
     }
   }
+
+  if (!spanAsLineBreak) {
+    const usingBr = tempDiv.querySelector("br")
+    if (usingBr) {
+      spanAsLineBreak = true
+    }
+  }
+
   if (spanElements.length > 0) {
     for (const node of tempDiv.children) {
       if (spanAsLineBreak) {
@@ -280,17 +337,31 @@ function extractCodeFromHtml(htmlString: string) {
 const Style: Components["style"] = ({ node, ...props }) => {
   const isShadowDOM = ShadowDOM.useIsShadowDOM()
 
-  if (isShadowDOM) {
-    return createElement("style", {
-      ...props,
-    })
+  if (isShadowDOM && typeof props.children === "string") {
+    return createElement(
+      MemoedDangerousHTMLStyle,
+      null,
+      props.children.replaceAll(/html|body/g, "#shadow-html"),
+    )
   }
   return null
 }
 
 function rehypeUrlToAnchor(tree: Node) {
+  const tagsShouldNotBeWrapped = new Set(["a", "pre", "code"])
   // https://chatgpt.com/share/37e0ceec-5c9e-4086-b9d6-5afc1af13bb0
-  visit(tree, "text", (node: Text, index, parent: Node) => {
+  visitParents(tree, "text", (node: Text, ancestors: Node[]) => {
+    if (
+      ancestors.some(
+        (ancestor) =>
+          "tagName" in ancestor && tagsShouldNotBeWrapped.has((ancestor as Element).tagName),
+      )
+    ) {
+      return
+    }
+
+    const parent = ancestors.at(-1)
+
     const urlRegex = /https?:\/\/\S+/g
     const text = node.value
     const matches = [...text.matchAll(urlRegex)]
@@ -332,6 +403,20 @@ function rehypeUrlToAnchor(tree: Node) {
       })
     }
 
+    const index = (parent.children as (Text | Element)[]).indexOf(node)
     ;(parent.children as (Text | Element)[]).splice(index, 1, ...newNodes)
+  })
+}
+
+const Math = ({ node }) => {
+  const annotation = node.children.at(-1)
+
+  const isInParagraph = useIsInParagraphContext()
+  if (!annotation) return null
+  const latex = annotation.value
+
+  return createElement(LazyKateX, {
+    children: latex,
+    mode: isInParagraph ? "inline" : "display",
   })
 }

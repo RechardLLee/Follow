@@ -1,15 +1,8 @@
-import { useMutation } from "@tanstack/react-query"
-import dayjs from "dayjs"
-import { Trans, useTranslation } from "react-i18next"
-import { toast } from "sonner"
-
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Button } from "~/components/ui/button"
-import { CopyButton } from "~/components/ui/code-highlighter"
-import { Divider } from "~/components/ui/divider"
-import { LoadingCircle } from "~/components/ui/loading"
-import { useModalStack } from "~/components/ui/modal"
-import { ScrollArea } from "~/components/ui/scroll-area"
+import { Avatar, AvatarFallback, AvatarImage } from "@follow/components/ui/avatar/index.jsx"
+import { Button } from "@follow/components/ui/button/index.js"
+import { Divider } from "@follow/components/ui/divider/index.js"
+import { LoadingCircle } from "@follow/components/ui/loading/index.jsx"
+import { ScrollArea } from "@follow/components/ui/scroll-area/index.js"
 import {
   Table,
   TableBody,
@@ -17,12 +10,25 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "~/components/ui/table"
-import { Tooltip, TooltipContent, TooltipPortal, TooltipTrigger } from "~/components/ui/tooltip"
-import { INVITATION_PRICE } from "~/constants"
+} from "@follow/components/ui/table/index.jsx"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipPortal,
+  TooltipTrigger,
+} from "@follow/components/ui/tooltip/index.jsx"
+import { useMutation } from "@tanstack/react-query"
+import dayjs from "dayjs"
+import { Trans, useTranslation } from "react-i18next"
+import { toast } from "sonner"
+
+import { useServerConfigs } from "~/atoms/server-configs"
+import { CopyButton } from "~/components/ui/code-highlighter"
+import { useModalStack } from "~/components/ui/modal/stacked/hooks"
 import { useAuthQuery } from "~/hooks/common"
 import { apiClient } from "~/lib/api-fetch"
 import { toastFetchError } from "~/lib/error-parser"
+import { replaceImgUrlIfNeed } from "~/lib/img-proxy"
 import { usePresentUserProfileModal } from "~/modules/profile/hooks"
 import { Queries } from "~/queries"
 
@@ -34,6 +40,8 @@ export const SettingInvitations = () => {
   const { present } = useModalStack()
   const presentUserProfile = usePresentUserProfileModal("drawer")
 
+  const serverConfigs = useServerConfigs()
+
   return (
     <section className="mt-4">
       <div className="mb-4 space-y-2 text-sm">
@@ -41,14 +49,16 @@ export const SettingInvitations = () => {
           Follow is currently in <strong>early access</strong> and requires an invitation code to
           use.
         </Trans>
-        <p className="flex items-center">
+        <p>
           <Trans
             ns="settings"
             values={{
-              INVITATION_PRICE,
+              INVITATION_PRICE: serverConfigs?.INVITATION_PRICE,
             }}
             components={{
-              PowerIcon: <i className="i-mgc-power ml-1 mr-0.5 text-base text-accent" />,
+              PowerIcon: (
+                <i className="i-mgc-power mx-0.5 size-3.5 -translate-y-px align-middle text-base text-accent" />
+              ),
             }}
             i18nKey="invitation.generateCost"
           />
@@ -63,17 +73,22 @@ export const SettingInvitations = () => {
           />
         </p>
       </div>
-      <Button
-        onClick={() => {
-          present({
-            title: t("invitation.confirmModal.title"),
-            content: ({ dismiss }) => <ConfirmModalContent dismiss={dismiss} />,
-          })
-        }}
-      >
-        <i className="i-mgc-heart-hand-cute-re mr-1 text-base" />
-        {t("invitation.generateButton")}
-      </Button>
+      <div className="flex justify-end lg:justify-start">
+        <Button
+          disabled={
+            !limitation.data || (invitations?.data && invitations?.data?.length >= limitation.data)
+          }
+          onClick={() => {
+            present({
+              title: t("invitation.confirmModal.title"),
+              content: ({ dismiss }) => <ConfirmModalContent dismiss={dismiss} />,
+            })
+          }}
+        >
+          <i className="i-mgc-love-cute-re mr-1 text-base" />
+          {t("invitation.generateButton")}
+        </Button>
+      </div>
       <Divider className="mb-6 mt-8" />
       <div className="flex flex-1 flex-col">
         <ScrollArea.ScrollArea>
@@ -119,7 +134,9 @@ export const SettingInvitations = () => {
                               }}
                             >
                               <Avatar className="aspect-square size-5 border border-border ring-1 ring-background">
-                                <AvatarImage src={row.users?.image || undefined} />
+                                <AvatarImage
+                                  src={replaceImgUrlIfNeed(row.users?.image || undefined)}
+                                />
                                 <AvatarFallback>{row.users?.name?.slice(0, 2)}</AvatarFallback>
                               </Avatar>
                             </button>
@@ -156,7 +173,7 @@ const ConfirmModalContent = ({ dismiss }: { dismiss: () => void }) => {
   const newInvitation = useMutation({
     mutationKey: ["newInvitation"],
     mutationFn: () => apiClient.invitations.new.$post(),
-    async onError(err) {
+    onError(err) {
       toastFetchError(err)
     },
     onSuccess(data) {
@@ -167,19 +184,22 @@ const ConfirmModalContent = ({ dismiss }: { dismiss: () => void }) => {
     },
   })
 
+  const serverConfigs = useServerConfigs()
+
   return (
     <>
-      <div className="flex items-center text-sm">
+      <div className="text-sm">
         <Trans
           ns="settings"
           values={{
-            INVITATION_PRICE,
+            INVITATION_PRICE: serverConfigs?.INVITATION_PRICE,
           }}
           components={{
-            PowerIcon: <i className="i-mgc-power mx-1 text-base text-accent" />,
-            div: <div />,
+            PowerIcon: (
+              <i className="i-mgc-power mx-0.5 size-3.5 -translate-y-px align-middle text-base text-accent" />
+            ),
           }}
-          i18nKey="invitation.confirmModal.message"
+          i18nKey="invitation.generateCost"
         />
       </div>
       <div className="mt-2 text-sm">{t("invitation.confirmModal.confirm")}</div>

@@ -1,6 +1,7 @@
+import type { UserRole } from "@follow/constants"
 import { useEffect } from "react"
 
-import { setWhoami } from "~/atoms/user"
+import { setUserRole, setWhoami } from "~/atoms/user"
 import { setIntegrationIdentify } from "~/initialize/helper"
 import { tipcClient } from "~/lib/client"
 import { useSession } from "~/queries/auth"
@@ -12,14 +13,16 @@ export const UserProvider = () => {
   useEffect(() => {
     if (!session?.user) return
     setWhoami(session.user)
-
+    if (session.role) {
+      setUserRole(session.role as UserRole)
+    }
     setIntegrationIdentify(session.user)
 
     tipcClient?.trackerIdentify({
       user: session.user,
     })
     CleanerService.cleanRemainingData(session.user.id)
-  }, [session?.user])
+  }, [session?.role, session?.user])
 
   return null
 }

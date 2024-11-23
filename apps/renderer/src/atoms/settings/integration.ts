@@ -1,14 +1,33 @@
+import { createSettingAtom } from "@follow/atoms/helper/setting.js"
 import type { IntegrationSettings } from "@follow/shared/interface/settings"
 
-import { createSettingAtom } from "./helper"
-
 export const createDefaultSettings = (): IntegrationSettings => ({
+  // eagle
   enableEagle: true,
+
+  // readwise
   enableReadwise: false,
   readwiseToken: "",
+
+  // instapaper
   enableInstapaper: false,
   instapaperUsername: "",
   instapaperPassword: "",
+
+  // omnivore
+  enableOmnivore: false,
+  omnivoreEndpoint: "",
+  omnivoreToken: "",
+
+  // obsidian
+  enableObsidian: false,
+  obsidianVaultPath: "",
+
+  // outline
+  enableOutline: false,
+  outlineEndpoint: "",
+  outlineToken: "",
+  outlineCollection: "",
 })
 
 export const {

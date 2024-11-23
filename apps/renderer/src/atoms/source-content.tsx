@@ -1,7 +1,7 @@
 import { atom } from "jotai"
 import { useCallback } from "react"
 
-import { useModalStack } from "~/components/ui/modal"
+import { useModalStack } from "~/components/ui/modal/stacked/hooks"
 import { createAtomHooks } from "~/lib/jotai"
 import { SourceContentView } from "~/modules/entry-content/components/SourceContentView"
 
@@ -9,6 +9,7 @@ export const [, , useShowSourceContent, , getShowSourceContent, setShowSourceCon
   createAtomHooks(atom<boolean>(false))
 
 export const toggleShowSourceContent = () => setShowSourceContent(!getShowSourceContent())
+export const enableShowSourceContent = () => setShowSourceContent(true)
 export const resetShowSourceContent = () => setShowSourceContent(false)
 
 export const useSourceContentModal = () => {
@@ -22,8 +23,7 @@ export const useSourceContentModal = () => {
         content: () => <SourceContentView src={src} />,
         resizeable: true,
         clickOutsideToDismiss: true,
-        // The number was picked arbitrarily
-        resizeDefaultSize: { width: 900, height: 700 },
+        max: true,
       })
     },
     [present],

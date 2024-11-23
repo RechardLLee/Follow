@@ -1,14 +1,17 @@
+import { UserRole } from "@follow/constants"
+
 import { SettingInvitations } from "~/modules/settings/tabs/invitations"
 import { SettingsTitle } from "~/modules/settings/title"
-import { defineSettingPageData } from "~/modules/settings/utils"
+import { defineSettingPageData, DisableWhy } from "~/modules/settings/utils"
 
-const iconName = "i-mgc-heart-hand-cute-re"
+const iconName = "i-mgc-love-cute-re"
 const priority = 1070
 
 export const loader = defineSettingPageData({
-  iconName,
+  icon: iconName,
   name: "titles.invitations",
   priority,
+  disableIf: (ctx) => [ctx.role === UserRole.Trial, DisableWhy.NotActivation],
 })
 
 export function Component() {

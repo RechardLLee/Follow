@@ -1,3 +1,10 @@
+import { useMobile } from "@follow/components/hooks/useMobile.js"
+import { Button } from "@follow/components/ui/button/index.js"
+import { FeedViewType, views } from "@follow/constants"
+import { useTitle, useTypeScriptHappyCallback } from "@follow/hooks"
+import type { FeedModel } from "@follow/models/types"
+import { isBizId } from "@follow/utils/utils"
+import type { FunctionComponent } from "react"
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import type {
@@ -10,37 +17,37 @@ import { VirtuosoGrid } from "react-virtuoso"
 
 import { useGeneralSettingKey } from "~/atoms/settings/general"
 import { setUISetting, useUISettingKey } from "~/atoms/settings/ui"
-import { m } from "~/components/common/Motion"
 import { FeedFoundCanBeFollowError } from "~/components/errors/FeedFoundCanBeFollowErrorFallback"
 import { FeedNotFound } from "~/components/errors/FeedNotFound"
-import { AutoResizeHeight } from "~/components/ui/auto-resize-height"
-import { Button } from "~/components/ui/button"
-import { LoadingCircle } from "~/components/ui/loading"
 import { ReactVirtuosoItemPlaceholder } from "~/components/ui/placeholder"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import { FEED_COLLECTION_LIST, ROUTE_FEED_PENDING, views } from "~/constants"
+import { FEED_COLLECTION_LIST, ROUTE_FEED_PENDING } from "~/constants"
+import { ENTRY_COLUMN_LIST_SCROLLER_ID } from "~/constants/dom"
 import { useNavigateEntry } from "~/hooks/biz/useNavigateEntry"
 import { useRouteParams, useRouteParamsSelector } from "~/hooks/biz/useRouteParams"
-import { useTitle, useTypeScriptHappyCallback } from "~/hooks/common"
-import { FeedViewType } from "~/lib/enum"
-import { cn, isBizId } from "~/lib/utils"
-import type { FeedModel } from "~/models"
 import { useFeed } from "~/queries/feed"
 import { entryActions, getEntry, useEntry } from "~/store/entry"
-import { useFeedById } from "~/store/feed"
+import { useFeedById, useFeedHeaderTitle } from "~/store/feed"
 import { useSubscriptionByFeedId } from "~/store/subscription"
 
 import { useEntriesByView, useEntryMarkReadHandler } from "./hooks"
+import { useSnapEntryIdList } from "./hooks/useEntryIdListSnap"
 import { EntryItem, EntryItemSkeleton } from "./item"
 import { PictureMasonry } from "./Items/picture-masonry"
 import { EntryListHeader } from "./layouts/EntryListHeader"
 import { EntryEmptyList, EntryList, EntryListContent } from "./lists"
 import { girdClassNames } from "./styles"
+import { EntryColumnWrapper } from "./wrapper"
 
 const scrollSeekConfiguration: ScrollSeekConfiguration = {
   enter: (velocity) => Math.abs(velocity) > 1000,
   exit: (velocity) => Math.abs(velocity) < 1000,
 }
+
+const prevScrollTopMap = {}
+
+export type VirtuosoComponentProps = { onlyShowArchivedButton: boolean }
+type VirtuosoComponentPropsContext = { context?: VirtuosoComponentProps }
+
 function EntryColumnImpl() {
   const { t } = useTranslation()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
@@ -51,11 +58,19 @@ function EntryColumnImpl() {
       virtuosoRef.current?.scrollTo({
         top: 0,
       })
-      setIsArchived(false)
     }, []),
     isArchived,
   })
+
   const { entriesIds, isFetchingNextPage, groupedCounts } = entries
+  useSnapEntryIdList(entriesIds)
+  const prevEntriesIdsRef = useRef(entriesIds)
+
+  useEffect(() => {
+    if (entriesIds.length > 0) {
+      prevEntriesIdsRef.current = entriesIds
+    }
+  }, [entriesIds])
 
   const {
     entryId: activeEntryId,
@@ -63,10 +78,18 @@ function EntryColumnImpl() {
     feedId: routeFeedId,
     isPendingEntry,
     isCollection,
+    inboxId,
+    listId,
   } = useRouteParams()
+
+  useEffect(() => {
+    setIsArchived(false)
+  }, [view, routeFeedId])
+
   const activeEntry = useEntry(activeEntryId)
   const feed = useFeedById(routeFeedId)
-  useTitle(feed?.title)
+  const title = useFeedHeaderTitle()
+  useTitle(title)
 
   useEffect(() => {
     if (!activeEntryId) return
@@ -76,7 +99,7 @@ function EntryColumnImpl() {
     const feedId = activeEntry?.feedId
     if (!feedId) return
 
-    entryActions.markRead(feedId, activeEntryId, true)
+    entryActions.markRead({ feedId, entryId: activeEntryId, read: true })
   }, [activeEntry?.feedId, activeEntryId, isCollection, isPendingEntry])
 
   const isInteracted = useRef(false)
@@ -93,43 +116,75 @@ function EntryColumnImpl() {
     }
   }, [isArchived])
 
-  const showArchivedButton =
-    !isArchived &&
-    !unreadOnly &&
-    !isCollection &&
-    routeFeedId !== ROUTE_FEED_PENDING &&
-    entries.totalCount < 40 &&
-    feed?.type !== "list"
+  // Common conditions for both showArchivedButton and shouldLoadArchivedEntries
+  const commonConditions =
+    !isArchived && !unreadOnly && !isCollection && routeFeedId !== ROUTE_FEED_PENDING
+
+  // Determine if the archived button should be shown
+  const showArchivedButton = commonConditions && entries.totalCount < 40 && feed?.type === "feed"
+  const hasNoEntries = entries.queryTotalCount === 0 && !entries.isLoading
+
+  // Determine if archived entries should be loaded
+  const shouldLoadArchivedEntries =
+    commonConditions && (feed?.type === "feed" || !feed) && !inboxId && !listId && hasNoEntries
+
+  // automatically fetch archived entries when there is no entries in timeline
+  useEffect(() => {
+    if (shouldLoadArchivedEntries) {
+      setIsArchived(true)
+    }
+  }, [shouldLoadArchivedEntries])
+
+  const finalEntriesIds =
+    hasNoEntries && !isArchived ? prevEntriesIdsRef.current || entriesIds : entriesIds
 
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      if (!isInteracted.current) {
+        isInteracted.current = true
+      }
+      const { scrollTop } = e.currentTarget
+
+      if (!routeFeedId) return
+      prevScrollTopMap[routeFeedId] = scrollTop
+    },
+    [routeFeedId],
+  )
+
   const virtuosoOptions = {
     components: {
       List: EntryListContent,
-      Footer: useCallback(() => {
-        if (!isFetchingNextPage) {
-          if (showArchivedButton) {
-            return (
-              <div className="flex justify-center py-4">
-                <Button variant="outline" onClick={() => setIsArchived(true)}>
-                  {t("words.load_archived_entries")}
-                </Button>
-              </div>
-            )
+      Footer: useCallback(
+        ({ context }: VirtuosoComponentPropsContext) => {
+          if (!isFetchingNextPage) {
+            if (showArchivedButton) {
+              return (
+                <div className="flex justify-center py-4">
+                  <Button variant="outline" onClick={() => setIsArchived(true)}>
+                    {t("words.load_archived_entries")}
+                  </Button>
+                </div>
+              )
+            } else {
+              return null
+            }
           } else {
-            return null
+            if (context?.onlyShowArchivedButton) return null
+            return (
+              <EntryItemSkeleton
+                view={view}
+                count={Math.min(
+                  entries.data?.pages?.[0].data?.length || 20,
+                  entries.data?.pages.at(-1)?.remaining || 20,
+                )}
+              />
+            )
           }
-        } else {
-          return (
-            <EntryItemSkeleton
-              view={view}
-              count={Math.min(
-                entries.data?.pages?.[0].data?.length || 20,
-                entries.data?.pages.at(-1)?.remaining || 20,
-              )}
-            />
-          )
-        }
-      }, [isFetchingNextPage, view, unreadOnly, isArchived, entries]),
+        },
+        [isFetchingNextPage, showArchivedButton, t, view, entries.data?.pages],
+      ),
       ScrollSeekPlaceholder: useCallback(() => <EntryItemSkeleton view={view} count={1} />, [view]),
     },
     scrollSeekConfiguration,
@@ -139,6 +194,7 @@ function EntryColumnImpl() {
         handleMarkReadInRange(...args, isInteracted.current)
     },
     customScrollParent: scrollRef.current!,
+    initialScrollTop: prevScrollTopMap[routeFeedId || ""] || 0,
 
     totalCount: entries.totalCount,
     endReached: useCallback(async () => {
@@ -149,12 +205,8 @@ function EntryColumnImpl() {
         }
       }
     }, [entries]),
-    data: entriesIds,
-    onScroll: () => {
-      if (!isInteracted.current) {
-        isInteracted.current = true
-      }
-    },
+    data: finalEntriesIds,
+    onScroll: handleScroll,
     itemContent: useTypeScriptHappyCallback(
       (_, entryId) => {
         if (!entryId) return <ReactVirtuosoItemPlaceholder />
@@ -163,24 +215,30 @@ function EntryColumnImpl() {
       },
       [view],
     ),
-  } satisfies VirtuosoProps<string, unknown>
+  } satisfies VirtuosoProps<string, VirtuosoComponentProps>
 
   const navigate = useNavigateEntry()
   const isRefreshing = entries.isFetching && !entries.isFetchingNextPage
 
+  const isMobile = useMobile()
   return (
     <div
+      data-hide-in-print
       className="relative flex h-full flex-1 flex-col @container"
-      onClick={() =>
-        navigate({
-          entryId: null,
-        })
+      onClick={
+        isMobile
+          ? undefined
+          : () =>
+              navigate({
+                entryId: null,
+              })
       }
       data-total-count={virtuosoOptions.totalCount}
     >
-      {virtuosoOptions.totalCount === 0 && !entries.isLoading && !entries.error && (
-        <AddFeedHelper />
-      )}
+      {virtuosoOptions.totalCount === 0 &&
+        !entries.isLoading &&
+        !entries.error &&
+        feed?.type === "feed" && <AddFeedHelper />}
 
       <EntryListHeader
         refetch={entries.refetch}
@@ -188,48 +246,31 @@ function EntryColumnImpl() {
         totalCount={virtuosoOptions.totalCount}
         hasUpdate={entries.hasUpdate}
       />
-      <AutoResizeHeight spring>
-        {isRefreshing && (
-          <div className="center box-content h-7 gap-2 py-3 text-xs">
-            <LoadingCircle size="small" />
-            {t("entry_column.refreshing")}
-          </div>
-        )}
-      </AutoResizeHeight>
-      <m.div
+
+      <EntryColumnWrapper
+        onScroll={handleScroll}
+        onPullToRefresh={entries.refetch}
         key={`${routeFeedId}-${view}`}
-        className="relative h-0 grow"
-        initial={{ opacity: 0.01, y: 100 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0.01, y: -100 }}
       >
-        <ScrollArea.ScrollArea
-          scrollbarClassName={cn("mt-3", !views[view].wideMode ? "w-[5px] p-0" : "")}
-          mask={false}
-          ref={scrollRef}
-          rootClassName="h-full"
-          viewportClassName="[&>div]:grow flex"
-        >
-          {virtuosoOptions.totalCount === 0 && !showArchivedButton ? (
-            entries.isLoading ? null : (
-              <EntryEmptyList />
-            )
-          ) : view && views[view].gridMode ? (
-            <ListGird
-              virtuosoOptions={virtuosoOptions}
-              virtuosoRef={virtuosoRef}
-              hasNextPage={entries.hasNextPage}
-            />
-          ) : (
-            <EntryList
-              {...virtuosoOptions}
-              virtuosoRef={virtuosoRef}
-              refetch={entries.refetch}
-              groupCounts={groupedCounts}
-            />
-          )}
-        </ScrollArea.ScrollArea>
-      </m.div>
+        {virtuosoOptions.totalCount === 0 && !showArchivedButton ? (
+          entries.isLoading ? null : (
+            <EntryEmptyList />
+          )
+        ) : view && views[view].gridMode ? (
+          <ListGird
+            virtuosoOptions={virtuosoOptions}
+            virtuosoRef={virtuosoRef}
+            hasNextPage={entries.hasNextPage}
+          />
+        ) : (
+          <EntryList
+            {...virtuosoOptions}
+            virtuosoRef={virtuosoRef}
+            refetch={entries.refetch}
+            groupCounts={groupedCounts}
+          />
+        )}
+      </EntryColumnWrapper>
     </div>
   )
 }
@@ -239,14 +280,18 @@ const ListGird = ({
   virtuosoRef,
   hasNextPage,
 }: {
-  virtuosoOptions: Omit<VirtuosoGridProps<string, unknown>, "data" | "endReached"> & {
+  virtuosoOptions: Omit<
+    VirtuosoGridProps<string, VirtuosoComponentProps>,
+    "data" | "endReached"
+  > & {
     data: string[]
     endReached: () => Promise<any>
   }
   virtuosoRef: React.RefObject<VirtuosoHandle>
   hasNextPage: boolean
 }) => {
-  const masonry = useUISettingKey("pictureViewMasonry")
+  const isMobile = useMobile()
+  const masonry = useUISettingKey("pictureViewMasonry") || isMobile
   const view = useRouteParamsSelector((s) => s.view)
   const feedId = useRouteParamsSelector((s) => s.feedId)
   const filterNoImage = useUISettingKey("pictureViewFilterNoImage")
@@ -306,6 +351,11 @@ const ListGird = ({
           data={nextData}
         />
 
+        {virtuosoOptions.components?.Footer &&
+          (virtuosoOptions.components.Footer as FunctionComponent<VirtuosoComponentPropsContext>)({
+            context: { onlyShowArchivedButton: true },
+          })}
+
         {FilteredContentTip}
       </>
     )
@@ -313,6 +363,7 @@ const ListGird = ({
   return (
     <>
       <VirtuosoGrid
+        id={ENTRY_COLUMN_LIST_SCROLLER_ID}
         listClassName={girdClassNames}
         {...virtuosoOptions}
         data={nextData}

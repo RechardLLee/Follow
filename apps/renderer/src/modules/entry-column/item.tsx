@@ -1,21 +1,24 @@
-import type { FC, ReactNode } from "react"
+import { LoadingCircle } from "@follow/components/ui/loading/index.jsx"
+import type { FeedViewType } from "@follow/constants"
+import { views } from "@follow/constants"
+import { cn } from "@follow/utils/utils"
+import type { FC } from "react"
 import { memo } from "react"
 
-import { LoadingCircle } from "~/components/ui/loading"
-import { views } from "~/constants"
 import { useAuthQuery } from "~/hooks/common"
-import type { FeedViewType } from "~/lib/enum"
-import { FeedViewType as FeedViewTypeEnum } from "~/lib/enum"
-import { cn } from "~/lib/utils"
 import { Queries } from "~/queries"
 import type { FlatEntryModel } from "~/store/entry"
 import { useEntry } from "~/store/entry/hooks"
 
 import { ReactVirtuosoItemPlaceholder } from "../../components/ui/placeholder"
-import { getItemComponentByView, getSkeletonItemComponentByView } from "./Items"
+import {
+  getItemComponentByView,
+  getSkeletonItemComponentByView,
+  getStatelessItemComponentByView,
+} from "./Items"
 import { EntryItemWrapper } from "./layouts/EntryItemWrapper"
 import { girdClassNames } from "./styles"
-import type { EntryListItemFC } from "./types"
+import type { EntryItemStatelessProps, EntryListItemFC } from "./types"
 
 interface EntryItemProps {
   entryId: string
@@ -39,17 +42,9 @@ function EntryItemImpl({ entry, view }: { entry: FlatEntryModel; view?: number }
   )
 
   const Item: EntryListItemFC = getItemComponentByView(view as FeedViewType)
-  const overlayItemClassName =
-    view === FeedViewTypeEnum.Pictures || view === FeedViewTypeEnum.Videos ? "top-0" : ""
 
   return (
-    <EntryItemWrapper
-      itemClassName={Item.wrapperClassName}
-      entry={entry}
-      view={view}
-      overlay
-      overlayItemClassName={overlayItemClassName}
-    >
+    <EntryItemWrapper itemClassName={Item.wrapperClassName} entry={entry} view={view}>
       <Item entryId={entry.entries.id} translation={translation.data} />
     </EntryItemWrapper>
   )
@@ -57,8 +52,15 @@ function EntryItemImpl({ entry, view }: { entry: FlatEntryModel; view?: number }
 
 export const EntryItem: FC<EntryItemProps> = memo(({ entryId, view }) => {
   const entry = useEntry(entryId)
+
   if (!entry) return <ReactVirtuosoItemPlaceholder />
   return <EntryItemImpl entry={entry} view={view} />
+})
+
+export const EntryItemStateless: FC<EntryItemStatelessProps> = memo((props) => {
+  const Item = getStatelessItemComponentByView(props.view as FeedViewType)
+
+  return <Item {...props} />
 })
 
 const LoadingCircleFallback = (
@@ -78,17 +80,18 @@ export const EntryItemSkeleton: FC<{
 
   return SkeletonItem ? (
     <div className={cn(views[view].gridMode ? girdClassNames : "flex flex-col")}>
-      {createSkeletonItems(SkeletonItem, count || 10)}
+      {SkeletonItem}
+      {SkeletonItem}
+      {SkeletonItem}
+      {SkeletonItem}
+      {SkeletonItem}
+      {SkeletonItem}
+      {SkeletonItem}
+      {SkeletonItem}
+      {SkeletonItem}
+      {SkeletonItem}
     </div>
   ) : (
     LoadingCircleFallback
   )
 })
-
-const createSkeletonItems = (element: ReactNode, count: number) => {
-  const children = [] as ReactNode[]
-  for (let i = 0; i < count; i++) {
-    children.push(element)
-  }
-  return children
-}

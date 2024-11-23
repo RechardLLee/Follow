@@ -1,14 +1,16 @@
+import { views } from "@follow/constants"
+import { useMutation } from "@tanstack/react-query"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { ListRange } from "react-virtuoso"
 import { useDebounceCallback } from "usehooks-ts"
 
 import { useGeneralSettingKey } from "~/atoms/settings/general"
-import { views } from "~/constants"
 import { useRouteParams, useRouteParamsSelector } from "~/hooks/biz/useRouteParams"
 import { useAuthQuery } from "~/hooks/common"
+import { apiClient, apiFetch } from "~/lib/api-fetch"
 import { entries, useEntries } from "~/queries/entries"
-import { entryActions, useEntryIdsByFeedIdOrView } from "~/store/entry"
-import { isListSubscription, useFolderFeedsByFeedId } from "~/store/subscription"
+import { entryActions, getEntry, useEntryIdsByFeedIdOrView } from "~/store/entry"
+import { useFolderFeedsByFeedId } from "~/store/subscription"
 import { feedUnreadActions } from "~/store/unread"
 
 export const useEntryMarkReadHandler = (entriesIds: string[]) => {
@@ -49,6 +51,8 @@ export const useEntryMarkReadHandler = (entriesIds: string[]) => {
     return
   }, [feedView, handleMarkReadInRange, handleRenderAsRead, renderAsRead, scrollMarkUnread])
 }
+const anyString = [] as string[]
+
 export const useEntriesByView = ({
   onReset,
   isArchived,
@@ -59,8 +63,7 @@ export const useEntriesByView = ({
   const routeParams = useRouteParams()
   const unreadOnly = useGeneralSettingKey("unreadOnly")
 
-  const { feedId, view, isAllFeeds, isCollection } = routeParams
-  const isList = isListSubscription(feedId)
+  const { feedId, view, isAllFeeds, isCollection, listId, inboxId } = routeParams
 
   const folderIds = useFolderFeedsByFeedId({
     feedId,
@@ -68,11 +71,12 @@ export const useEntriesByView = ({
   })
 
   const entriesOptions = {
-    id: folderIds?.join(",") || feedId,
+    feedId: folderIds?.join(",") || feedId,
+    inboxId,
+    listId,
     view,
     ...(unreadOnly === true && { read: false }),
     isArchived,
-    isList,
   }
   const query = useEntries(entriesOptions)
 
@@ -103,13 +107,17 @@ export const useEntriesByView = ({
     setPauseQuery(hasUpdate)
   }, [hasUpdate])
 
-  const remoteEntryIds = useMemo(
-    () =>
-      query.data?.pages
-        ?.map((page) => page.data?.map((entry) => entry.entries.id))
-        .flat() as string[],
-    [query.data?.pages],
-  )
+  const remoteEntryIds = useMemo(() => {
+    if (!query.data?.pages) return void 0
+    // FIXME The back end should not return duplicate data, and the front end the unique id here.
+    return [
+      ...new Set(
+        query.data?.pages?.map((page) => page.data?.map((entry) => entry.entries.id)).flat(),
+      ).values(),
+    ] as string[]
+  }, [query.data?.pages])
+
+  useFetchEntryContentByStream(remoteEntryIds)
 
   const currentEntries = useEntryIdsByFeedIdOrView(isAllFeeds ? view : folderIds || feedId!, {
     unread: unreadOnly,
@@ -123,7 +131,7 @@ export const useEntriesByView = ({
   // then we have no way to incrementally update the data.
   // We need to add an interface to incrementally update the data based on the version hash.
 
-  const entryIds = remoteEntryIds || currentEntries
+  const entryIds: string[] = remoteEntryIds || currentEntries || anyString
 
   // in unread only entries only can grow the data, but not shrink
   // so we memo this previous data to avoid the flicker
@@ -132,12 +140,15 @@ export const useEntriesByView = ({
   const isFetchingFirstPage = query.isFetching && !query.isFetchingNextPage
 
   useEffect(() => {
+    if (isArchived) {
+      return
+    }
     if (!isFetchingFirstPage) {
       prevEntryIdsRef.current = entryIds
       setMergedEntries({ ...mergedEntries, [view]: entryIds })
       onReset?.()
     }
-  }, [isFetchingFirstPage])
+  }, [isFetchingFirstPage, isArchived])
 
   const [mergedEntries, setMergedEntries] = useState<Record<number, string[]>>({
     0: [],
@@ -169,10 +180,10 @@ export const useEntriesByView = ({
     () =>
       isCollection
         ? sortEntriesIdByStarAt(mergedEntries[view])
-        : isList
+        : listId
           ? sortEntriesIdByEntryInsertedAt(mergedEntries[view])
           : sortEntriesIdByEntryPublishedAt(mergedEntries[view]),
-    [isCollection, isList, mergedEntries, view],
+    [isCollection, listId, mergedEntries, view],
   )
 
   const groupByDate = useGeneralSettingKey("groupByDate")
@@ -192,7 +203,7 @@ export const useEntriesByView = ({
         continue
       }
       const date = new Date(
-        isList ? entry.entries.insertedAt : entry.entries.publishedAt,
+        listId ? entry.entries.insertedAt : entry.entries.publishedAt,
       ).toDateString()
       if (date !== lastDate) {
         counts.push(1)
@@ -204,19 +215,21 @@ export const useEntriesByView = ({
     }
 
     return counts
-  }, [groupByDate, sortEntries, view])
+  }, [groupByDate, listId, sortEntries, view])
 
   return {
     ...query,
 
     hasUpdate,
     refetch: useCallback(() => {
-      query.refetch()
+      const promise = query.refetch()
       feedUnreadActions.fetchUnreadByView(view)
-    }, [query]),
+      return promise
+    }, [query, view]),
     entriesIds: sortEntries,
     groupedCounts,
     totalCount: query.data?.pages?.[0]?.total ?? mergedEntries[view].length,
+    queryTotalCount: query.data?.pages?.[0]?.total,
   }
 }
 
@@ -235,7 +248,7 @@ export function batchMarkRead(ids: string[]) {
 
   if (batchLikeIds.length > 0) {
     for (const [feedId, id] of batchLikeIds) {
-      entryActions.markRead(feedId, id, true)
+      entryActions.markRead({ feedId, entryId: id, read: true })
     }
   }
 }
@@ -266,4 +279,83 @@ function sortEntriesIdByEntryInsertedAt(entries: string[]) {
     .sort((a, b) =>
       entriesId2Map[b]?.entries.insertedAt.localeCompare(entriesId2Map[a]?.entries.insertedAt),
     )
+}
+
+const useFetchEntryContentByStream = (remoteEntryIds?: string[]) => {
+  const { mutate: updateEntryContent } = useMutation({
+    mutationKey: ["stream-entry-content", remoteEntryIds],
+    mutationFn: async (remoteEntryIds: string[]) => {
+      const onlyNoStored = true
+
+      const nextIds = [] as string[]
+      if (onlyNoStored) {
+        for (const id of remoteEntryIds) {
+          const entry = getEntry(id)
+          if (entry.entries.content) {
+            continue
+          }
+
+          nextIds.push(id)
+        }
+      }
+
+      if (nextIds.length === 0) return
+
+      const readStream = async () => {
+        const response = await apiFetch(apiClient.entries.stream.$url().toString(), {
+          method: "post",
+          body: JSON.stringify({
+            ids: nextIds,
+          }),
+          responseType: "stream",
+        })
+
+        const reader = response.getReader()
+        if (!reader) return
+
+        const decoder = new TextDecoder()
+        let buffer = ""
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split("\n")
+
+            // Process all complete lines
+            for (let i = 0; i < lines.length - 1; i++) {
+              if (lines[i].trim()) {
+                const json = JSON.parse(lines[i])
+                // Handle each JSON line here
+                entryActions.updateEntryContent(json.id, json.content)
+              }
+            }
+
+            // Keep the last incomplete line in the buffer
+            buffer = lines.at(-1) || ""
+          }
+
+          // Process any remaining data
+          if (buffer.trim()) {
+            const json = JSON.parse(buffer)
+
+            entryActions.updateEntryContent(json.id, json.content)
+          }
+        } catch (error) {
+          console.error("Error reading stream:", error)
+        } finally {
+          reader.releaseLock()
+        }
+      }
+
+      readStream()
+    },
+  })
+
+  useEffect(() => {
+    if (!remoteEntryIds) return
+    updateEntryContent(remoteEntryIds)
+  }, [remoteEntryIds, updateEntryContent])
 }

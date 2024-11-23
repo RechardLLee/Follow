@@ -1,3 +1,17 @@
+import { EmptyIcon } from "@follow/components/icons/empty.jsx"
+import { Logo } from "@follow/components/icons/logo.jsx"
+import { ScrollArea } from "@follow/components/ui/scroll-area/index.js"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@follow/components/ui/select/index.jsx"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@follow/components/ui/tooltip/index.jsx"
+import type { FeedViewType } from "@follow/constants"
+import { useInputComposition } from "@follow/hooks"
+import { cn } from "@follow/utils/utils"
 import clsx from "clsx"
 import { Command } from "cmdk"
 import type { FC } from "react"
@@ -8,23 +22,11 @@ import { useTranslation } from "react-i18next"
 import { setAppSearchOpen, useAppSearchOpen } from "~/atoms/app"
 import { ExPromise } from "~/components/common/ExPromise"
 import { LoadMoreIndicator } from "~/components/common/LoadMoreIndicator"
-import { FeedIcon } from "~/components/feed-icon"
-import { EmptyIcon } from "~/components/icons/empty"
-import { Logo } from "~/components/icons/logo"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select"
-import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip"
+import { useModalStack } from "~/components/ui/modal/stacked/hooks"
 import { ROUTE_ENTRY_PENDING } from "~/constants"
 import { useNavigateEntry } from "~/hooks/biz/useNavigateEntry"
-import { useI18n, useInputComposition } from "~/hooks/common"
-import type { FeedViewType } from "~/lib/enum"
-import { cn } from "~/lib/utils"
+import { useI18n } from "~/hooks/common"
+import { FeedIcon } from "~/modules/feed/feed-icon"
 import { getFeedById } from "~/store/feed"
 import { searchActions, useSearchStore, useSearchType } from "~/store/search"
 import { SearchType } from "~/store/search/constants"
@@ -45,7 +47,7 @@ export const SearchCmdK: React.FC = () => {
   React.useEffect(() => {
     if (!open) return
 
-    window.posthog?.capture("search_open")
+    window.analytics?.capture("search_open")
     // Refresh data
     setPage(0)
     setSearchInstance(() => searchActions.createLocalDbSearch())
@@ -57,6 +59,8 @@ export const SearchCmdK: React.FC = () => {
   const inputRef = React.useRef<HTMLInputElement>(null)
   const dialogRef = React.useRef<HTMLDivElement>(null)
   const scrollViewRef = React.useRef<HTMLDivElement>(null)
+
+  const { getTopModalStack } = useModalStack()
 
   React.useEffect(() => {
     const $input = inputRef.current
@@ -71,7 +75,7 @@ export const SearchCmdK: React.FC = () => {
     (e) => {
       const $input = inputRef.current
 
-      if (e.key === "Escape" && !isCompositionRef.current) {
+      if (e.key === "Escape" && !isCompositionRef.current && !getTopModalStack()) {
         setAppSearchOpen(false)
         return
       }
@@ -82,7 +86,7 @@ export const SearchCmdK: React.FC = () => {
         $input?.focus()
       }
     },
-    [isCompositionRef],
+    [getTopModalStack, isCompositionRef],
   )
   const [isPending, startTransition] = React.useTransition()
   const handleSearch = React.useCallback(
@@ -136,7 +140,6 @@ export const SearchCmdK: React.FC = () => {
           "flex min-h-[50vh] flex-col bg-zinc-50/85 shadow-2xl backdrop-blur-xl dark:bg-neutral-900/90 md:rounded-xl",
           "border-0 border-zinc-300 dark:border-zinc-700 md:border",
           "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
-          "z-10",
         )}
       >
         <Command.Input
@@ -149,71 +152,76 @@ export const SearchCmdK: React.FC = () => {
         />
         <div className={cn(styles["status-bar"], isPending && styles["loading"])} />
 
-        <ScrollArea.ScrollArea
-          ref={scrollViewRef}
-          viewportClassName="max-h-[50vh] [&>div]:!flex"
-          rootClassName="h-full px-5"
-          scrollbarClassName="mb-6"
-        >
-          <Command.List className="flex w-full min-w-0 flex-col">
-            <SearchPlaceholder />
+        <div className="flex flex-1 flex-col overflow-y-hidden">
+          <ScrollArea.ScrollArea
+            ref={scrollViewRef}
+            viewportClassName="max-h-[50vh] [&>div]:!flex"
+            rootClassName="flex-1 px-5"
+            scrollbarClassName="mb-6"
+          >
+            <Command.List className="flex w-full min-w-0 flex-col">
+              <SearchPlaceholder />
 
-            {renderedEntries.length > 0 && (
-              <Command.Group
-                heading={
-                  <SearchGroupHeading
-                    icon="i-mgc-paper-cute-fi size-4"
-                    title={t("search.group.entries")}
-                  />
-                }
-                className="flex w-full min-w-0 flex-col py-2"
-              >
-                {renderedEntries.map((entry) => {
-                  const feed = getFeedById(entry.feedId)
-                  return (
-                    <SearchItem
-                      key={`entry-${entry.item.id}-${entry.feedId}`}
-                      view={feed?.id ? getSubscriptionByFeedId(feed.id)?.view : undefined}
-                      title={entry.item.title!}
-                      feedId={entry.feedId}
-                      entryId={entry.item.id}
-                      id={entry.item.id}
-                      icon={feed?.type === "feed" ? feed?.siteUrl : undefined}
-                      subtitle={feed?.title}
+              {renderedEntries.length > 0 && (
+                <Command.Group
+                  heading={
+                    <SearchGroupHeading
+                      icon="i-mgc-paper-cute-fi size-4"
+                      title={t("search.group.entries")}
                     />
-                  )
-                })}
-              </Command.Group>
-            )}
-            {renderedFeeds.length > 0 && (
-              <Command.Group
-                heading={
-                  <SearchGroupHeading
-                    icon="i-mgc-rss-cute-fi size-4 text-accent"
-                    title={t("search.group.feeds")}
-                  />
-                }
-                className="py-2"
-              >
-                {renderedFeeds.map((feed) => (
-                  <SearchItem
-                    key={`feed-${feed.item.id}`}
-                    view={getSubscriptionByFeedId(feed.item.id!)?.view}
-                    title={feed.item.title!}
-                    feedId={feed.item.id!}
-                    entryId={ROUTE_ENTRY_PENDING}
-                    id={feed.item.id!}
-                    icon={feed.item.type === "feed" ? feed.item.siteUrl : undefined}
-                    subtitle={useFeedUnreadStore.getState().data[feed.item.id!]?.toString()}
-                  />
-                ))}
-              </Command.Group>
-            )}
-            {canLoadMore && <LoadMoreIndicator className="center w-full" onLoading={loadMore} />}
-          </Command.List>
-        </ScrollArea.ScrollArea>
-        <SearchOptions />
-        <SearchResultCount count={totalCount} />
+                  }
+                  className="flex w-full min-w-0 flex-col py-2"
+                >
+                  {renderedEntries.map((entry) => {
+                    const feed = getFeedById(entry.feedId)
+                    return (
+                      <SearchItem
+                        key={`entry-${entry.item.id}-${entry.feedId}`}
+                        view={feed?.id ? getSubscriptionByFeedId(feed.id)?.view : undefined}
+                        title={entry.item.title!}
+                        feedId={entry.feedId}
+                        entryId={entry.item.id}
+                        id={entry.item.id}
+                        icon={feed?.type === "feed" ? feed?.siteUrl : undefined}
+                        subtitle={feed?.title}
+                      />
+                    )
+                  })}
+                </Command.Group>
+              )}
+              {renderedFeeds.length > 0 && (
+                <Command.Group
+                  heading={
+                    <SearchGroupHeading
+                      icon="i-mgc-rss-cute-fi size-4 text-accent"
+                      title={t("search.group.feeds")}
+                    />
+                  }
+                  className="py-2"
+                >
+                  {renderedFeeds.map((feed) => (
+                    <SearchItem
+                      key={`feed-${feed.item.id}`}
+                      view={getSubscriptionByFeedId(feed.item.id!)?.view}
+                      title={feed.item.title!}
+                      feedId={feed.item.id!}
+                      entryId={ROUTE_ENTRY_PENDING}
+                      id={feed.item.id!}
+                      icon={feed.item.type === "feed" ? feed.item.siteUrl : undefined}
+                      subtitle={useFeedUnreadStore.getState().data[feed.item.id!]?.toString()}
+                    />
+                  ))}
+                </Command.Group>
+              )}
+              {canLoadMore && <LoadMoreIndicator className="center w-full" onLoading={loadMore} />}
+            </Command.List>
+          </ScrollArea.ScrollArea>
+
+          <div className="relative flex items-center justify-between px-3 py-2">
+            <SearchOptions />
+            <SearchResultCount count={totalCount} />
+          </div>
+        </div>
       </Command.Dialog>
     </SearchCmdKContext.Provider>
   )
@@ -247,7 +255,7 @@ const SearchItem = memo(function Item({
       className={clsx(
         "relative flex w-full justify-between px-1 text-[0.9rem]",
         `before:absolute before:inset-0 before:rounded-md before:content-[""]`,
-        "before:z-0 hover:before:bg-zinc-200/60 dark:hover:before:bg-zinc-800/80",
+        "hover:before:bg-zinc-200/60 dark:hover:before:bg-zinc-800/80",
         "data-[selected=true]:before:bg-zinc-200/60 data-[selected=true]:dark:before:bg-zinc-800/80",
         "min-w-0 max-w-full",
         styles["content-visually"],
@@ -262,7 +270,7 @@ const SearchItem = memo(function Item({
         })
       }}
     >
-      <div className="relative z-10 flex w-full items-center justify-between px-1 py-2">
+      <div className="relative flex w-full items-center justify-between px-1 py-2">
         {feed && <FeedIcon className="mr-2 size-5 shrink-0 rounded" feed={feed} />}
         <span className="block min-w-0 flex-1 shrink-0 truncate">{title}</span>
         <span className="block min-w-0 shrink-0 grow-0 text-xs font-medium text-zinc-800 opacity-60 dark:text-slate-200/80">
@@ -307,7 +315,7 @@ const SearchResultCount: FC<{
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <small className="center absolute bottom-3 right-3 shrink-0 gap-1 opacity-80">
+        <small className="center shrink-0 gap-1 opacity-80">
           {hasKeyword ? (
             <span>
               {count} {t.common("words.result", { count })}
@@ -339,7 +347,7 @@ const SearchOptions: Component = memo(({ children }) => {
   const searchInstance = React.useContext(SearchCmdKContext)
 
   return (
-    <div className="absolute bottom-2 left-4 flex items-center gap-2 text-sm text-theme-foreground/80">
+    <div className="flex items-center gap-2 text-sm text-theme-foreground/80">
       <span className="shrink-0">{t("search.options.search_type")}</span>
 
       <Select
@@ -369,14 +377,14 @@ const SearchOptions: Component = memo(({ children }) => {
             value={`${SearchType.Entry}`}
             disabled={searchType === SearchType.Entry}
           >
-            {t("search.options.entries")}
+            {t("search.options.entry")}
           </SelectItem>
           <SelectItem
             className="hover:bg-theme-item-hover"
             value={`${SearchType.Feed}`}
             disabled={searchType === SearchType.Feed}
           >
-            {t("search.options.feeds")}
+            {t("search.options.feed")}
           </SelectItem>
         </SelectContent>
       </Select>

@@ -9,8 +9,9 @@
   "tailwindCSS.experimental.classRegex": [
     ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
     ["cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
-    // ["tw\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
-    ["tw`([^`]*)`", "([^`]*)"]
+    ["tw`([^`]*)`", "([^`]*)"],
+    ["[a-zA-Z]+[cC]lass[nN]ame[\"'`]?:\\s*[\"'`]([^\"'`]*)[\"'`]", "([^\"'`]*)"],
+    ["[a-zA-Z]+[cC]lass[nN]ame\\s*=\\s*[\"'`]([^\"'`]*)[\"'`]", "([^\"'`]*)"]
   ],
   // If you do not want to autofix some rules on save
   // You can put this in your user settings or workspace settings
@@ -53,10 +54,26 @@
     {
       "rule": "unused-imports/no-unused-imports",
       "severity": "off"
+    },
+    {
+      "rule": "@typescript-eslint/require-await",
+      "severity": "info"
+    },
+    {
+      "rule": "@typescript-eslint/await-thenable",
+      "severity": "info"
+    },
+    {
+      "rule": "@typescript-eslint/no-floating-promises",
+      "severity": "info"
+    },
+    {
+      "rule": "@typescript-eslint/no-misused-promises",
+      "severity": "info"
     }
   ],
-  "cSpell.words": ["rsshub", "Русский"],
-  "editor.foldingImportsByDefault": true,
+  "cSpell.words": ["Hydable", "rsshub", "Русский"],
+  // "editor.foldingImportsByDefault": true,
   "commentTranslate.hover.enabled": false,
   "typescript.tsdk": "node_modules/typescript/lib",
   "i18n-ally.enabledFrameworks": ["i18next"],

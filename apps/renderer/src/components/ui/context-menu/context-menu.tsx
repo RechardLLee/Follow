@@ -1,15 +1,13 @@
+import { RootPortal } from "@follow/components/ui/portal/index.jsx"
+import { cn } from "@follow/utils/utils"
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu"
 import * as React from "react"
-
-import { cn } from "~/lib/utils"
 
 const ContextMenu = ContextMenuPrimitive.Root
 
 const ContextMenuTrigger = ContextMenuPrimitive.Trigger
 
 const ContextMenuGroup = ContextMenuPrimitive.Group
-
-const ContextMenuPortal = ContextMenuPrimitive.Portal
 
 const ContextMenuSub = ContextMenuPrimitive.Sub
 
@@ -28,6 +26,7 @@ const ContextMenuSubTrigger = React.forwardRef<
       inset && "pl-8",
       "center gap-2",
       className,
+      props.disabled && "cursor-not-allowed opacity-30",
     )}
     {...props}
   >
@@ -41,16 +40,17 @@ const ContextMenuSubContent = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.SubContent>
 >(({ className, ...props }, ref) => (
-  <ContextMenuPrimitive.Portal>
+  <RootPortal>
     <ContextMenuPrimitive.SubContent
       ref={ref}
       className={cn(
-        "z-[1001] min-w-32 overflow-hidden rounded-md border bg-theme-modal-background-opaque p-1 text-theme-foreground/90 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:shadow-zinc-800/60",
+        "min-w-32 overflow-hidden rounded-md border bg-theme-modal-background-opaque p-1 text-theme-foreground/90 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:shadow-zinc-800/60",
+        "z-[61]",
         className,
       )}
       {...props}
     />
-  </ContextMenuPrimitive.Portal>
+  </RootPortal>
 ))
 ContextMenuSubContent.displayName = ContextMenuPrimitive.SubContent.displayName
 
@@ -58,17 +58,17 @@ const ContextMenuContent = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Content>
 >(({ className, ...props }, ref) => (
-  <ContextMenuPrimitive.Portal>
+  <RootPortal>
     <ContextMenuPrimitive.Content
       ref={ref}
       className={cn(
-        "z-[999] min-w-32 overflow-hidden rounded-md border border-border bg-theme-modal-background-opaque p-1 text-theme-foreground/90 shadow-lg dark:shadow-zinc-800/60",
-        "text-xs",
+        "z-[60] min-w-32 overflow-hidden rounded-md border border-border bg-theme-modal-background-opaque p-1 text-theme-foreground/90 shadow-lg dark:shadow-zinc-800/60",
+        "text-xs motion-duration-150 motion-scale-in-75 lg:animate-none",
         className,
       )}
       {...props}
     />
-  </ContextMenuPrimitive.Portal>
+  </RootPortal>
 ))
 ContextMenuContent.displayName = ContextMenuPrimitive.Content.displayName
 
@@ -98,7 +98,7 @@ const ContextMenuCheckboxItem = React.forwardRef<
   <ContextMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
-      "relative flex cursor-checkbox select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-theme-item-hover focus:text-theme-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-checkbox select-none items-center rounded-sm px-8 py-1.5 text-sm outline-none focus:bg-theme-item-hover focus:text-theme-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       "focus-within:outline-transparent",
       className,
     )}
@@ -106,8 +106,8 @@ const ContextMenuCheckboxItem = React.forwardRef<
     {...props}
   >
     <span className="absolute left-2 flex items-center justify-center">
-      <ContextMenuPrimitive.ItemIndicator>
-        <i className="i-mgc-check-filled size-4" />
+      <ContextMenuPrimitive.ItemIndicator asChild>
+        <i className="i-mgc-check-filled size-3" />
       </ContextMenuPrimitive.ItemIndicator>
     </span>
     {children}
@@ -148,7 +148,6 @@ export {
   ContextMenuGroup,
   ContextMenuItem,
   ContextMenuLabel,
-  ContextMenuPortal,
   ContextMenuRadioGroup,
   ContextMenuSeparator,
   ContextMenuSub,
@@ -156,3 +155,5 @@ export {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 }
+
+export { RootPortal as ContextMenuPortal } from "@follow/components/ui/portal/index.jsx"

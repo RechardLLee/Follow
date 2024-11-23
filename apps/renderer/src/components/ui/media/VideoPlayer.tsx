@@ -1,5 +1,10 @@
+import { Focusable } from "@follow/components/common/Focusable.js"
+import { ActionButton, MotionButtonBase } from "@follow/components/ui/button/index.js"
+import type { HTMLMediaState } from "@follow/hooks"
+import { useRefValue, useVideo } from "@follow/hooks"
+import { nextFrame, stopPropagation } from "@follow/utils/dom"
+import { clsx, cn } from "@follow/utils/utils"
 import * as Slider from "@radix-ui/react-slider"
-import { useSingleton } from "foxact/use-singleton"
 import { m, useDragControls, useSpring } from "framer-motion"
 import type { PropsWithChildren } from "react"
 import {
@@ -19,13 +24,7 @@ import { useEventCallback } from "usehooks-ts"
 
 import { AudioPlayer } from "~/atoms/player"
 import { IconScaleTransition } from "~/components/ux/transition/icon"
-import { useRefValue } from "~/hooks/common"
-import type { HTMLMediaState } from "~/hooks/common/factory/createHTMLMediaHook"
-import { useVideo } from "~/hooks/common/useVideo"
-import { nextFrame, stopPropagation } from "~/lib/dom"
-import { cn } from "~/lib/utils"
 
-import { MotionButtonBase } from "../button"
 import { softSpringPreset } from "../constants/spring"
 import { VolumeSlider } from "./VolumeSlider"
 
@@ -132,7 +131,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
     )
 
     return (
-      <div className="group center relative size-full" ref={wrapperRef}>
+      <Focusable className="group center relative size-full" ref={wrapperRef}>
         {element}
 
         <div className="center pointer-events-none absolute inset-0">
@@ -157,23 +156,22 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
             [state, controls, src, variant],
           )}
         >
-          {variant === "preview" && <FloatMutedButton />}
+          {variant === "preview" && state.hasAudio && <FloatMutedButton />}
           {isPlayer && <ControlBar />}
         </VideoPlayerContext.Provider>
-      </div>
+      </Focusable>
     )
   },
 )
 const BizControlOutsideMedia = () => {
-  const currentAudioPlayerIsPlayRef = useSingleton(() => AudioPlayer.get().status === "playing")
+  const currentAudioPlayerIsPlayRef = useMemo(() => AudioPlayer.get().status === "playing", [])
   useEffect(() => {
-    const { current } = currentAudioPlayerIsPlayRef
-    if (current) {
+    if (currentAudioPlayerIsPlayRef) {
       AudioPlayer.pause()
     }
 
     return () => {
-      if (current) {
+      if (currentAudioPlayerIsPlayRef) {
         AudioPlayer.play()
       }
     }
@@ -287,7 +285,6 @@ const FullScreenControl = () => {
     <ActionIcon
       label={isFullScreen ? t("player.exit_full_screen") : t("player.full_screen")}
       shortcut="f"
-      labelDelayDuration={1}
       onClick={() => {
         if (!ref.current) return
 
@@ -327,7 +324,7 @@ const DownloadVideo = () => {
   })
 
   return (
-    <ActionIcon shortcut="d" label={t("player.download")} labelDelayDuration={1} onClick={download}>
+    <ActionIcon shortcut="d" label={t("player.download")} onClick={download}>
       {isDownloading ? (
         <i className="i-mgc-loading-3-cute-re animate-spin" />
       ) : (
@@ -347,6 +344,7 @@ const VolumeControl = () => {
   return (
     <ActionIcon
       label={<VolumeSlider onVolumeChange={controls.volume} volume={volume} />}
+      enableHoverableContent
       onClick={() => {
         if (muted) {
           controls.unmute()
@@ -354,7 +352,6 @@ const VolumeControl = () => {
           controls.mute()
         }
       }}
-      labelDelayDuration={1}
     >
       {muted ? (
         <i className="i-mgc-volume-mute-cute-re" title={t("player.unmute")} />
@@ -423,31 +420,27 @@ const ActionIcon = ({
   onClick,
   children,
   shortcut,
+  label,
+  enableHoverableContent,
 }: {
   className?: string
   onClick?: () => void
   label: React.ReactNode
-  labelDelayDuration?: number
   children?: React.ReactNode
   shortcut?: string
+  enableHoverableContent?: boolean
 }) => {
-  useHotkeys(
-    shortcut || "",
-    (e) => {
-      e.preventDefault()
-      onClick?.()
-    },
-    {
-      enabled: !!shortcut,
-    },
-  )
   return (
-    <button
-      type="button"
-      className="center relative z-[1] size-6 rounded-md hover:bg-theme-button-hover"
+    <ActionButton
+      shortcutOnlyFocusWithIn
+      tooltipSide="top"
+      className={clsx("z-[2] hover:bg-transparent", className)}
       onClick={onClick}
+      tooltip={label}
+      shortcut={shortcut}
+      enableHoverableContent={enableHoverableContent}
     >
       {children || <i className={className} />}
-    </button>
+    </ActionButton>
   )
 }

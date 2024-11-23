@@ -1,3 +1,4 @@
+import { RootPortal } from "@follow/components/ui/portal/index.jsx"
 import type { DotLottie } from "@lottiefiles/dotlottie-react"
 import { DotLottieReact } from "@lottiefiles/dotlottie-react"
 import { atom, useAtomValue } from "jotai"
@@ -6,8 +7,6 @@ import { useEffect, useState } from "react"
 
 import { jotaiStore } from "~/lib/jotai"
 
-import { RootPortal } from "../portal"
-
 const portalElementsAtom = atom([] as ReactNode[])
 
 export function LottieRenderContainer() {
@@ -15,7 +14,7 @@ export function LottieRenderContainer() {
 
   return (
     <RootPortal>
-      <div className="pointer-events-none fixed z-[999]" data-testid="lottie-render-container">
+      <div className="pointer-events-none fixed z-[9999]" data-testid="lottie-render-container">
         {elements.map((element) => element)}
       </div>
     </RootPortal>

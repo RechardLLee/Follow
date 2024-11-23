@@ -28,3 +28,15 @@ export const dbSchemaV5 = {
   ...dbSchemaV4,
   cleaner: "&refId, visitedAt",
 }
+
+export const dbSchemaV6 = {
+  ...dbSchemaV5,
+  lists: "&id, title",
+}
+
+export const dbSchemaV7 = {
+  ...dbSchemaV6,
+  inboxes: "&id",
+}
+
+export const dbSchemaV8 = dbSchemaV7

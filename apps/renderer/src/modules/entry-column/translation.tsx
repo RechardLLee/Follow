@@ -1,10 +1,10 @@
+import { ScrollArea } from "@follow/components/ui/scroll-area/index.js"
+import { tooltipStyle } from "@follow/components/ui/tooltip/styles.js"
+import { useMeasure } from "@follow/hooks"
+import { cn } from "@follow/utils/utils"
 import * as HoverCard from "@radix-ui/react-hover-card"
 
-import { HTML } from "~/components/ui/markdown"
-import { ScrollArea } from "~/components/ui/scroll-area"
-import { tooltipStyle } from "~/components/ui/tooltip/styles"
-import { useMeasure } from "~/hooks/common"
-import { cn } from "~/lib/utils"
+import { HTML } from "~/components/ui/markdown/HTML"
 
 export const EntryTranslation: Component<{
   source?: string | null
@@ -50,7 +50,7 @@ export const EntryTranslation: Component<{
       <HoverCard.Portal>
         <HoverCard.Content
           className={cn(
-            "group relative z-[1] text-sm",
+            "group relative z-[11] text-sm",
             "animate-in fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
           )}
           style={useOverlay ? { width: bounds.width } : undefined}
@@ -65,7 +65,6 @@ export const EntryTranslation: Component<{
                   "shadow-modal rounded-xl border bg-background p-2",
                   "group-data-[side=top]:top-0",
                   "group-data-[side=bottom]:top-full",
-                  "max-w-[30ch]",
                 )}
                 viewportClassName="max-h-[12ch]"
               >

@@ -1,10 +1,8 @@
-import { createElement, Fragment, memo, useEffect, useMemo, useState } from "react"
+import { cn } from "@follow/utils/utils"
+import { useMemo, useState } from "react"
 
-import type { MediaInfo } from "~/lib/parse-html"
-import { parseHtml } from "~/lib/parse-html"
 import type { RemarkOptions } from "~/lib/parse-markdown"
 import { parseMarkdown } from "~/lib/parse-markdown"
-import { cn } from "~/lib/utils"
 
 import { MarkdownRenderContainerRefContext } from "./context"
 
@@ -35,57 +33,3 @@ export const Markdown: Component<
     </MarkdownRenderContainerRefContext.Provider>
   )
 }
-
-const HTMLImpl = <A extends keyof JSX.IntrinsicElements = "div">(
-  props: {
-    children: string | null | undefined
-    as: A
-
-    accessory?: React.ReactNode
-    noMedia?: boolean
-    mediaInfo?: MediaInfo
-  } & JSX.IntrinsicElements[A] &
-    Partial<{
-      renderInlineStyle: boolean
-    }>,
-) => {
-  const { children, renderInlineStyle, as = "div", accessory, noMedia, mediaInfo, ...rest } = props
-  const [remarkOptions, setRemarkOptions] = useState({
-    renderInlineStyle,
-    noMedia,
-    mediaInfo,
-  })
-  const [shouldForceReMountKey, setShouldForceReMountKey] = useState(0)
-
-  useEffect(() => {
-    setRemarkOptions((options) => {
-      if (JSON.stringify(options) === JSON.stringify({ renderInlineStyle, noMedia })) {
-        return options
-      }
-
-      setShouldForceReMountKey((key) => key + 1)
-      return { ...options, renderInlineStyle, noMedia }
-    })
-  }, [renderInlineStyle, noMedia])
-
-  const [refElement, setRefElement] = useState<HTMLElement | null>(null)
-
-  const markdownElement = useMemo(
-    () =>
-      children &&
-      parseHtml(children, {
-        ...remarkOptions,
-      }).toContent(),
-    [children, remarkOptions],
-  )
-
-  if (!markdownElement) return null
-  return (
-    <MarkdownRenderContainerRefContext.Provider value={refElement}>
-      {createElement(as, { ...rest, ref: setRefElement }, markdownElement)}
-      {accessory && <Fragment key={shouldForceReMountKey}>{accessory}</Fragment>}
-    </MarkdownRenderContainerRefContext.Provider>
-  )
-}
-
-export const HTML = memo(HTMLImpl)

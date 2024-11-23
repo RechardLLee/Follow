@@ -1,10 +1,6 @@
-import { WEB_URL } from "@follow/shared/constants"
-import { useTranslation } from "react-i18next"
-
-import { FeedIcon } from "~/components/feed-icon"
-import { Divider } from "~/components/ui/divider"
-import { LoadingCircle } from "~/components/ui/loading"
-import { ScrollArea } from "~/components/ui/scroll-area"
+import { Divider } from "@follow/components/ui/divider/index.js"
+import { LoadingCircle } from "@follow/components/ui/loading/index.jsx"
+import { ScrollArea } from "@follow/components/ui/scroll-area/index.js"
 import {
   Table,
   TableBody,
@@ -12,8 +8,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "~/components/ui/table"
+} from "@follow/components/ui/table/index.jsx"
+import { EllipsisHorizontalTextWithTooltip } from "@follow/components/ui/typography/index.js"
+import { UrlBuilder } from "@follow/utils/url-builder"
+import { useTranslation } from "react-i18next"
+
 import { useAuthQuery } from "~/hooks/common"
+import { FeedIcon } from "~/modules/feed/feed-icon"
 import { Balance } from "~/modules/wallet/balance"
 import { Queries } from "~/queries"
 
@@ -37,9 +38,6 @@ export const SettingFeeds = () => {
                     {t("feeds.tableHeaders.name")}
                   </TableHead>
                   <TableHead className="text-center" size="sm">
-                    {t("feeds.tableHeaders.entryCount")}
-                  </TableHead>
-                  <TableHead className="text-center" size="sm">
                     {t("feeds.tableHeaders.subscriptionCount")}
                   </TableHead>
                   <TableHead className="text-center" size="sm">
@@ -50,20 +48,17 @@ export const SettingFeeds = () => {
               <TableBody className="border-t-[12px] border-transparent">
                 {claimedList.data?.map((row) => (
                   <TableRow key={row.feed.id} className="h-8">
-                    <TableCell size="sm">
+                    <TableCell size="sm" width={200}>
                       <a
                         target="_blank"
-                        href={`${WEB_URL}/feed/${row.feed.id}`}
+                        href={UrlBuilder.shareFeed(row.feed.id)}
                         className="flex items-center"
                       >
                         <FeedIcon fallback feed={row.feed} size={16} />
-                        <span className="inline-block max-w-[200px] truncate">
+                        <EllipsisHorizontalTextWithTooltip className="inline-block max-w-[200px] truncate">
                           {row.feed.title}
-                        </span>
+                        </EllipsisHorizontalTextWithTooltip>
                       </a>
-                    </TableCell>
-                    <TableCell align="center" className="tabular-nums" size="sm">
-                      {row.entryCount}
                     </TableCell>
                     <TableCell align="center" className="tabular-nums" size="sm">
                       {row.subscriptionCount}

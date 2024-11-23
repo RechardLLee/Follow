@@ -1,11 +1,11 @@
+import { Input } from "@follow/components/ui/input/index.js"
+import { useCorrectZIndex } from "@follow/components/ui/z-index/ctx.js"
+import { stopPropagation } from "@follow/utils/dom"
+import { cn } from "@follow/utils/utils"
 import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions } from "@headlessui/react"
 import { AnimatePresence, m } from "framer-motion"
 import Fuse from "fuse.js"
 import { forwardRef, Fragment, useCallback, useEffect, useState } from "react"
-
-import { cn } from "~/lib/utils"
-
-import { Input } from "../input"
 
 export type Suggestion = {
   name: string
@@ -16,8 +16,6 @@ export interface AutocompleteProps extends React.InputHTMLAttributes<HTMLInputEl
   renderSuggestion?: (suggestion: Suggestion) => any
 
   onSuggestionSelected: (suggestion: NoInfer<Suggestion> | null) => void
-
-  portal?: boolean
 
   // classnames
 
@@ -34,7 +32,7 @@ export const Autocomplete = forwardRef<HTMLInputElement, AutocompleteProps>(
       renderSuggestion = defaultRenderSuggestion,
       onSuggestionSelected,
       maxHeight,
-      portal,
+
       value,
       searchKeys = defaultSearchKeys,
       defaultValue,
@@ -65,6 +63,7 @@ export const Autocomplete = forwardRef<HTMLInputElement, AutocompleteProps>(
       doFilter()
     }, [doFilter])
 
+    const zIndex = useCorrectZIndex(9)
     return (
       <Combobox
         immediate
@@ -80,23 +79,26 @@ export const Autocomplete = forwardRef<HTMLInputElement, AutocompleteProps>(
               <ComboboxInput
                 ref={forwardedRef}
                 as={Input}
+                autoComplete="off"
                 aria-label="Select Category"
                 displayValue={renderSuggestion}
                 value={value}
                 {...inputProps}
               />
               <AnimatePresence>
-                {open && (
+                {open && filterableSuggestions.length > 0 && (
                   <ComboboxOptions
-                    portal={portal}
+                    portal
                     static
                     as={m.div}
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.98 }}
                     anchor="bottom"
+                    style={{ zIndex }}
+                    onWheel={stopPropagation}
                     className={cn(
-                      "pointer-events-auto z-[99] max-h-48 grow",
+                      "pointer-events-auto max-h-48 grow",
                       "shadow-perfect overflow-auto rounded-md border border-border bg-popover text-popover-foreground",
                       "w-[var(--input-width)] empty:invisible",
                     )}

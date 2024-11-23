@@ -1,15 +1,14 @@
+import type { FeedViewType } from "@follow/constants"
+import type { CombinedEntryModel } from "@follow/models/types"
 import type { EntryReadHistoriesModel } from "@follow/shared/hono"
-
-import type { FeedViewType } from "~/lib/enum"
-import type { CombinedEntryModel } from "~/models"
 
 type FeedId = string
 type EntryId = string
 type EntriesIdTable = Record<FeedId, EntryId[]>
 
 export type FlatEntryModel = Omit<CombinedEntryModel, "feeds"> & {
-  feedId: FeedId
-}
+  view?: number
+} & { feedId: FeedId; inboxId: string }
 export interface EntryState {
   /**
    * A map of feedId to entryIds

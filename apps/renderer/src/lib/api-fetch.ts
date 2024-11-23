@@ -4,40 +4,37 @@ import { getCsrfToken } from "@hono/auth-js/react"
 import PKG from "@pkg"
 import { hc } from "hono/client"
 import { FetchError, ofetch } from "ofetch"
+import { createElement } from "react"
+import { toast } from "sonner"
 
 import { NetworkStatus, setApiStatus } from "~/atoms/network"
 import { setLoginModalShow } from "~/atoms/user"
+import { isDev } from "~/constants"
+import { NeedActivationToast } from "~/modules/activation/NeedActivationToast"
+import { DebugRegistry } from "~/modules/debug/registry"
 
 let csrfTokenPromise: Promise<string> | null = null
+
+const getPromisedCsrfToken = async () => {
+  if (!csrfTokenPromise) {
+    csrfTokenPromise = getCsrfToken()
+  }
+
+  return await csrfTokenPromise
+}
 export const apiFetch = ofetch.create({
   baseURL: env.VITE_API_URL,
   credentials: "include",
   retry: false,
   onRequest: async ({ options }) => {
-    if (!csrfTokenPromise) {
-      csrfTokenPromise = getCsrfToken()
-    }
+    const csrfToken = await getPromisedCsrfToken()
 
-    const csrfToken = await csrfTokenPromise
-    if (options.method && options.method.toLowerCase() !== "get") {
-      if (typeof options.body === "string") {
-        options.body = JSON.parse(options.body)
-      }
-      if (!options.body) {
-        options.body = {}
-      }
-      if (options.body instanceof FormData) {
-        options.body.append("csrfToken", csrfToken)
-      } else {
-        ;(options.body as Record<string, unknown>).csrfToken = csrfToken
-      }
+    const header = new Headers(options.headers)
 
-      const header = new Headers(options.headers)
-
-      header.set("x-app-version", PKG.version)
-      header.set("X-App-Dev", process.env.NODE_ENV === "development" ? "1" : "0")
-      options.headers = header
-    }
+    header.set("x-app-version", PKG.version)
+    header.set("X-App-Dev", process.env.NODE_ENV === "development" ? "1" : "0")
+    header.set("X-Csrf-Token", csrfToken)
+    options.headers = header
   },
   onResponse() {
     setApiStatus(NetworkStatus.ONLINE)
@@ -63,6 +60,24 @@ export const apiFetch = ofetch.create({
       if (context.response.status === 400 && json.code === 1003) {
         router.navigate("/invitation")
       }
+      if (json.code.toString().startsWith("11")) {
+        setTimeout(() => {
+          const toastId = toast.error(
+            createElement(NeedActivationToast, {
+              dimiss: () => {
+                toast.dismiss(toastId)
+              },
+            }),
+            {
+              closeButton: true,
+              duration: 10e4,
+              classNames: {
+                content: tw`w-full`,
+              },
+            },
+          )
+        }, 500)
+      }
     } catch {
       // ignore
     }
@@ -77,10 +92,32 @@ export const apiClient = hc<AppType>(env.VITE_API_URL, {
       }
       throw err
     }),
-  headers() {
+  async headers() {
     return {
       "X-App-Version": PKG.version,
       "X-App-Dev": process.env.NODE_ENV === "development" ? "1" : "0",
+      "X-Csrf-Token": await getPromisedCsrfToken(),
     }
   },
 })
+
+if (isDev) {
+  DebugRegistry.add("Activation Toast", () => {
+    setTimeout(() => {
+      const toastId = toast.error(
+        createElement(NeedActivationToast, {
+          dimiss: () => {
+            toast.dismiss(toastId)
+          },
+        }),
+        {
+          closeButton: true,
+          duration: 10e4,
+          classNames: {
+            content: tw`w-full`,
+          },
+        },
+      )
+    }, 500)
+  })
+}

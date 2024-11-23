@@ -1,25 +1,27 @@
+import { formatXml } from "@follow/utils/utils"
 import { useMutation } from "@tanstack/react-query"
+import { useRef } from "react"
+import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 
 import { ROUTE_FEED_IN_FOLDER, ROUTE_FEED_PENDING } from "~/constants"
 import { useAuthQuery } from "~/hooks/common"
 import { apiClient } from "~/lib/api-fetch"
 import { defineQuery } from "~/lib/defineQuery"
 import { toastFetchError } from "~/lib/error-parser"
-import { formatXml } from "~/lib/utils"
 import type { FeedQueryParams } from "~/store/feed"
 import { feedActions } from "~/store/feed"
 
 import { entries } from "./entries"
 
 export const feed = {
-  byId: ({ id, url, isList }: FeedQueryParams) =>
+  byId: ({ id, url }: FeedQueryParams) =>
     defineQuery(
       ["feed", id, url],
       async () =>
         feedActions.fetchFeedById({
           id,
           url,
-          isList,
         }),
       {
         rootKey: ["feed"],
@@ -41,12 +43,11 @@ export const feed = {
     }),
 }
 
-export const useFeed = ({ id, url, isList }: FeedQueryParams) =>
+export const useFeed = ({ id, url }: FeedQueryParams) =>
   useAuthQuery(
     feed.byId({
       id,
       url,
-      isList,
     }),
     {
       enabled:
@@ -63,7 +64,7 @@ export const useClaimFeedMutation = (feedId: string) =>
       toastFetchError(err)
     },
     onSuccess() {
-      window.posthog?.capture("feed_claimed", {
+      window.analytics?.capture("feed_claimed", {
         feedId,
       })
     },
@@ -78,7 +79,7 @@ export const useRefreshFeedMutation = (feedId?: string) =>
       if (!feedId) return
       entries
         .entries({
-          id: feedId!,
+          feedId: feedId!,
         })
         .invalidateRoot()
     },
@@ -86,3 +87,28 @@ export const useRefreshFeedMutation = (feedId?: string) =>
       toastFetchError(err)
     },
   })
+
+export const useResetFeed = () => {
+  const { t } = useTranslation()
+  const toastIDRef = useRef<string | number | null>(null)
+
+  return useMutation({
+    mutationFn: async (feedId: string) => {
+      toastIDRef.current = toast.loading(t("sidebar.feed_actions.resetting_feed"))
+      await apiClient.feeds.reset.$get({ query: { id: feedId } })
+    },
+    onSuccess: (_, feedId) => {
+      entries.entries({ feedId }).invalidateRoot()
+      toast.success(
+        t("sidebar.feed_actions.reset_feed_success"),
+        toastIDRef.current ? { id: toastIDRef.current } : undefined,
+      )
+    },
+    onError: () => {
+      toast.error(
+        t("sidebar.feed_actions.reset_feed_error"),
+        toastIDRef.current ? { id: toastIDRef.current } : undefined,
+      )
+    },
+  })
+}

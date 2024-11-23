@@ -6,6 +6,7 @@
   "keys.entries.refetch": "重新獲取",
   "keys.entries.toggleUnreadOnly": "切換僅顯示未讀",
   "keys.entry.copyLink": "複製連結",
+  "keys.entry.copyTitle": "複製標題",
   "keys.entry.openInBrowser": "在瀏覽器中打開",
   "keys.entry.openInNewTab": "在新分頁中打開",
   "keys.entry.scrollDown": "向下捲動",
@@ -20,10 +21,14 @@
   "keys.feeds.switchToView": "切換到視圖",
   "keys.layout.showShortcuts": "顯示／隱藏快捷鍵",
   "keys.layout.toggleSidebar": "顯示／隱藏摘要側邊欄",
+  "keys.layout.toggleWideMode": "切換寬屏模式",
+  "keys.layout.zenMode": "Zen 模式",
+  "keys.misc.quickSearch": "快速搜尋",
   "keys.type.audio": "音頻",
   "keys.type.entries": "條目列表",
   "keys.type.entry": "條目",
   "keys.type.feeds": "訂閲源",
   "keys.type.layout": "佈局",
+  "keys.type.misc": "雜項",
   "sidebar_title": "快捷鍵"
 }

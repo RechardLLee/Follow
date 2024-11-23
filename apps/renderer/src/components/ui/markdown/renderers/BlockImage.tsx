@@ -1,7 +1,11 @@
-import { cn } from "~/lib/utils"
+import { cn } from "@follow/utils/utils"
+import { useContext } from "react"
+import { useContextSelector } from "use-context-selector"
+
 import { useWrappedElementSize } from "~/providers/wrapped-element-provider"
 
 import { Media } from "../../media"
+import { MarkdownImageRecordContext, MarkdownRenderActionContext } from "../context"
 
 export const MarkdownBlockImage = (
   props: React.ImgHTMLAttributes<HTMLImageElement> & {
@@ -13,17 +17,29 @@ export const MarkdownBlockImage = (
 ) => {
   const size = useWrappedElementSize()
 
+  const { transformUrl } = useContext(MarkdownRenderActionContext)
+  const src = transformUrl(props.src)
+
+  const media = useContextSelector(MarkdownImageRecordContext, (record) =>
+    props.src ? record[props.src] : null,
+  )
+
   return (
     <Media
       type="photo"
       {...props}
+      loading="lazy"
+      src={src}
+      height={media?.height || props.height}
+      width={media?.width || props.width}
+      blurhash={media?.blurhash}
       mediaContainerClassName={cn(
         "rounded",
         size.w < Number.parseInt(props.width as string) && "w-full",
       )}
       showFallback
       popper
-      className="flex justify-center"
+      className="my-8 flex justify-center"
     />
   )
 }

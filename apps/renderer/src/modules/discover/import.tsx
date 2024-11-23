@@ -1,12 +1,5 @@
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation } from "@tanstack/react-query"
-import { Fragment } from "react/jsx-runtime"
-import { useForm } from "react-hook-form"
-import { Trans, useTranslation } from "react-i18next"
-import { z } from "zod"
-
-import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader } from "~/components/ui/card"
+import { Button } from "@follow/components/ui/button/index.js"
+import { Card, CardContent, CardHeader } from "@follow/components/ui/card/index.jsx"
 import {
   Form,
   FormControl,
@@ -14,14 +7,21 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "~/components/ui/form"
-import { Input } from "~/components/ui/input"
+} from "@follow/components/ui/form/index.jsx"
+import { Input } from "@follow/components/ui/input/index.js"
+import { cn } from "@follow/utils/utils"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useMutation } from "@tanstack/react-query"
+import { Fragment } from "react/jsx-runtime"
+import { useForm } from "react-hook-form"
+import { Trans, useTranslation } from "react-i18next"
+import { z } from "zod"
+
 import { apiFetch } from "~/lib/api-fetch"
 import { toastFetchError } from "~/lib/error-parser"
-import { cn } from "~/lib/utils"
 import { Queries } from "~/queries"
 
-import { FollowSummary } from "../../components/feed-summary"
+import { FollowSummary } from "../feed/feed-summary"
 
 type FeedResponseList = {
   id: string
@@ -59,7 +59,7 @@ const list: {
   },
 ]
 
-export function DiscoverImport() {
+export function DiscoverImport({ isInit = false }: { isInit?: boolean }) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
   })
@@ -100,13 +100,15 @@ export function DiscoverImport() {
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="w-[512px] space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="w-full max-w-[540px] space-y-8">
           <FormField
             control={form.control}
             name="file"
             render={({ field: { value, onChange, ...fieldProps } }) => (
               <FormItem>
-                <FormLabel>{t("discover.import.opml")}</FormLabel>
+                <FormLabel>
+                  {isInit ? t("discover.import.new_import_opml") : t("discover.import.opml")}
+                </FormLabel>
                 <FormControl>
                   <label
                     className="center flex h-[100px] w-full rounded-md border border-dashed"
@@ -153,7 +155,7 @@ export function DiscoverImport() {
         </form>
       </Form>
       {mutation.isSuccess && (
-        <div className="mt-8 max-w-lg">
+        <div className="mt-8 w-full max-w-lg">
           <Card>
             <CardHeader className="block text-zinc-500">
               <Trans

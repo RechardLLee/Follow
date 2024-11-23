@@ -1,3 +1,5 @@
+import { useIsDark } from "@follow/hooks"
+import { cn } from "@follow/utils/utils"
 import { useIsomorphicLayoutEffect } from "foxact/use-isomorphic-layout-effect"
 import type { FC } from "react"
 import { useInsertionEffect, useMemo, useRef, useState } from "react"
@@ -10,9 +12,7 @@ import type {
 
 import { useUISettingKey, useUISettingSelector } from "~/atoms/settings/ui"
 import { isElectronBuild } from "~/constants"
-import { useIsDark } from "~/hooks/common"
 import { tipcClient } from "~/lib/client"
-import { cn } from "~/lib/utils"
 
 import { getLanguageColor, getLanguageIcon } from "../constants"
 import { CopyButton } from "../copy-button"
@@ -56,12 +56,12 @@ export const ShikiHighLighter: FC<ShikiProps> = (props) => {
     }
 
     function guessLanguage() {
-      tipcClient?.detectCodeStringLanguage({ codeString: code }).then((result) => {
-        for (const item of result) {
-          if (bundledLanguagesKeysSet?.has(item.languageId)) {
-            setCurrentLanguage(item.languageId)
-            break
-          }
+      return tipcClient?.detectCodeStringLanguage({ codeString: code }).then((result) => {
+        if (!result) {
+          return
+        }
+        if (bundledLanguagesKeysSet?.has(result.languageId)) {
+          setCurrentLanguage(result.languageId)
         }
       })
     }

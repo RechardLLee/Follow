@@ -3,7 +3,7 @@ import { name, version } from "@pkg"
 import { parseHTML } from "linkedom"
 import { fetch } from "ofetch"
 
-import { isDev } from "../env"
+import { isDev } from "~/env"
 
 const userAgents = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 ${name}/${version}`
 
@@ -11,8 +11,20 @@ export async function readability(url: string) {
   const documentString = await fetch(url, {
     headers: {
       "User-Agent": userAgents,
+      Accept: "text/html",
     },
-  }).then((res) => res.text())
+  }).then(async (res) => {
+    const contentType = res.headers.get("content-type")
+    // text/html; charset=GBK
+    if (!contentType) return res.text()
+    const charset = contentType.match(/charset=([a-zA-Z-\d]+)/)?.[1]
+    if (charset) {
+      const blob = await res.blob()
+      const buffer = await blob.arrayBuffer()
+      return new TextDecoder(charset).decode(buffer)
+    }
+    return res.text()
+  })
 
   // FIXME: linkedom does not handle relative addresses in strings. Refer to
   // @see https://github.com/WebReflection/linkedom/issues/153
@@ -32,6 +44,9 @@ export async function readability(url: string) {
 
   const reader = new Readability(document, {
     debug: isDev,
+    // keep classes to set the right code language
+    // https://github.com/RSSNext/Follow/issues/1058
+    keepClasses: true,
   })
   return reader.parse()
 }

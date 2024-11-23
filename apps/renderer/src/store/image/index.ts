@@ -1,4 +1,4 @@
-import type { EntryModel } from "~/models"
+import type { EntryModel } from "@follow/models/types"
 
 import { createZustandStore } from "../utils/helper"
 import { getImageDimensionsFromDb } from "./db"
@@ -8,6 +8,7 @@ export interface StoreImageType {
   width: number
   height: number
   ratio: number
+  blurhash?: string
 }
 interface State {
   images: Record<string, StoreImageType>
@@ -35,13 +36,9 @@ class ImageActions {
   }
 
   async fetchDimensionsFromDb(images: string[]) {
-    const dims = [] as StoreImageType[]
-    for (const image of images) {
-      const dbData = await getImageDimensionsFromDb(image)
-      if (dbData) {
-        dims.push(dbData)
-      }
-    }
+    const dims = (await Promise.all(images.map((image) => getImageDimensionsFromDb(image)))).filter(
+      Boolean,
+    ) as StoreImageType[]
     imageActions.saveImages(dims)
   }
 

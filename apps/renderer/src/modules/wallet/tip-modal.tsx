@@ -1,28 +1,26 @@
+import { Button } from "@follow/components/ui/button/index.js"
+import { Divider } from "@follow/components/ui/divider/index.js"
+import { LoadingWithIcon } from "@follow/components/ui/loading/index.jsx"
+import { RadioGroup } from "@follow/components/ui/radio-group/index.js"
+import { RadioCard } from "@follow/components/ui/radio-group/RadioCard.js"
+import { nextFrame } from "@follow/utils/dom"
 import { from } from "dnum"
 import type { FC } from "react"
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 
-import { useWhoami } from "~/atoms/user"
-import { Button } from "~/components/ui/button"
-import { Divider } from "~/components/ui/divider"
-import { LoadingWithIcon } from "~/components/ui/loading"
-import { useCurrentModal } from "~/components/ui/modal"
-import { RadioGroup } from "~/components/ui/radio-group"
-import { RadioCard } from "~/components/ui/radio-group/RadioCard"
-import { UserAvatar } from "~/components/user-button"
+import { useCurrentModal } from "~/components/ui/modal/stacked/hooks"
 import { useI18n } from "~/hooks/common"
-import { nextFrame } from "~/lib/dom"
+import { UserAvatar } from "~/modules/user/UserAvatar"
 import { useWallet, useWalletTipMutation } from "~/queries/wallet"
 
 import { useFeedClaimModal } from "../claim"
-import { useSettingModal } from "../settings/modal/hooks-hack"
 import { Balance } from "./balance"
 
 const DEFAULT_RECOMMENDED_TIP = 10
 
 const useMyWallet = () => {
-  const user = useWhoami()
-  const myWallet = useWallet({ userId: user?.id })
+  const myWallet = useWallet()
   return myWallet
 }
 
@@ -67,11 +65,9 @@ const TipModalContent_: FC<{
 
   const { dismiss } = useCurrentModal()
 
-  const settingModalPresent = useSettingModal()
+  const claimFeed = useFeedClaimModal()
 
-  const claimFeed = useFeedClaimModal({
-    feedId,
-  })
+  const navigate = useNavigate()
 
   if (myWallet.isPending) {
     return <Loading />
@@ -82,7 +78,7 @@ const TipModalContent_: FC<{
       <div className="flex w-[80vw] max-w-[350px] flex-col gap-5">
         <p className="text-sm text-theme-foreground/80">{t("tip_modal.no_wallet")}</p>
         <div className="flex justify-end">
-          <Button variant="primary" onClick={() => nextFrame(() => settingModalPresent("wallet"))}>
+          <Button variant="primary" onClick={() => nextFrame(() => navigate("/power"))}>
             {t("tip_modal.create_wallet")}
           </Button>
         </div>
@@ -95,7 +91,7 @@ const TipModalContent_: FC<{
       <div className="flex w-[80vw] max-w-[350px] flex-col gap-5">
         <p className="text-sm text-theme-foreground/80">{t("tip_modal.tip_sent")}</p>
         <p>
-          <Balance className="mr-1 inline-block text-sm" withSuffix>
+          <Balance className="mr-1 text-sm" withSuffix>
             {amountBigInt}
           </Balance>{" "}
           {t("tip_modal.tip_amount_sent")}
@@ -111,7 +107,7 @@ const TipModalContent_: FC<{
   }
 
   return (
-    <div className="flex w-[80vw] max-w-[350px] flex-col gap-3">
+    <div className="flex w-full flex-col gap-3 lg:w-[80vw] lg:max-w-[350px]">
       {userId ? (
         <>
           <p className="text-sm font-medium">{t("tip_modal.feed_owner")}</p>
@@ -129,7 +125,7 @@ const TipModalContent_: FC<{
             </span>
           </p>
           <div className="text-center">
-            <Button variant="text" className="w-fit p-0" onClick={() => claimFeed()}>
+            <Button variant="text" className="w-fit p-0" onClick={() => claimFeed({ feedId })}>
               {t("tip_modal.claim_feed")}
             </Button>
           </div>
@@ -147,6 +143,7 @@ const TipModalContent_: FC<{
         <RadioGroup value={amount.toString()} onValueChange={(value) => setAmount(Number(value))}>
           <div className="grid grid-cols-2 gap-2">
             <RadioCard
+              disabled={tipMutation.isPending}
               wrapperClassName="justify-center"
               label={
                 <span className="flex items-center gap-1">
@@ -156,6 +153,7 @@ const TipModalContent_: FC<{
               value="10"
             />
             <RadioCard
+              disabled={tipMutation.isPending}
               wrapperClassName="justify-center group"
               label={
                 <span className="flex items-center gap-1">

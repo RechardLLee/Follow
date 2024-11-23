@@ -8,10 +8,16 @@
   "feed.follower_one": "follower",
   "feed.follower_other": "followers",
   "feed.followsAndFeeds": "{{subscriptionCount}} {{subscriptionNoun}} and {{feedsCount}} {{feedsNoun}} on {{appName}}",
-  "feed.followsAndReads": "{{subscriptionCount}} {{subscriptionNoun}} with {{readCount}} {{readNoun}} on {{appName}}",
+  "feed.followsAndReads": "{{subscriptionCount}} {{subscriptionNoun}} with {{readCount}} recent {{readNoun}} on {{appName}}",
   "feed.read_one": "read",
   "feed.read_other": "reads",
   "feed.view_feed_url": "View Feed URL",
+  "feed_item.claimed_by_owner": "This feed is claimed by",
+  "feed_item.claimed_by_unknown": "its owner.",
+  "feed_item.claimed_by_you": "Claimed by you",
+  "feed_item.claimed_feed": "Claimed Feed",
+  "feed_item.error_since": "Error since",
+  "feed_item.not_publicly_visible": "Not publicly visible on your profile page",
   "header.app": "App",
   "header.download": "Download",
   "invitation.activate": "Activate",
@@ -33,7 +39,7 @@
   "login.signOut": "Sign out",
   "login.welcomeTo": "Welcome to ",
   "redirect.continueInBrowser": "Continue in Browser",
-  "redirect.instruction": "Now is the time to open {{APP_NAME}} and safely close this page.",
-  "redirect.openApp": "Open {{APP_NAME}}",
-  "redirect.successMessage": "You have successfully connected to {{APP_NAME}} Account."
+  "redirect.instruction": "Now is the time to open {{app_name}} and safely close this page.",
+  "redirect.openApp": "Open {{app_name}}",
+  "redirect.successMessage": "You have successfully connected to {{app_name}} Account."
 }

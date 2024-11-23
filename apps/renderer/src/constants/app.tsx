@@ -1,4 +1,4 @@
-import { getStorageNS } from "~/lib/ns"
+import { getStorageNS } from "@follow/utils/ns"
 
 /// Feed
 export const FEED_COLLECTION_LIST = "collections"
@@ -10,6 +10,7 @@ export const I18N_LOCALE_KEY = getStorageNS("I18N_LOCALE")
 export const ROUTE_FEED_PENDING = "all"
 export const ROUTE_ENTRY_PENDING = "pending"
 export const ROUTE_FEED_IN_FOLDER = "folder-"
+export const ROUTE_FEED_IN_LIST = "list-"
+export const ROUTE_FEED_IN_INBOX = "inbox-"
 
-export const DAILY_CLAIM_AMOUNT = "20"
-export const INVITATION_PRICE = "100"
+export const INBOX_PREFIX_ID = "inbox-"

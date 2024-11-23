@@ -1,6 +1,8 @@
 import { electronApp, optimizer } from "@electron-toolkit/utils"
+import { callWindowExpose } from "@follow/shared/bridge"
 import { APP_PROTOCOL } from "@follow/shared/constants"
 import { env } from "@follow/shared/env"
+import { imageRefererMatches, selfRefererMatches } from "@follow/shared/image"
 import { app, BrowserWindow, session } from "electron"
 import squirrelStartup from "electron-squirrel-startup"
 
@@ -8,9 +10,16 @@ import { isDev, isMacOS } from "./env"
 import { initializeAppStage0, initializeAppStage1 } from "./init"
 import { updateProxy } from "./lib/proxy"
 import { handleUrlRouting } from "./lib/router"
-import { setAuthSessionToken } from "./lib/user"
+import { store } from "./lib/store"
+import { registerAppTray } from "./lib/tray"
+import { setAuthSessionToken, updateNotificationsToken } from "./lib/user"
 import { registerUpdater } from "./updater"
-import { createMainWindow } from "./window"
+import {
+  createMainWindow,
+  getMainWindow,
+  getMainWindowOrCreate,
+  windowStateStoreKey,
+} from "./window"
 
 if (isDev) console.info("[main] env loaded:", env)
 
@@ -35,7 +44,7 @@ function bootstrap() {
   app.on("second-instance", (_, commandLine) => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.focus()
+      mainWindow.show()
     }
 
     const url = commandLine.pop()
@@ -48,6 +57,13 @@ function bootstrap() {
   // initialization and is ready to create browser windows.
   // Some APIs can only be used after this event occurs.
   app.whenReady().then(() => {
+    // Default open or close DevTools by F12 in development
+    // and ignore CommandOrControl + R in production.
+    // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+    app.on("browser-window-created", (_, window) => {
+      optimizer.watchWindowShortcuts(window)
+    })
+
     // Set app user model id for windows
     electronApp.setAppUserModelId(`re.${APP_PROTOCOL}`)
 
@@ -55,26 +71,37 @@ function bootstrap() {
 
     updateProxy()
     registerUpdater()
+    registerAppTray()
 
-    //remove Electron, Follow from user agent
     session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+      // remove Electron, Follow from user agent
       let userAgent = details.requestHeaders["User-Agent"]
       if (userAgent) {
         userAgent = userAgent.replace(/\s?Electron\/[\d.]+/, "")
         userAgent = userAgent.replace(/\s?Follow\/[\d.a-zA-Z-]+/, "")
       }
       details.requestHeaders["User-Agent"] = userAgent
+
+      // set referer and origin
+      if (selfRefererMatches.some((item) => details.url.startsWith(item))) {
+        details.requestHeaders["Referer"] = "https://app.follow.is"
+        details.requestHeaders["Origin"] = "https://app.follow.is"
+      } else {
+        const refererMatch = imageRefererMatches.find((item) => item.url.test(details.url))
+        const referer = refererMatch?.referer
+        if (referer) {
+          details.requestHeaders["Referer"] = referer
+        }
+      }
+
       callback({ cancel: false, requestHeaders: details.requestHeaders })
     })
 
     app.on("activate", () => {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.
-      if (BrowserWindow.getAllWindows().length === 0) {
-        mainWindow = createMainWindow()
-      }
-
-      if (mainWindow) mainWindow.show()
+      mainWindow = getMainWindowOrCreate()
+      mainWindow.show()
     })
 
     app.on("open-url", (_, url) => {
@@ -85,13 +112,6 @@ function bootstrap() {
         mainWindow = createMainWindow()
       }
       url && handleOpen(url)
-    })
-
-    // Default open or close DevTools by F12 in development
-    // and ignore CommandOrControl + R in production.
-    // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-    app.on("browser-window-created", (_, window) => {
-      optimizer.watchWindowShortcuts(window)
     })
 
     // for dev debug
@@ -115,13 +135,28 @@ function bootstrap() {
     }
   })
 
-  const handleOpen = (url: string) => {
+  app.on("before-quit", () => {
+    // store window pos when before app quit
+    const window = getMainWindow()
+    if (!window || window.isDestroyed()) return
+    const bounds = window.getBounds()
+
+    store.set(windowStateStoreKey, {
+      width: bounds.width,
+      height: bounds.height,
+      x: bounds.x,
+      y: bounds.y,
+    })
+  })
+
+  const handleOpen = async (url: string) => {
     const isValid = URL.canParse(url)
     if (!isValid) return
     const urlObj = new URL(url)
 
     if (urlObj.hostname === "auth" || urlObj.pathname === "//auth") {
       const token = urlObj.searchParams.get("token")
+      const userId = urlObj.searchParams.get("userId")
 
       const apiURL = process.env["VITE_API_URL"] || import.meta.env.VITE_API_URL
       if (token && apiURL) {
@@ -135,7 +170,19 @@ function bootstrap() {
           domain: new URL(apiURL).hostname,
           sameSite: "no_restriction",
         })
+        mainWindow.webContents.session.cookies.set({
+          url: apiURL,
+          name: "authjs.callback-url",
+          value: env.VITE_WEB_URL,
+          secure: true,
+          httpOnly: true,
+          domain: new URL(apiURL).hostname,
+          sameSite: "no_restriction",
+        })
+        userId && (await callWindowExpose(mainWindow).clearIfLoginOtherAccount(userId))
         mainWindow.reload()
+
+        updateNotificationsToken()
       }
     } else {
       handleUrlRouting(url)

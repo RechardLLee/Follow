@@ -1,10 +1,22 @@
 import type { BrowserWindow } from "electron"
+import { useEffect, useLayoutEffect, useRef } from "react"
 import type { toast } from "sonner"
 
 import type { GeneralSettings, UISettings } from "./interface/settings"
 
 const PREFIX = "__follow"
 
+// eslint-disable-next-line unused-imports/no-unused-vars
+declare const dialog: {
+  ask: (options: {
+    title: string
+    message: string
+    onConfirm?: () => void
+    onCancel?: () => void
+    confirmText?: string
+    cancelText?: string
+  }) => Promise<boolean>
+}
 interface RenderGlobalContext {
   /// Access Settings
   showSetting: (path?: string) => void
@@ -23,12 +35,23 @@ interface RenderGlobalContext {
   /// Actions
   follow: (options?: { isList: boolean; id?: string; url?: string }) => void
   profile: (id: string, variant?: "drawer" | "dialog") => void
+  quickAdd: () => void
+  rsshubRoute: (route: string) => void
+  // Navigate
+  goToDiscover: () => void
+
+  // user data
+  clearIfLoginOtherAccount: (newUserId: string) => void
 
   /// Utils
   toast: typeof toast
+  dialog: typeof dialog
   // URL
   getWebUrl: () => string
   getApiUrl: () => string
+
+  // View
+  zenMode: () => void
 }
 
 export const registerGlobalContext = (context: Partial<RenderGlobalContext>) => {
@@ -36,6 +59,20 @@ export const registerGlobalContext = (context: Partial<RenderGlobalContext>) => 
     ...globalThis[PREFIX],
     ...context,
   }
+}
+
+export const useRegisterGlobalContext = <K extends keyof RenderGlobalContext>(
+  key: K,
+  fn: RenderGlobalContext[K],
+) => {
+  const eventCallbackRef = useRef(fn)
+  useLayoutEffect(() => {
+    eventCallbackRef.current = fn
+  }, [fn])
+
+  useEffect(() => {
+    registerGlobalContext({ [key]: eventCallbackRef.current })
+  }, [key])
 }
 
 function createProxy<T extends RenderGlobalContext>(window: BrowserWindow, path: string[] = []): T {
@@ -62,7 +99,7 @@ type AddPromise<T> = T extends (...args: infer A) => Promise<infer R>
   ? (...args: A) => Promise<R>
   : T extends (...args: infer A) => infer R
     ? (...args: A) => Promise<Awaited<R>>
-    : any
+    : unknown
 
 type Fn<T> = {
   [K in keyof T]: AddPromise<T[K]> &
@@ -70,4 +107,8 @@ type Fn<T> = {
 }
 export function callWindowExpose<T extends RenderGlobalContext>(window: BrowserWindow) {
   return createProxy(window) as Fn<T>
+}
+
+export function callWindowExposeRenderer() {
+  return globalThis[PREFIX] as Fn<RenderGlobalContext>
 }

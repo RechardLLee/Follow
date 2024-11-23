@@ -1,15 +1,18 @@
-import { useEffect } from "react"
-import { useTranslation } from "react-i18next"
-
-import { createSetting } from "~/atoms/settings/helper"
-import { setIntegrationSetting, useIntegrationSettingValue } from "~/atoms/settings/integration"
-import { Divider } from "~/components/ui/divider"
+import { Divider } from "@follow/components/ui/divider/index.js"
 import {
   SimpleIconsEagle,
   SimpleIconsInstapaper,
+  SimpleIconsObsidian,
+  SimpleIconsOmnivore,
+  SimpleIconsOutline,
   SimpleIconsReadwise,
-} from "~/components/ui/platform-icon/icons"
+} from "@follow/components/ui/platform-icon/icons.js"
+import { useEffect } from "react"
+import { useTranslation } from "react-i18next"
 
+import { setIntegrationSetting, useIntegrationSettingValue } from "~/atoms/settings/integration"
+
+import { createSetting } from "../helper/builder"
 import { useSetSettingCanSync } from "../modal/hooks"
 
 const { defineSettingItem, SettingBuilder } = createSetting(
@@ -99,6 +102,103 @@ export const SettingIntegration = () => {
             componentProps: {
               labelClassName: "w-[150px]",
             },
+          }),
+          {
+            type: "title",
+            value: (
+              <span className="flex items-center gap-2 font-bold">
+                <SimpleIconsOmnivore />
+                {t("integration.omnivore.title")}
+              </span>
+            ),
+          },
+          defineSettingItem("enableOmnivore", {
+            label: t("integration.omnivore.enable.label"),
+            description: t("integration.omnivore.enable.description"),
+          }),
+          defineSettingItem("omnivoreEndpoint", {
+            label: t("integration.omnivore.endpoint.label"),
+            vertical: true,
+            description: (
+              <>
+                {t("integration.omnivore.endpoint.description")}{" "}
+                <a
+                  target="_blank"
+                  className="underline"
+                  rel="noreferrer noopener"
+                  href="https://api-prod.omnivore.app/api/graphql"
+                >
+                  https://api-prod.omnivore.app/api/graphql
+                </a>
+                .
+              </>
+            ),
+          }),
+          defineSettingItem("omnivoreToken", {
+            label: t("integration.omnivore.token.label"),
+            vertical: true,
+            type: "password",
+            description: (
+              <>
+                {t("integration.omnivore.token.description")}{" "}
+                <a
+                  target="_blank"
+                  className="underline"
+                  rel="noreferrer noopener"
+                  href="https://omnivore.app/settings/api"
+                >
+                  omnivore.app/settings/api
+                </a>
+                .
+              </>
+            ),
+          }),
+          {
+            type: "title",
+            value: (
+              <span className="flex items-center gap-2 font-bold">
+                <SimpleIconsObsidian />
+                {t("integration.obsidian.title")}
+              </span>
+            ),
+          },
+          defineSettingItem("enableObsidian", {
+            label: t("integration.obsidian.enable.label"),
+            description: t("integration.obsidian.enable.description"),
+          }),
+          defineSettingItem("obsidianVaultPath", {
+            label: t("integration.obsidian.vaultPath.label"),
+            vertical: true,
+            description: t("integration.obsidian.vaultPath.description"),
+          }),
+          {
+            type: "title",
+            value: (
+              <span className="flex items-center gap-2 font-bold">
+                <SimpleIconsOutline />
+                {t("integration.outline.title")}
+              </span>
+            ),
+          },
+          defineSettingItem("enableOutline", {
+            label: t("integration.outline.enable.label"),
+            description: t("integration.outline.enable.description"),
+          }),
+          defineSettingItem("outlineEndpoint", {
+            label: t("integration.outline.endpoint.label"),
+            vertical: true,
+            description: t("integration.outline.endpoint.description"),
+          }),
+          defineSettingItem("outlineToken", {
+            label: t("integration.outline.token.label"),
+            vertical: true,
+            type: "password",
+            description: t("integration.outline.token.description"),
+          }),
+          defineSettingItem("outlineCollection", {
+            label: t("integration.outline.collection.label"),
+            vertical: true,
+            description: t("integration.outline.collection.description"),
           }),
 
           BottomTip,

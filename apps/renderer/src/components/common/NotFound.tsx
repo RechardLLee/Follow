@@ -1,12 +1,13 @@
+import { Logo } from "@follow/components/icons/logo.jsx"
+import { Button } from "@follow/components/ui/button/index.js"
 import { captureException } from "@sentry/react"
 import { useEffect } from "react"
 import type { Location } from "react-router-dom"
 import { useLocation, useNavigate } from "react-router-dom"
 
 import { isElectronBuild } from "~/constants"
+import { removeAppSkeleton } from "~/lib/app"
 
-import { Logo } from "../icons/logo"
-import { Button } from "../ui/button"
 import { PoweredByFooter } from "./PoweredByFooter"
 
 class AccessNotFoundError extends Error {
@@ -37,6 +38,10 @@ export const NotFound = () => {
       ),
     )
   }, [location])
+
+  useEffect(() => {
+    removeAppSkeleton()
+  }, [])
   const navigate = useNavigate()
   return (
     <div className="prose center m-auto size-full flex-col dark:prose-invert">

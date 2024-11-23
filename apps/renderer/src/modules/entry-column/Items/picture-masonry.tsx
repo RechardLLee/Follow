@@ -1,68 +1,53 @@
-import { useSingleton } from "foxact/use-singleton"
-import { throttle } from "lodash-es"
-import type { RenderComponentProps } from "masonic"
-import { useInfiniteLoader } from "masonic"
-import type { FC } from "react"
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { useEventCallback } from "usehooks-ts"
-
-import { useGeneralSettingKey } from "~/atoms/settings/general"
-import { Masonry } from "~/components/ui/Masonry"
-import { useScrollViewElement } from "~/components/ui/scroll-area/hooks"
-import { Skeleton } from "~/components/ui/skeleton"
-import { useRefValue } from "~/hooks/common"
-import { nextFrame } from "~/lib/dom"
-import { getEntry } from "~/store/entry"
-import { imageActions } from "~/store/image"
-
-import { batchMarkRead } from "../hooks"
 import {
   MasonryIntersectionContext,
   MasonryItemsAspectRatioContext,
   MasonryItemsAspectRatioSetterContext,
   MasonryItemWidthContext,
-} from "./contexts/picture-masonry-context"
+} from "@follow/components/ui/masonry/contexts.jsx"
+import { useMasonryColumn } from "@follow/components/ui/masonry/hooks.js"
+import { Masonry } from "@follow/components/ui/masonry/index.js"
+import { useScrollViewElement } from "@follow/components/ui/scroll-area/hooks.js"
+import { Skeleton } from "@follow/components/ui/skeleton/index.jsx"
+import { useRefValue } from "@follow/hooks"
+import clsx from "clsx"
+import type { RenderComponentProps } from "masonic"
+import { useInfiniteLoader } from "masonic"
+import type { FC } from "react"
+import {
+  createContext,
+  startTransition,
+  useCallback,
+  useContext,
+  useDeferredValue,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
+import { useEventCallback } from "usehooks-ts"
+
+import { useGeneralSettingKey } from "~/atoms/settings/general"
+import { MediaContainerWidthProvider } from "~/components/ui/media"
+import { getEntry } from "~/store/entry"
+import { imageActions } from "~/store/image"
+
+import { batchMarkRead } from "../hooks"
 import { PictureWaterFallItem } from "./picture-item"
 
 // grid grid-cols-1 @lg:grid-cols-2 @3xl:grid-cols-3 @6xl:grid-cols-4 @7xl:grid-cols-5 px-4 gap-1.5
 
-const breakpoints = {
-  0: 1,
-  // 32rem => 32 * 16= 512
-  512: 2,
-  // 48rem => 48 * 16= 768
-  768: 3,
-  // 72rem => 72 * 16= 1152
-  1152: 4,
-  // 80rem => 80 * 16= 1280
-  1280: 5,
-  1536: 6,
-  1792: 7,
-  2048: 8,
-}
-const getCurrentColumn = (w: number) => {
-  // Initialize column count with the minimum number of columns
-  let columns = 1
-
-  // Iterate through each breakpoint and determine the column count
-  for (const [breakpoint, cols] of Object.entries(breakpoints)) {
-    if (w >= Number.parseInt(breakpoint)) {
-      columns = cols
-    } else {
-      break
-    }
-  }
-
-  return columns
-}
+const FirstScreenItemCount = 20
+const FirstScreenReadyCountDown = 150
+const FirstScreenReadyContext = createContext(false)
 const gutter = 24
 
 export const PictureMasonry: FC<MasonryProps> = (props) => {
   const { data } = props
-  const cacheMap = useSingleton(() => new Map<string, object>()).current
+  const cacheMap = useState(() => new Map<string, object>())[0]
   const [isInitDim, setIsInitDim] = useState(false)
   const [isInitLayout, setIsInitLayout] = useState(false)
-  const [currentItemWidth, setCurrentItemWidth] = useState(0)
+  const deferIsInitLayout = useDeferredValue(isInitLayout)
   const restoreDimensions = useEventCallback(async () => {
     const images = [] as string[]
     data.forEach((entryId) => {
@@ -73,47 +58,17 @@ export const PictureMasonry: FC<MasonryProps> = (props) => {
     })
     return imageActions.fetchDimensionsFromDb(images)
   })
-  useEffect(() => {
-    restoreDimensions().finally(() => {
-      setIsInitDim(true)
-    })
-  }, [])
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [currentColumn, setCurrentColumn] = useState(1)
-
   useLayoutEffect(() => {
-    const $warpper = containerRef.current
-    if (!$warpper) return
-    const handler = () => {
-      const column = getCurrentColumn($warpper.clientWidth)
-      setCurrentItemWidth(Math.trunc($warpper.clientWidth / column - gutter))
-
-      setCurrentColumn(column)
-
-      nextFrame(() => {
-        setIsInitLayout(true)
+    restoreDimensions().finally(() => {
+      startTransition(() => {
+        setIsInitDim(true)
       })
-    }
-    const recal = throttle(handler, 1000 / 12)
-
-    let previousWidth = $warpper.offsetWidth
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const newWidth = entry.contentRect.width
-
-        if (newWidth !== previousWidth) {
-          previousWidth = newWidth
-
-          recal()
-        }
-      }
     })
-    recal()
-    resizeObserver.observe($warpper)
-    return () => {
-      resizeObserver.disconnect()
-    }
   }, [])
+
+  const { containerRef, currentColumn, currentItemWidth } = useMasonryColumn(gutter, () => {
+    setIsInitLayout(true)
+  })
 
   const items = useMemo(() => {
     const result = data.map((entryId) => {
@@ -228,23 +183,38 @@ export const PictureMasonry: FC<MasonryProps> = (props) => {
     }
   }, [scrollElement, renderMarkRead, scrollMarkRead, dataRef])
 
+  const [firstScreenReady, setFirstScreenReady] = useState(false)
+  useEffect(() => {
+    if (firstScreenReady) return
+    const timer = setTimeout(() => {
+      setFirstScreenReady(true)
+    }, FirstScreenReadyCountDown)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [])
+
   return (
-    <div ref={containerRef} className="p-4">
-      {isInitDim && isInitLayout && (
+    <div ref={containerRef} className="mx-4 pt-2">
+      {isInitDim && deferIsInitLayout && (
         <MasonryItemWidthContext.Provider value={currentItemWidth}>
           <MasonryItemsAspectRatioContext.Provider value={masonryItemsRadio}>
             <MasonryItemsAspectRatioSetterContext.Provider value={setMasonryItemsRadio}>
               <MasonryIntersectionContext.Provider value={intersectionObserver}>
-                <Masonry
-                  items={items}
-                  columnGutter={gutter}
-                  columnWidth={currentItemWidth}
-                  columnCount={currentColumn}
-                  overscanBy={2}
-                  render={render}
-                  onRender={handleRender}
-                  itemKey={itemKey}
-                />
+                <MediaContainerWidthProvider width={currentItemWidth}>
+                  <FirstScreenReadyContext.Provider value={firstScreenReady}>
+                    <Masonry
+                      items={firstScreenReady ? items : items.slice(0, FirstScreenItemCount)}
+                      columnGutter={gutter}
+                      columnWidth={currentItemWidth}
+                      columnCount={currentColumn}
+                      overscanBy={2}
+                      render={MasonryRender}
+                      onRender={handleRender}
+                      itemKey={itemKey}
+                    />
+                  </FirstScreenReadyContext.Provider>
+                </MediaContainerWidthProvider>
               </MasonryIntersectionContext.Provider>
             </MasonryItemsAspectRatioSetterContext.Provider>
           </MasonryItemsAspectRatioContext.Provider>
@@ -255,16 +225,26 @@ export const PictureMasonry: FC<MasonryProps> = (props) => {
 }
 
 const itemKey = (item: { entryId: string }) => item.entryId
-const render: React.ComponentType<
+const MasonryRender: React.ComponentType<
   RenderComponentProps<{
     entryId: string
   }>
 > = ({ data, index }) => {
+  const firstScreenReady = useContext(FirstScreenReadyContext)
   if (data.entryId.startsWith("placeholder")) {
     return <LoadingSkeletonItem />
   }
 
-  return <PictureWaterFallItem entryId={data.entryId} index={index} />
+  return (
+    <PictureWaterFallItem
+      className={clsx(
+        firstScreenReady ? "opacity-100" : "opacity-0",
+        "transition-opacity duration-200",
+      )}
+      entryId={data.entryId}
+      index={index}
+    />
+  )
 }
 interface MasonryProps {
   data: string[]
@@ -274,7 +254,7 @@ interface MasonryProps {
 
 const LoadingSkeletonItem = () => {
   // random height, between 100-400px
-  const randomHeight = useSingleton(() => Math.random() * 300 + 100).current
+  const randomHeight = useState(() => Math.random() * 300 + 100)[0]
   return (
     <div className="relative flex gap-2 overflow-x-auto">
       <div

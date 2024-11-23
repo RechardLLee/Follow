@@ -2,15 +2,18 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { is } from "@electron-toolkit/utils"
+import { APP_PROTOCOL } from "@follow/shared"
 import { callWindowExpose } from "@follow/shared/bridge"
-import { imageRefererMatches } from "@follow/shared/image"
 import type { BrowserWindowConstructorOptions } from "electron"
-import { BrowserWindow, screen, shell } from "electron"
+import { app, BrowserWindow, screen, shell } from "electron"
+import type { Event } from "electron/main"
 
-import { isDev, isMacOS, isWindows11 } from "./env"
+import { START_IN_TRAY_ARGS } from "./constants/app"
+import { isDev, isMacOS, isWindows, isWindows11 } from "./env"
 import { getIconPath } from "./helper"
-import { registerContextMenu } from "./lib/context-menu"
+import { t } from "./lib/i18n"
 import { store } from "./lib/store"
+import { getTrayConfig } from "./lib/tray"
 import { logger } from "./logger"
 import { cancelPollingUpdateUnreadCount, pollingUpdateUnreadCount } from "./tipc/dock"
 
@@ -99,12 +102,44 @@ export function createWindow(
   })
 
   window.on("ready-to-show", () => {
-    window?.show()
+    const shouldShowWindow =
+      !app.getLoginItemSettings().wasOpenedAsHidden && !process.argv.includes(START_IN_TRAY_ARGS)
+    if (shouldShowWindow) window.show()
   })
 
   window.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: "deny" }
+  })
+
+  const handleExternalProtocol = async (e: Event, url: string, window: BrowserWindow) => {
+    const { protocol } = new URL(url)
+
+    const ignoreProtocols = ["http", "https", APP_PROTOCOL, "file", "code", "cursor"]
+    if (ignoreProtocols.includes(protocol.slice(0, -1))) {
+      return
+    }
+    e.preventDefault()
+
+    const caller = callWindowExpose(window)
+    const confirm = await caller.dialog.ask({
+      title: t("dialog.openExternalApp.title"),
+      message: t("dialog.openExternalApp.message", { url, interpolation: { escapeValue: false } }),
+      confirmText: t("dialog.open"),
+      cancelText: t("dialog.cancel"),
+    })
+    if (!confirm) {
+      return
+    }
+    shell.openExternal(url)
+  }
+
+  // Handle main window external links
+  window.webContents.on("will-navigate", (e, url) => handleExternalProtocol(e, url, window))
+
+  // Handle webview external links
+  window.webContents.on("did-attach-webview", (_, webContents) => {
+    webContents.on("will-navigate", (e, url) => handleExternalProtocol(e, url, window))
   })
 
   // HMR for renderer base on electron-vite cli.
@@ -123,61 +158,69 @@ export function createWindow(
     })
   }
 
-  window.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
-    const trueUrl =
-      process.env["VITE_IMGPROXY_URL"] && details.url.startsWith(process.env["VITE_IMGPROXY_URL"])
-        ? decodeURIComponent(
-            details.url.replace(
-              new RegExp(`^${process.env["VITE_IMGPROXY_URL"]}/unsafe/\\d+x\\d+/`),
-              "",
-            ),
-          )
-        : details.url
-    const refererMatch = imageRefererMatches.find((item) => item.url.test(trueUrl))
-    callback({
-      requestHeaders: {
-        ...details.requestHeaders,
-        Referer: refererMatch?.referer || trueUrl,
-      },
+  if (isWindows) {
+    // Change the default font-family and font-size of the devtools.
+    // Make it consistent with Chrome on Windows, instead of SimSun.
+    // ref: [[Feature Request]: Add possibility to change DevTools font · Issue #42055 · electron/electron](https://github.com/electron/electron/issues/42055)
+    window.webContents.on("devtools-opened", () => {
+      // source-code-font: For code such as Elements panel
+      // monospace-font: For sidebar such as Event Listener Panel
+      const css = `
+        :root {
+            --source-code-font-family: consolas;
+            --source-code-font-size: 13px;
+            --monospace-font-family: consolas;
+            --monospace-font-size: 13px;
+        }`
+      window.webContents.devToolsWebContents?.executeJavaScript(`
+        const overriddenStyle = document.createElement('style');
+        overriddenStyle.innerHTML = '${css.replaceAll("\n", " ")}';
+        document.body.append(overriddenStyle);
+        document.body.classList.remove('platform-windows');
+      `)
     })
-  })
-  registerContextMenu(window)
+  }
 
   return window
 }
+export const windowStateStoreKey = "windowState"
 export const createMainWindow = () => {
-  const storeKey = "windowState"
-  const windowState = store.get(storeKey) as {
+  const windowState = store.get(windowStateStoreKey) as {
     height: number
     width: number
     x: number
     y: number
   } | null
   const primaryDisplay = screen.getPrimaryDisplay()
-  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize
+  const { workArea } = primaryDisplay
 
-  // Ensure the window is within screen bounds
-  const ensureInBounds = (value: number, size: number, max: number) => {
-    if (value + size > max) {
-      return Math.max(0, max - size)
-    }
-    return Math.max(0, value)
+  const maxWidth = workArea.width
+  const maxHeight = workArea.height
+
+  const width = Math.min(windowState?.width || 1200, maxWidth)
+  const height = Math.min(windowState?.height || 900, maxHeight)
+
+  const ensureInBounds = (value: number, min: number, max: number): number => {
+    return Math.max(min, Math.min(value, max))
   }
 
-  const width = windowState?.width || 1200
-  const height = windowState?.height || 900
   const x =
-    windowState?.x !== undefined ? ensureInBounds(windowState.x, width, screenWidth) : undefined
+    windowState?.x !== undefined
+      ? ensureInBounds(windowState.x, workArea.x, workArea.x + workArea.width - width)
+      : undefined
+
   const y =
-    windowState?.y !== undefined ? ensureInBounds(windowState.y, height, screenHeight) : undefined
+    windowState?.y !== undefined
+      ? ensureInBounds(windowState.y, workArea.y, workArea.y + workArea.height - height)
+      : undefined
 
   const window = createWindow({
     width: windowState?.width || 1200,
     height: windowState?.height || 900,
     x,
     y,
-    minWidth: 1024,
-    minHeight: 500,
+    minWidth: Math.min(1024, maxWidth),
+    minHeight: Math.min(500, maxHeight),
   })
 
   window.on("close", () => {
@@ -185,7 +228,7 @@ export const createMainWindow = () => {
       const windowStoreKey = Symbol.for("maximized")
       if (window[windowStoreKey]) {
         const stored = window[windowStoreKey]
-        store.set(storeKey, {
+        store.set(windowStateStoreKey, {
           width: stored.size[0],
           height: stored.size[1],
           x: stored.position[0],
@@ -197,7 +240,7 @@ export const createMainWindow = () => {
     }
 
     const bounds = window.getBounds()
-    store.set(storeKey, {
+    store.set(windowStateStoreKey, {
       width: bounds.width,
       height: bounds.height,
       x: bounds.x,
@@ -208,7 +251,8 @@ export const createMainWindow = () => {
   windows.mainWindow = window
 
   window.on("close", (event) => {
-    if (isMacOS) {
+    const minimizeToTray = getTrayConfig()
+    if (isMacOS || minimizeToTray) {
       event.preventDefault()
       if (window.isFullScreen()) {
         window.once("leave-full-screen", () => {
@@ -276,7 +320,7 @@ export const getMainWindow = () => windows.mainWindow
 
 export const getMainWindowOrCreate = () => {
   if (!windows.mainWindow) {
-    createMainWindow()
+    return createMainWindow()
   }
   return windows.mainWindow
 }

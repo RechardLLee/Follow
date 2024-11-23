@@ -1,18 +1,19 @@
+import type { FeedViewType } from "@follow/constants"
+import { views } from "@follow/constants"
+import { cn } from "@follow/utils/utils"
 import type { FC, PropsWithChildren } from "react"
 import { useCallback, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useDebounceCallback } from "usehooks-ts"
 
+import { useShowContextMenu } from "~/atoms/context-menu"
 import { useGeneralSettingKey } from "~/atoms/settings/general"
-import { ListItemHoverOverlay } from "~/components/ui/list-item-hover-overlay"
 import { useAsRead } from "~/hooks/biz/useAsRead"
 import { useEntryActions } from "~/hooks/biz/useEntryActions"
 import { useFeedActions } from "~/hooks/biz/useFeedActions"
 import { useNavigateEntry } from "~/hooks/biz/useNavigateEntry"
 import { useRouteParamsSelector } from "~/hooks/biz/useRouteParams"
-import { useAnyPointDown } from "~/hooks/common"
-import { showNativeMenu } from "~/lib/native-menu"
-import { cn } from "~/lib/utils"
+import { useContextMenu } from "~/hooks/common/useContextMenu"
 import type { FlatEntryModel } from "~/store/entry"
 import { entryActions } from "~/store/entry"
 
@@ -21,19 +22,12 @@ export const EntryItemWrapper: FC<
     entry: FlatEntryModel
     view?: number
     itemClassName?: string
-    overlayItemClassName?: string
-    overlay?: boolean
     style?: React.CSSProperties
   } & PropsWithChildren
-> = ({ entry, view, overlay, children, itemClassName, overlayItemClassName, style }) => {
-  const { items } = useEntryActions({
-    view,
-    entry,
-    type: "entryList",
-  })
-
-  const { items: feedItems } = useFeedActions({
-    feedId: entry.feedId,
+> = ({ entry, view, children, itemClassName, style }) => {
+  const actionConfigs = useEntryActions({ entryId: entry.entries.id })
+  const feedItems = useFeedActions({
+    feedId: entry.feedId || entry.inboxId,
     view,
     type: "entryList",
   })
@@ -51,7 +45,7 @@ export const EntryItemWrapper: FC<
       if (!document.hasFocus()) return
       if (asRead) return
 
-      entryActions.markRead(entry.feedId, entry.entries.id, true)
+      entryActions.markRead({ feedId: entry.feedId, entryId: entry.entries.id, read: true })
     },
     233,
     {
@@ -75,25 +69,24 @@ export const EntryItemWrapper: FC<
     [entry.entries.url],
   )
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false)
-  useAnyPointDown(() => setIsContextMenuOpen(false))
-  const handleContextMenu: React.MouseEventHandler<HTMLDivElement> = useCallback(
-    (e) => {
+  const showContextMenu = useShowContextMenu()
+
+  const contextMenuProps = useContextMenu({
+    onContextMenu: async (e) => {
       e.preventDefault()
       setIsContextMenuOpen(true)
-      showNativeMenu(
+      await showContextMenu(
         [
-          ...items
-            .filter((item) => !item.hide)
-            .map((item) => ({
-              type: "text" as const,
-              label: item.name,
-              click: () => item.onClick(e),
-              shortcut: item.shortcut,
-            })),
+          ...actionConfigs.map((item) => ({
+            type: "text" as const,
+            label: item.name,
+            click: () => item.onClick(),
+            shortcut: item.shortcut,
+          })),
           {
             type: "separator" as const,
           },
-          ...feedItems.filter((item) => !item.disabled),
+          ...feedItems.filter((item) => item && !item.disabled),
 
           {
             type: "separator" as const,
@@ -108,9 +101,9 @@ export const EntryItemWrapper: FC<
         ],
         e,
       )
+      setIsContextMenuOpen(false)
     },
-    [items, feedItems, t, entry.entries.id],
-  )
+  })
 
   return (
     <div data-entry-id={entry.entries.id} style={style}>
@@ -118,25 +111,18 @@ export const EntryItemWrapper: FC<
         className={cn(
           "relative",
           asRead ? "text-zinc-700 dark:text-neutral-400" : "text-zinc-900 dark:text-neutral-300",
-
+          views[view as FeedViewType]?.wideMode ? "rounded-md" : "-mx-2 px-2",
+          "duration-200 hover:bg-theme-item-hover",
+          (isActive || isContextMenuOpen) && "!bg-theme-item-active",
           itemClassName,
         )}
         onClick={handleClick}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseEnter.cancel}
         onDoubleClick={handleDoubleClick}
-        onContextMenu={handleContextMenu}
+        {...contextMenuProps}
       >
-        {overlay ? (
-          <ListItemHoverOverlay
-            isActive={isActive || isContextMenuOpen}
-            className={overlayItemClassName}
-          >
-            {children}
-          </ListItemHoverOverlay>
-        ) : (
-          children
-        )}
+        {children}
       </div>
     </div>
   )

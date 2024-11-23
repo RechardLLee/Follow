@@ -1,22 +1,21 @@
+import type {
+  CombinedEntryModel,
+  FeedModel,
+  FeedOrListRespModel,
+  UserModel,
+} from "@follow/models/types"
+import { omit } from "es-toolkit/compat"
 import { produce } from "immer"
-import { omit } from "lodash-es"
 import { nanoid } from "nanoid"
 
 import { whoami } from "~/atoms/user"
 import { runTransactionInScope } from "~/database"
 import { apiClient } from "~/lib/api-fetch"
-import type {
-  FeedModel,
-  FeedOrListModel,
-  FeedOrListRespModel,
-  ListModel,
-  UserModel,
-} from "~/models"
 import { FeedService } from "~/services"
 
 import { getSubscriptionByFeedId } from "../subscription"
 import { userActions } from "../user"
-import { createZustandStore } from "../utils/helper"
+import { createImmerSetter, createZustandStore } from "../utils/helper"
 import type { FeedQueryParams, FeedState } from "./types"
 
 export const useFeedStore = createZustandStore<FeedState>("feed")(() => ({
@@ -24,61 +23,55 @@ export const useFeedStore = createZustandStore<FeedState>("feed")(() => ({
 }))
 
 const set = useFeedStore.setState
+const immerSet = createImmerSetter(useFeedStore)
 const get = useFeedStore.getState
+const distanceTime = 1000 * 60 * 60 * 9
 class FeedActions {
   clear() {
     set({ feeds: {} })
   }
 
-  upsertMany(feeds: FeedOrListRespModel[]) {
+  upsertMany(feeds: FeedModel[]) {
     runTransactionInScope(() => {
-      FeedService.upsertMany(
-        feeds.map((feed) => {
-          if (feed.type === "list") {
-            return omit(feed, ["feeds"])
-          }
-          return feed
-        }),
-      )
+      FeedService.upsertMany(feeds)
     })
-    set((state) =>
-      produce(state, (state) => {
-        for (const feed of feeds) {
-          if (
-            feed.type === "feed" &&
-            feed.errorAt &&
-            new Date(feed.errorAt).getTime() > Date.now() - 1000 * 60 * 60 * 9
-          ) {
-            feed.errorAt = null
-          }
-          if (feed.id) {
-            if (feed.owner) {
-              userActions.upsert(feed.owner as UserModel)
-            }
-            if (feed.type === "feed" && feed.tipUsers) {
-              userActions.upsert(feed.tipUsers)
-            }
-
-            // Not all API return these fields, so merging is needed here.
-            const optionalFields = ["owner", "tipUsers"] as const
-            optionalFields.forEach((field) => {
-              if (state.feeds[feed.id!]?.[field] && !(field in feed)) {
-                ;(feed as any)[field] = { ...state.feeds[feed.id!]?.[field] }
-              }
-            })
-
-            state.feeds[feed.id] = omit(feed, "feeds") as FeedOrListModel
-          } else {
-            // Store temp feed in memory
-            const nonce = feed["nonce"] || nanoid(8)
-            state.feeds[nonce] = { ...feed, id: nonce }
-          }
-          if ("feeds" in feed && feed.feeds) {
-            this.upsertMany(feed.feeds)
-          }
+    immerSet((state) => {
+      for (const feed of feeds) {
+        if (feed.errorAt && new Date(feed.errorAt).getTime() > Date.now() - distanceTime) {
+          feed.errorAt = null
         }
-      }),
-    )
+        if (feed.id) {
+          if (feed.owner) {
+            userActions.upsert(feed.owner as UserModel)
+          }
+          if (feed.tipUsers) {
+            userActions.upsert(feed.tipUsers)
+          }
+
+          // Not all API return these fields, so merging is needed here.
+          const targetFeed = state.feeds[feed.id]
+
+          if (targetFeed?.owner) {
+            feed.owner = { ...targetFeed.owner }
+          }
+          if (
+            targetFeed &&
+            "tipUsers" in targetFeed &&
+            targetFeed.tipUsers &&
+            // Workaround for type issue
+            Array.isArray(targetFeed.tipUsers)
+          ) {
+            feed.tipUsers = [...targetFeed.tipUsers]
+          }
+
+          state.feeds[feed.id] = omit(feed, "feeds") as FeedModel
+        } else {
+          // Store temp feed in memory
+          const nonce = feed["nonce"] || nanoid(8)
+          state.feeds[nonce] = { ...feed, id: nonce }
+        }
+      }
+    })
   }
 
   private patch(feedId: string, patch: Partial<FeedOrListRespModel>) {
@@ -114,50 +107,20 @@ class FeedActions {
     })
   }
 
-  async addFeedToFeedList(listId: string, feed: FeedModel) {
-    const list = get().feeds[listId] as ListModel
-    if (!list) return
-    feedActions.upsertMany([feed])
-
-    this.patch(listId, {
-      feedIds: [feed.id, ...list.feedIds],
-    })
-    feedActions.upsertMany([get().feeds[listId]])
-  }
-
-  async removeFeedFromFeedList(listId: string, feedId: string) {
-    const list = get().feeds[listId] as ListModel
-    if (!list) return
-
-    this.patch(listId, {
-      feedIds: list.feedIds.filter((id) => id !== feedId),
-    })
-    feedActions.upsertMany([get().feeds[listId]])
-  }
-
   // API Fetcher
   //
 
-  async fetchFeedById({ id, url, isList }: FeedQueryParams) {
-    const res = isList
-      ? await apiClient.lists.$get({
-          query: {
-            listId: id!,
-          },
-        })
-      : await apiClient.feeds.$get({
-          query: {
-            id,
-            url,
-          },
-        })
+  async fetchFeedById({ id, url }: FeedQueryParams) {
+    const res = await apiClient.feeds.$get({
+      query: {
+        id,
+        url,
+      },
+    })
 
     const nonce = nanoid(8)
 
-    const finalData = {
-      ...("list" in res.data ? res.data.list : res.data.feed),
-    }
-
+    const finalData = res.data.feed
     if (!finalData.id) {
       finalData["nonce"] = nonce
     }
@@ -168,22 +131,23 @@ class FeedActions {
       feed: !finalData.id ? { ...finalData, id: nonce } : finalData,
     }
   }
-
-  async fetchOwnedLists() {
-    const res = await apiClient.lists.list.$get()
-    this.upsertMany(res.data)
-
-    return res.data
-  }
 }
 export const feedActions = new FeedActions()
 
 export const getFeedById = (feedId: string): Nullable<FeedOrListRespModel> =>
   useFeedStore.getState().feeds[feedId]
 
-export const getPreferredTitle = (feed?: FeedOrListRespModel | null) => {
+export const getPreferredTitle = (
+  feed?: Pick<FeedOrListRespModel, "type" | "id" | "title"> | null,
+  entry?: Pick<CombinedEntryModel["entries"], "authorUrl"> | null,
+) => {
   if (!feed?.id) {
     return feed?.title
+  }
+
+  if (feed.type === "inbox") {
+    if (entry?.authorUrl) return entry.authorUrl.replace(/^mailto:/, "")
+    return feed.title || `${feed.id.slice(0, 1).toUpperCase()}${feed.id.slice(1)}'s Inbox`
   }
 
   const subscription = getSubscriptionByFeedId(feed.id)

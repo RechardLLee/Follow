@@ -3,6 +3,8 @@ import { resolve } from "node:path"
 import { defineConfig } from "electron-vite"
 
 import { viteRenderBaseConfig } from "./configs/vite.render.config"
+import { cleanupUnnecessaryFilesPlugin } from "./plugins/vite/cleanup"
+import { createPlatformSpecificImportPlugin } from "./plugins/vite/specific-import"
 
 export default defineConfig({
   main: {
@@ -19,6 +21,9 @@ export default defineConfig({
         "@locales": resolve("./locales"),
         "~": resolve("./apps/main/src"),
       },
+    },
+    define: {
+      ELECTRON: "true",
     },
   },
   preload: {
@@ -38,6 +43,24 @@ export default defineConfig({
   renderer: {
     ...viteRenderBaseConfig,
 
+    plugins: [
+      ...viteRenderBaseConfig.plugins,
+      createPlatformSpecificImportPlugin(true),
+      cleanupUnnecessaryFilesPlugin([
+        "og-image.png",
+        "icon-512x512.png",
+        "opengraph-image.png",
+        "favicon.ico",
+        "icon-192x192.png",
+        "favicon-dev.ico",
+        "apple-touch-icon-180x180.png",
+        "maskable-icon-512x512.png",
+        "pwa-64x64.png",
+        "pwa-192x192.png",
+        "pwa-512x512.png",
+      ]),
+    ],
+
     root: "apps/renderer",
     build: {
       outDir: "dist/renderer",
@@ -48,6 +71,7 @@ export default defineConfig({
           main: resolve("./apps/renderer/index.html"),
         },
       },
+      minify: true,
     },
     define: {
       ...viteRenderBaseConfig.define,

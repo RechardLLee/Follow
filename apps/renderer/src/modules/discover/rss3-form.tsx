@@ -1,5 +1,6 @@
-import { LoadingCircle } from "~/components/ui/loading"
-import { TokenBrandedRss3 } from "~/components/ui/platform-icon/icons"
+import { LoadingCircle } from "@follow/components/ui/loading/index.jsx"
+import { TokenBrandedRss3 } from "@follow/components/ui/platform-icon/icons.js"
+
 import { useAuthQuery } from "~/hooks/common"
 import { Queries } from "~/queries"
 
@@ -29,7 +30,7 @@ export function DiscoverRSS3() {
   return (
     <>
       {data?.rss3.routes && (
-        <div className="w-[512px]">
+        <div className="w-full max-w-[540px]">
           <DiscoverFeedForm
             routePrefix="rss3"
             route={data.rss3.routes[Object.keys(data.rss3.routes)[0]]}

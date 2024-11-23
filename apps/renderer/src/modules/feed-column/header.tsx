@@ -1,3 +1,9 @@
+import { Logo } from "@follow/components/icons/logo.jsx"
+import { MdiMeditation } from "@follow/components/icons/Meditation.js"
+import { ActionButton } from "@follow/components/ui/button/index.js"
+import { Popover, PopoverContent, PopoverTrigger } from "@follow/components/ui/popover/index.jsx"
+import { stopPropagation } from "@follow/utils/dom"
+import { cn } from "@follow/utils/utils"
 import { m } from "framer-motion"
 import type { FC, PropsWithChildren } from "react"
 import { memo, useCallback, useEffect, useRef, useState } from "react"
@@ -8,15 +14,12 @@ import { toast } from "sonner"
 
 import { setAppSearchOpen } from "~/atoms/app"
 import { useGeneralSettingKey } from "~/atoms/settings/general"
+import { useIsZenMode, useSetZenMode } from "~/atoms/settings/ui"
 import { setFeedColumnShow, useFeedColumnShow, useSidebarActiveView } from "~/atoms/sidebar"
-import { Logo } from "~/components/icons/logo"
-import { ActionButton } from "~/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { ProfileButton } from "~/components/user-button"
 import { useNavigateEntry } from "~/hooks/biz/useNavigateEntry"
 import { useI18n } from "~/hooks/common"
-import { stopPropagation } from "~/lib/dom"
-import { cn } from "~/lib/utils"
+import { useContextMenu } from "~/hooks/common/useContextMenu"
+import { ProfileButton } from "~/modules/user/ProfileButton"
 
 const useBackHome = (active: number) => {
   const navigate = useNavigateEntry()
@@ -60,7 +63,7 @@ export const FeedColumnHeader = memo(() => {
           </div>
         </LogoContextMenu>
       )}
-      <div className="relative flex items-center gap-1" onClick={stopPropagation}>
+      <div className="relative flex items-center gap-2" onClick={stopPropagation}>
         <Link to="/discover" tabIndex={-1}>
           <ActionButton shortcut="Meta+T" tooltip={t("words.discover")}>
             <i className="i-mgc-add-cute-re size-5 text-theme-vibrancyFg" />
@@ -68,7 +71,7 @@ export const FeedColumnHeader = memo(() => {
         </Link>
         <SearchTrigger />
 
-        <ProfileButton method="modal" />
+        <ProfileButton method="modal" animatedAvatar />
         <LayoutActionButton />
       </div>
     </div>
@@ -81,7 +84,8 @@ const LayoutActionButton = () => {
   const [animation, setAnimation] = useState({
     width: !feedColumnShow ? "auto" : 0,
   })
-
+  const isZenMode = useIsZenMode()
+  const setIsZenMode = useSetZenMode()
   useEffect(() => {
     setAnimation({
       width: !feedColumnShow ? "auto" : 0,
@@ -89,21 +93,34 @@ const LayoutActionButton = () => {
   }, [feedColumnShow])
 
   const t = useI18n()
+
+  if (feedColumnShow) return null
+
   return (
     <m.div initial={animation} animate={animation} className="overflow-hidden">
       <ActionButton
-        tooltip={t("app.toggle_sidebar")}
+        tooltip={isZenMode ? t("zen.exit") : t("app.toggle_sidebar")}
         icon={
-          <i
-            className={cn(
-              !feedColumnShow
-                ? "i-mgc-layout-leftbar-open-cute-re "
-                : "i-mgc-layout-leftbar-close-cute-re",
-              "text-theme-vibrancyFg",
-            )}
-          />
+          isZenMode ? (
+            <MdiMeditation />
+          ) : (
+            <i
+              className={cn(
+                !feedColumnShow
+                  ? "i-mgc-layout-leftbar-open-cute-re "
+                  : "i-mgc-layout-leftbar-close-cute-re",
+                "text-theme-vibrancyFg",
+              )}
+            />
+          )
         }
-        onClick={() => setFeedColumnShow(!feedColumnShow)}
+        onClick={() => {
+          if (isZenMode) {
+            setIsZenMode(false)
+          } else {
+            setFeedColumnShow(!feedColumnShow)
+          }
+        }}
       />
     </m.div>
   )
@@ -113,15 +130,15 @@ const LogoContextMenu: FC<PropsWithChildren> = ({ children }) => {
   const [open, setOpen] = useState(false)
   const logoRef = useRef<SVGSVGElement>(null)
   const t = useI18n()
+  const contextMenuProps = useContextMenu({
+    onContextMenu: () => {
+      setOpen(true)
+    },
+  })
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        asChild
-        onContextMenu={() => {
-          setOpen(true)
-        }}
-      >
+      <PopoverTrigger asChild {...contextMenuProps}>
         {children}
       </PopoverTrigger>
       <PopoverContent align="start" className="!p-1">
@@ -165,12 +182,13 @@ const SearchTrigger = () => {
   const canSearch = useGeneralSettingKey("dataPersist")
 
   useHotkeys(
-    "meta+k",
+    "meta+k,ctrl+k",
     () => {
       setAppSearchOpen(true)
     },
     {
       enabled: canSearch,
+      preventDefault: true,
     },
   )
 

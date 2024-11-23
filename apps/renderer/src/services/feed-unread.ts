@@ -1,7 +1,10 @@
 import { browserDB } from "~/database"
+import { feedUnreadActions } from "~/store/unread"
+
+import type { Hydratable } from "./interface"
 
 const feedUnreadModel = browserDB.feedUnreads
-class ServiceStatic {
+class ServiceStatic implements Hydratable {
   updateFeedUnread(list: [string, number][]) {
     return feedUnreadModel.bulkPut(list.map(([feedId, count]) => ({ id: feedId, count })))
   }
@@ -21,6 +24,12 @@ class ServiceStatic {
 
   async bulkDelete(ids: string[]) {
     return feedUnreadModel.bulkDelete(ids)
+  }
+
+  async hydrate() {
+    const unread = await FeedUnreadService.getAll()
+
+    return feedUnreadActions.hydrate(unread)
   }
 }
 

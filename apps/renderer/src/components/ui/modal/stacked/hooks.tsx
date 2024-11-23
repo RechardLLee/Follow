@@ -1,13 +1,21 @@
-import { useCallback, useContext, useId, useRef, useState } from "react"
+import { Button } from "@follow/components/ui/button/index.js"
+import { nextFrame } from "@follow/utils/dom"
+import type { DragControls } from "framer-motion"
+import { atom, useAtomValue } from "jotai"
+import type { ResizeCallback, ResizeStartCallback } from "re-resizable"
+import { useContext, useId, useRef, useState } from "react"
 import { flushSync } from "react-dom"
+import { useTranslation } from "react-i18next"
+import { useContextSelector } from "use-context-selector"
 import { useEventCallback } from "usehooks-ts"
 
 import { getUISettings } from "~/atoms/settings/ui"
 import { jotaiStore } from "~/lib/jotai"
 
 import { modalStackAtom } from "./atom"
-import { CurrentModalContext } from "./context"
-import type { ModalProps, ModalStackOptions } from "./types"
+import { ModalEventBus } from "./bus"
+import { CurrentModalContext, CurrentModalStateContext } from "./context"
+import type { DialogInstance, ModalProps, ModalStackOptions } from "./types"
 
 export const modalIdToPropsMap = {} as Record<string, ModalProps>
 export const useModalStack = (options?: ModalStackOptions) => {
@@ -15,49 +23,49 @@ export const useModalStack = (options?: ModalStackOptions) => {
   const currentCount = useRef(0)
   const { wrapper } = options || {}
 
+  const presentSync = (props: ModalProps & { id?: string }) => {
+    const fallbackModelId = `${id}-${++currentCount.current}`
+    const modalId = props.id ?? fallbackModelId
+
+    const currentStack = jotaiStore.get(modalStackAtom)
+
+    const existingModal = currentStack.find((item) => item.id === modalId)
+    if (existingModal) {
+      // Move to top
+      jotaiStore.set(modalStackAtom, (p) => {
+        const index = p.indexOf(existingModal)
+        return [...p.slice(0, index), ...p.slice(index + 1), existingModal]
+      })
+    } else {
+      // NOTE: The props of the Command Modal are immutable, so we'll just take the store value and inject it.
+      // There is no need to inject `overlay` props, this is rendered responsively based on ui changes.
+      const uiSettings = getUISettings()
+      const modalConfig: Partial<ModalProps> = {
+        draggable: uiSettings.modalDraggable,
+        modal: true,
+      }
+      jotaiStore.set(modalStackAtom, (p) => {
+        const modalProps: ModalProps = {
+          ...modalConfig,
+          ...props,
+
+          wrapper,
+        }
+        modalIdToPropsMap[modalId] = modalProps
+        return p.concat({
+          id: modalId,
+          ...modalProps,
+        })
+      })
+    }
+
+    return () => {
+      jotaiStore.set(modalStackAtom, (p) => p.filter((item) => item.id !== modalId))
+    }
+  }
   return {
-    present: useCallback(
-      (props: ModalProps & { id?: string }) => {
-        const fallbackModelId = `${id}-${++currentCount.current}`
-        const modalId = props.id ?? fallbackModelId
-
-        const currentStack = jotaiStore.get(modalStackAtom)
-
-        const existingModal = currentStack.find((item) => item.id === modalId)
-        if (existingModal) {
-          // Move to top
-          jotaiStore.set(modalStackAtom, (p) => {
-            const index = p.indexOf(existingModal)
-            return [...p.slice(0, index), ...p.slice(index + 1), existingModal]
-          })
-        } else {
-          // NOTE: The props of the Command Modal are immutable, so we'll just take the store value and inject it.
-          // There is no need to inject `overlay` props, this is rendered responsively based on ui changes.
-          const uiSettings = getUISettings()
-          const modalConfig: Partial<ModalProps> = {
-            draggable: uiSettings.modalDraggable,
-            modal: true,
-          }
-          jotaiStore.set(modalStackAtom, (p) => {
-            const modalProps: ModalProps = {
-              ...modalConfig,
-              ...props,
-
-              wrapper,
-            }
-            modalIdToPropsMap[modalId] = modalProps
-            return p.concat({
-              id: modalId,
-              ...modalProps,
-            })
-          })
-        }
-
-        return () => {
-          jotaiStore.set(modalStackAtom, (p) => p.filter((item) => item.id !== modalId))
-        }
-      },
-      [id, wrapper],
+    present: useEventCallback((props: ModalProps & { id?: string }) =>
+      nextFrame(() => presentSync(props)),
     ),
 
     ...actions,
@@ -65,19 +73,26 @@ export const useModalStack = (options?: ModalStackOptions) => {
 }
 const actions = {
   getTopModalStack() {
-    return jotaiStore.get(modalStackAtom)[0]
+    return jotaiStore.get(modalStackAtom).at(-1)
   },
   getModalStackById(id: string) {
     return jotaiStore.get(modalStackAtom).find((item) => item.id === id)
   },
   dismiss(id: string) {
-    jotaiStore.set(modalStackAtom, (p) => p.filter((item) => item.id !== id))
+    ModalEventBus.dispatch("MODAL_DISPATCH", {
+      type: "dismiss",
+      id,
+    })
   },
   dismissTop() {
-    jotaiStore.set(modalStackAtom, (p) => p.slice(0, -1))
+    const topModal = actions.getTopModalStack()
+
+    if (!topModal) return
+    actions.dismiss(topModal.id)
   },
   dismissAll() {
-    jotaiStore.set(modalStackAtom, [])
+    const modalStack = jotaiStore.get(modalStackAtom)
+    modalStack.forEach((item) => actions.dismiss(item.id))
   },
 }
 
@@ -87,14 +102,17 @@ export const useResizeableModal = (
   modalElementRef: React.RefObject<HTMLDivElement>,
   {
     enableResizeable,
+    dragControls,
   }: {
     enableResizeable: boolean
+    dragControls?: DragControls
   },
 ) => {
   const [resizeableStyle, setResizeableStyle] = useState({} as React.CSSProperties)
   const [isResizeable, setIsResizeable] = useState(false)
+  const [preferDragDir, setPreferDragDir] = useState<"x" | "y" | null>(null)
 
-  const handlePointDown = useEventCallback(() => {
+  const relocateModal = useEventCallback(() => {
     if (!enableResizeable) return
     if (isResizeable) return
     const $modalElement = modalElementRef.current
@@ -112,10 +130,81 @@ export const useResizeableModal = (
       })
     })
   })
+  const handleResizeStart = useEventCallback(((e, dir) => {
+    if (!enableResizeable) return
+    relocateModal()
+
+    const hasTop = /top/i.test(dir)
+    const hasLeft = /left/i.test(dir)
+    if (hasTop || hasLeft) {
+      dragControls?.start(e as any)
+      if (hasTop && hasLeft) {
+        setPreferDragDir(null)
+      } else if (hasTop) {
+        setPreferDragDir("y")
+      } else if (hasLeft) {
+        setPreferDragDir("x")
+      }
+    }
+  }) satisfies ResizeStartCallback)
+  const handleResizeStop = useEventCallback((() => {
+    setPreferDragDir(null)
+  }) satisfies ResizeCallback)
 
   return {
     resizeableStyle,
     isResizeable,
-    handlePointDown,
+    relocateModal,
+    handleResizeStart,
+    handleResizeStop,
+    preferDragDir,
   }
 }
+
+export const useIsTopModal = () => useContextSelector(CurrentModalStateContext, (v) => v.isTop)
+
+export const useDialog = (): DialogInstance => {
+  const { present } = useModalStack()
+  const { t } = useTranslation()
+  return {
+    ask: useEventCallback((options) => {
+      return new Promise<boolean>((resolve) => {
+        present({
+          title: options.title,
+          content: ({ dismiss }) => (
+            <div className="flex max-w-[75ch] flex-col gap-3">
+              {options.message}
+
+              <div className="flex items-center justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    options.onCancel?.()
+                    resolve(false)
+                    dismiss()
+                  }}
+                >
+                  {options.cancelText ?? t("cancel", { ns: "common" })}
+                </Button>
+                <Button
+                  onClick={() => {
+                    options.onConfirm?.()
+                    resolve(true)
+                    dismiss()
+                  }}
+                >
+                  {options.confirmText ?? t("confirm", { ns: "common" })}
+                </Button>
+              </div>
+            </div>
+          ),
+          canClose: true,
+          clickOutsideToDismiss: false,
+        })
+      })
+    }),
+  }
+}
+
+const modalStackLengthAtom = atom((get) => get(modalStackAtom).length)
+export const useHasModal = () => useAtomValue(modalStackLengthAtom) > 0

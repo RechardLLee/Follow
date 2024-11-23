@@ -1,10 +1,14 @@
+import { cn } from "@follow/utils/utils"
 import { t } from "i18next"
 import { FetchError } from "ofetch"
 import { createElement } from "react"
+import type { ExternalToast } from "sonner"
 import { toast } from "sonner"
 
 import { CopyButton } from "~/components/ui/code-highlighter"
-import { Markdown } from "~/components/ui/markdown"
+import { Markdown } from "~/components/ui/markdown/Markdown"
+import { isDev } from "~/constants"
+import { DebugRegistry } from "~/modules/debug/registry"
 
 export const getFetchErrorMessage = (error: Error) => {
   if (error instanceof FetchError) {
@@ -22,16 +26,32 @@ export const getFetchErrorMessage = (error: Error) => {
 
   return error.message
 }
-export const toastFetchError = (error: Error) => {
+
+/**
+ * Just a wrapper around `toastFetchError` to create a function that can be used as a callback.
+ */
+export const createErrorToaster = (title?: string, toastOptions?: ExternalToast) => (err: Error) =>
+  toastFetchError(err, { title, ...toastOptions })
+
+export const toastFetchError = (
+  error: Error,
+  { title: _title, ..._toastOptions }: ExternalToast & { title?: string } = {},
+) => {
   let message = ""
   let _reason = ""
+
   if (error instanceof FetchError) {
     try {
-      const json = JSON.parse(error.response?._data)
+      const json =
+        typeof error.response?._data === "string"
+          ? JSON.parse(error.response?._data)
+          : error.response?._data
 
       const { reason, code, message: _message } = json
-      const i18nKey = `errors:${code}` as any
-      const i18nMessage = t(i18nKey) === i18nKey ? message : t(i18nKey)
+      message = _message
+
+      const tValue = t(`errors:${code}` as any)
+      const i18nMessage = tValue === code.toString() ? message : tValue
 
       message = i18nMessage
 
@@ -43,30 +63,56 @@ export const toastFetchError = (error: Error) => {
     }
   }
 
-  if (!_reason) {
-    return toast.error(message)
-  } else {
-    return toast.error(message, {
-      duration: 5000,
+  const toastOptions: ExternalToast = {
+    ..._toastOptions,
+    classNames: {
+      toast: "items-start bg-theme-background",
 
-      description: createElement(
-        "div",
-        {
-          className: "min-w-0 flex relative",
-        },
-        [
-          createElement(CopyButton, {
-            className: "absolute right-0 top-0 z-[1]",
-            key: "copy",
-            value: _reason,
-          }),
-          createElement(Markdown, {
-            key: "reason",
-            className: "text-sm opacity-70 min-w-0",
-            children: _reason,
-          }),
-        ],
-      ),
+      content: "w-full",
+      ..._toastOptions.classNames,
+    },
+  }
+
+  if (!_reason) {
+    const title = _title || message
+    toastOptions.description = _title ? message : undefined
+    return toast.error(title, toastOptions)
+  } else {
+    return toast.error(message || _title, {
+      duration: 5000,
+      ...toastOptions,
+      description: createElement("div", {}, [
+        createElement(CopyButton, {
+          className: cn(
+            "relative z-[1] float-end -mt-1",
+            "border-transparent bg-theme-background text-theme-foreground opacity-60 transition-opacity",
+            "hover:bg-theme-button-hover hover:opacity-100 focus:border-theme-foreground/20",
+          ),
+          key: "copy",
+          value: _reason,
+        }),
+        createElement(Markdown, {
+          key: "reason",
+          className: "text-sm opacity-70 min-w-0 flex-1 mt-1",
+          children: _reason,
+        }),
+      ]),
     })
   }
+}
+if (isDev) {
+  DebugRegistry.add("Simulate request error", () => {
+    createErrorToaster(
+      "Simulated request error",
+      {},
+    )({
+      response: {
+        _data: JSON.stringify({
+          code: 1000,
+          message: "Simulated request error",
+          reason: "Simulated reason",
+        }),
+      },
+    } as any)
+  })
 }
