@@ -10,15 +10,13 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useAudioPlayerAtomSelector } from "~/atoms/player"
 import { useUISettingKey } from "~/atoms/settings/ui"
 import { useSidebarActiveView } from "~/atoms/sidebar"
-import { FeedIcon } from "~/modules/feed/feed-icon"
-import { CornerPlayer } from "~/modules/player/corner-player"
 import { useEntry } from "~/store/entry"
 import { useFeedById } from "~/store/feed"
 import { feedIconSelector } from "~/store/feed/selector"
 import { useUnreadByView } from "~/store/unread/hooks"
 
 import { ProfileButton } from "../../user/ProfileButton"
-import styles from "./mobile.module.css"
+import { PodcastButton } from "./components/PodcastButton"
 
 export const MobileFloatBar = ({
   scrollContainer,
@@ -60,8 +58,10 @@ export const MobileFloatBar = ({
 
   useEffect(() => {
     if (isScrollDown) {
+      const computedStyle = getComputedStyle(document.documentElement)
+      const safeAreaBottom = computedStyle.getPropertyValue("--sab")
       animateController.start({
-        translateY: "calc(100% + 40px + env(safe-area-inset-bottom))",
+        translateY: `calc(100% + 40px + ${safeAreaBottom})`,
         transition: { type: "tween", duration: 0.1 },
       })
     } else {
@@ -72,25 +72,28 @@ export const MobileFloatBar = ({
   }, [isScrollDown, animateController])
 
   return (
-    <m.div
+    <div
       className={clsx(
-        "absolute inset-x-0 flex h-10 justify-center will-change-transform bottom-safe-offset-8",
+        "pointer-events-none absolute inset-x-0 bottom-0 flex h-36 items-end pb-safe-offset-6",
         className,
       )}
-      transition={{ type: "spring" }}
-      animate={animateController}
     >
-      <div className={styles["float-bar"]}>
-        <MotionButtonBase onClick={onLogoClick}>
-          <Logo className="size-5 shrink-0" />
-        </MotionButtonBase>
+      <m.div
+        className={clsx(
+          "mx-1 inline-flex h-10 w-full min-w-0 items-center rounded-full border border-neutral-200 bg-background pl-4 pr-2 shadow-sm shadow-zinc-100 dark:border-neutral-800",
+          "[box-shadow:0px_8px_30px_rgba(122,122,122,0.2)] dark:[box-shadow:0px_8px_30px_rgba(122,122,122,0.2)]",
+          "pointer-events-auto",
+        )}
+        transition={{ type: "spring" }}
+        animate={animateController}
+      >
+        <PlayerIcon isScrollDown={isScrollDown} onLogoClick={onLogoClick} />
         <DividerVertical className="h-3/4 shrink-0" />
         <ViewTabs onViewChange={onViewChange} />
         <DividerVertical className="h-3/4 shrink-0" />
-        <PlayerIcon />
         <ProfileButton />
-      </div>
-    </m.div>
+      </m.div>
+    </div>
   )
 }
 
@@ -130,28 +133,19 @@ const ViewTabs = ({ onViewChange }: { onViewChange?: (view: number) => void }) =
   )
 }
 
-const PlayerIcon = () => {
-  const { isPlaying, entryId } = useAudioPlayerAtomSelector(
-    useCallback((state) => ({ isPlaying: state.status === "playing", entryId: state.entryId }), []),
+const PlayerIcon = ({ onLogoClick }: { isScrollDown: boolean; onLogoClick?: () => void }) => {
+  const { show, entryId } = useAudioPlayerAtomSelector(
+    useCallback((state) => ({ entryId: state.entryId, show: state.show }), []),
   )
   const feedId = useEntry(entryId, (s) => s.feedId)
   const feed = useFeedById(feedId, feedIconSelector)
-  const [isShowPlayer, setIsShowPlayer] = useState(false)
-  if (!feed) return null
-  if (!isPlaying) return null
-  return (
-    <>
-      <button
-        type="button"
-        className="mr-3 size-5 shrink-0"
-        onClick={() => setIsShowPlayer((v) => !v)}
-      >
-        <FeedIcon feed={feed} />
-      </button>
+  if (!feed || !show) {
+    return (
+      <MotionButtonBase onClick={onLogoClick}>
+        <Logo className="size-5 shrink-0" />
+      </MotionButtonBase>
+    )
+  }
 
-      {isShowPlayer && (
-        <CornerPlayer className="absolute bottom-12 left-0 w-full max-w-[350px] overflow-hidden rounded-r-lg" />
-      )}
-    </>
-  )
+  return <PodcastButton feed={feed} />
 }

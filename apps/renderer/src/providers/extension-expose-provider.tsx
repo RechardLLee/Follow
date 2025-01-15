@@ -4,8 +4,10 @@ import { useEffect, useLayoutEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 
+import { setWindowState } from "~/atoms/app"
 import { getGeneralSettings } from "~/atoms/settings/general"
 import { getUISettings, useToggleZenMode } from "~/atoms/settings/ui"
+import { setUpdaterStatus } from "~/atoms/updater"
 import { useDialog, useModalStack } from "~/components/ui/modal/stacked/hooks"
 import { useDiscoverRSSHubRouteModal } from "~/hooks/biz/useDiscoverRSSHubRoute"
 import { useFollow } from "~/hooks/biz/useFollow"
@@ -39,6 +41,12 @@ export const ExtensionExposeProvider = () => {
 
       clearIfLoginOtherAccount(newUserId: string) {
         clearDataIfLoginOtherAccount(newUserId)
+      },
+      readyToUpdate() {
+        setUpdaterStatus({
+          type: "renderer",
+          status: "ready",
+        })
       },
     })
   }, [])
@@ -78,5 +86,15 @@ export const ExtensionExposeProvider = () => {
       dialog,
     })
   }, [dialog])
+
+  useBindElectronBridge()
   return null
+}
+
+const useBindElectronBridge = () => {
+  useEffect(() => {
+    registerGlobalContext({
+      setWindowState,
+    })
+  }, [])
 }

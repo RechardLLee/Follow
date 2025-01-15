@@ -4,7 +4,7 @@ import { UserRole } from "@follow/constants"
 import { cn } from "@follow/utils/utils"
 import { createElement } from "react"
 import { useTranslation } from "react-i18next"
-import { useSearchParams } from "react-router-dom"
+import { useSearchParams } from "react-router"
 
 import { useUserRole } from "~/atoms/user"
 import { AppErrorBoundary } from "~/components/common/AppErrorBoundary"
@@ -81,10 +81,13 @@ export function Component() {
       <Tabs
         value={search.get("type") || "search"}
         onValueChange={(val) => {
-          setSearch((search) => {
-            search.set("type", val)
-            return new URLSearchParams(search)
-          })
+          setSearch(
+            (search) => {
+              search.set("type", val)
+              return new URLSearchParams(search)
+            },
+            { replace: true },
+          )
         }}
         className="max-w-full"
       >
@@ -104,8 +107,6 @@ export function Component() {
                 {t(tab.name)}
               </TabsTrigger>
             ))}
-
-            {/* <Trend className="relative bottom-0 left-1.5 mr-3.5 w-6" /> */}
           </TabsList>
         </ScrollArea.ScrollArea>
         {currentTabs.map((tab) => (

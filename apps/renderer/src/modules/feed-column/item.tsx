@@ -1,3 +1,4 @@
+import { useMobile } from "@follow/components/hooks/useMobile.js"
 import { OouiUserAnonymous } from "@follow/components/icons/OouiUserAnonymous.jsx"
 import {
   Tooltip,
@@ -29,7 +30,7 @@ import { useListById } from "~/store/list"
 import { subscriptionActions, useSubscriptionByFeedId } from "~/store/subscription"
 import { useFeedUnreadStore } from "~/store/unread"
 
-import { useSelectedFeedIds } from "./atom"
+import { useSelectedFeedIdsState } from "./atom"
 import { DraggableContext } from "./context"
 import { feedColumnStyles } from "./styles"
 import { UnreadNumber } from "./unread-number"
@@ -38,6 +39,26 @@ interface FeedItemProps {
   feedId: string
   view?: number
   className?: string
+}
+
+const DraggableItemWrapper: Component<
+  {
+    className?: string
+    isInMultipleSelection: boolean
+  } & React.HTMLAttributes<HTMLDivElement>
+> = ({ children, isInMultipleSelection, ...props }) => {
+  const draggableContext = useContext(DraggableContext)
+
+  return (
+    <div
+      {...draggableContext?.attributes}
+      {...draggableContext?.listeners}
+      style={isInMultipleSelection ? draggableContext?.style : undefined}
+      {...props}
+    >
+      {children}
+    </div>
+  )
 }
 const FeedItemImpl = ({ view, feedId, className }: FeedItemProps) => {
   const { t } = useTranslation()
@@ -58,10 +79,12 @@ const FeedItemImpl = ({ view, feedId, className }: FeedItemProps) => {
     }
   })
 
-  const [selectedFeedIds, setSelectedFeedIds] = useSelectedFeedIds()
-  const draggableContext = useContext(DraggableContext)
-  const isInMultipleSelection = selectedFeedIds.includes(feedId)
-  const isMultiSelectingButNotSelected = selectedFeedIds.length > 0 && !isInMultipleSelection
+  const [selectedFeedIds, setSelectedFeedIds] = useSelectedFeedIdsState()
+
+  const isMobile = useMobile()
+  const isInMultipleSelection = !isMobile && selectedFeedIds.includes(feedId)
+  const isMultiSelectingButNotSelected =
+    !isMobile && selectedFeedIds.length > 0 && !isInMultipleSelection
 
   const handleClick: React.MouseEventHandler<HTMLDivElement> = useCallback(
     (e) => {
@@ -120,6 +143,8 @@ const FeedItemImpl = ({ view, feedId, className }: FeedItemProps) => {
                     `\`\`\`json\n${JSON.stringify(feed, null, 2)}\n\`\`\``,
                   label: "bug",
                   title: `Feed Error: ${feed.title}, ${feed.errorMessage}`,
+                  target: "discussion",
+                  category: "feed-expired",
                 }),
               )
             },
@@ -136,79 +161,71 @@ const FeedItemImpl = ({ view, feedId, className }: FeedItemProps) => {
   const isFeed = feed.type === "feed" || !feed.type
 
   return (
-    <>
+    <DraggableItemWrapper
+      isInMultipleSelection={isInMultipleSelection}
+      data-feed-id={feedId}
+      data-active={
+        isMultiSelectingButNotSelected
+          ? false
+          : isActive || isContextMenuOpen || isInMultipleSelection
+      }
+      className={cn(
+        feedColumnStyles.item,
+        isFeed ? "py-[2px]" : "py-1.5",
+        "justify-between py-[2px]",
+        className,
+      )}
+      onClick={handleClick}
+      onDoubleClick={() => {
+        window.open(UrlBuilder.shareFeed(feedId, view), "_blank")
+      }}
+      {...contextMenuProps}
+    >
       <div
-        {...(isInMultipleSelection && draggableContext?.attributes
-          ? draggableContext.attributes
-          : {})}
-        {...(isInMultipleSelection && draggableContext?.listeners
-          ? draggableContext.listeners
-          : {})}
-        style={isInMultipleSelection ? draggableContext?.style : undefined}
-        data-feed-id={feedId}
-        data-active={
-          isMultiSelectingButNotSelected
-            ? false
-            : isActive || isContextMenuOpen || isInMultipleSelection
-        }
         className={cn(
-          feedColumnStyles.item,
-          isFeed ? "py-[2px]" : "py-1.5",
-          "justify-between py-[2px]",
-          className,
+          "flex min-w-0 items-center",
+          isFeed && feed.errorAt && "text-red-900 dark:text-red-500",
         )}
-        onClick={handleClick}
-        onDoubleClick={() => {
-          window.open(UrlBuilder.shareFeed(feedId, view), "_blank")
-        }}
-        {...contextMenuProps}
       >
-        <div
-          className={cn(
-            "flex min-w-0 items-center",
-            isFeed && feed.errorAt && "text-red-900 dark:text-red-500",
-          )}
-        >
-          <FeedIcon fallback feed={feed} size={16} />
-          <FeedTitle feed={feed} />
-          {isFeed && feed.errorAt && (
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger asChild>
-                <i className="i-mgc-wifi-off-cute-re ml-1 shrink-0 text-base" />
-              </TooltipTrigger>
-              <TooltipPortal>
-                <TooltipContent>
+        <FeedIcon fallback feed={feed} size={16} />
+        <FeedTitle feed={feed} />
+        {isFeed && feed.errorAt && (
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <i className="i-mgc-wifi-off-cute-re ml-1 shrink-0 text-base" />
+            </TooltipTrigger>
+            <TooltipPortal>
+              <TooltipContent>
+                <div className="flex items-center gap-1">
+                  <i className="i-mgc-time-cute-re" />
+                  {t("feed_item.error_since")}{" "}
+                  {dayjs
+                    .duration(dayjs(feed.errorAt).diff(dayjs(), "minute"), "minute")
+                    .humanize(true)}
+                </div>
+                {!!feed.errorMessage && (
                   <div className="flex items-center gap-1">
-                    <i className="i-mgc-time-cute-re" />
-                    {t("feed_item.error_since")}{" "}
-                    {dayjs
-                      .duration(dayjs(feed.errorAt).diff(dayjs(), "minute"), "minute")
-                      .humanize(true)}
+                    <i className="i-mgc-bug-cute-re" />
+                    {feed.errorMessage}
                   </div>
-                  {!!feed.errorMessage && (
-                    <div className="flex items-center gap-1">
-                      <i className="i-mgc-bug-cute-re" />
-                      {feed.errorMessage}
-                    </div>
-                  )}
-                </TooltipContent>
-              </TooltipPortal>
-            </Tooltip>
-          )}
-          {subscription.isPrivate && (
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger>
-                <OouiUserAnonymous className="ml-1 shrink-0 text-base" />
-              </TooltipTrigger>
-              <TooltipPortal>
-                <TooltipContent>{t("feed_item.not_publicly_visible")}</TooltipContent>
-              </TooltipPortal>
-            </Tooltip>
-          )}
-        </div>
-        <UnreadNumber unread={feedUnread} className="ml-2" />
+                )}
+              </TooltipContent>
+            </TooltipPortal>
+          </Tooltip>
+        )}
+        {subscription.isPrivate && (
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger>
+              <OouiUserAnonymous className="ml-1 shrink-0 text-base" />
+            </TooltipTrigger>
+            <TooltipPortal>
+              <TooltipContent>{t("feed_item.not_publicly_visible")}</TooltipContent>
+            </TooltipPortal>
+          </Tooltip>
+        )}
       </div>
-    </>
+      <UnreadNumber unread={feedUnread} className="ml-2" />
+    </DraggableItemWrapper>
   )
 }
 
@@ -218,7 +235,7 @@ const ListItemImpl: Component<{
   listId: string
   view: FeedViewType
   iconSize?: number
-}> = ({ view, listId, className, iconSize = 28 }) => {
+}> = ({ view, listId, className, iconSize = 22 }) => {
   const list = useListById(listId)
 
   const isActive = useRouteParamsSelector((routerParams) => routerParams.listId === listId)
@@ -263,14 +280,14 @@ const ListItemImpl: Component<{
     <div
       data-list-id={listId}
       data-active={isActive || isContextMenuOpen}
-      className={cn(feedColumnStyles.item, "py-1.5 pl-2.5", className)}
+      className={cn(feedColumnStyles.item, "py-1 pl-2.5", className)}
       onClick={handleNavigate}
       onDoubleClick={() => {
         window.open(UrlBuilder.shareList(listId, view), "_blank")
       }}
       {...contextMenuProps}
     >
-      <div className={"flex min-w-0 items-center"}>
+      <div className="flex min-w-0 flex-1 items-center">
         <FeedIcon fallback feed={list} size={iconSize} />
         <EllipsisHorizontalTextWithTooltip className="truncate">
           {getPreferredTitle(list)}

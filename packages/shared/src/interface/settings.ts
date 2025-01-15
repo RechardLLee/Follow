@@ -1,6 +1,7 @@
 export interface GeneralSettings {
   appLaunchOnStartup: boolean
   language: string
+  translationLanguage: string
   startupScreen: "subscription" | "timeline"
   dataPersist: boolean
   sendAnonymousData: boolean
@@ -12,8 +13,15 @@ export interface GeneralSettings {
   jumpOutLinkWarn: boolean
   // TTS
   voice: string
-  reduceRefetch: boolean
   autoGroup: boolean
+  /**
+   * Top timeline for mobile
+   */
+  showQuickTimeline: boolean
+  /**
+   * Auto expand long social media
+   */
+  autoExpandLongSocialMedia: boolean
 }
 
 export interface UISettings {
@@ -44,6 +52,12 @@ export interface UISettings {
   pictureViewMasonry: boolean
   pictureViewFilterNoImage: boolean
   wideMode: boolean
+
+  // Action Order
+  toolbarOrder: {
+    main: (string | number)[]
+    more: (string | number)[]
+  }
 }
 
 export interface IntegrationSettings {
@@ -59,11 +73,6 @@ export interface IntegrationSettings {
   instapaperUsername: string
   instapaperPassword: string
 
-  // omnivore
-  enableOmnivore: boolean
-  omnivoreEndpoint: string
-  omnivoreToken: string
-
   // obsidian
   enableObsidian: boolean
   obsidianVaultPath: string
@@ -73,4 +82,9 @@ export interface IntegrationSettings {
   outlineEndpoint: string
   outlineToken: string
   outlineCollection: string
+
+  // readeck
+  enableReadeck: boolean
+  readeckEndpoint: string
+  readeckToken: string
 }

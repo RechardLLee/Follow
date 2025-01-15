@@ -28,9 +28,9 @@ Whether for users or professional developers, Follow will be your open informati
 
 Feel free to try it using the following methods:
 
-| [![](https://img.shields.io/badge/Try%20Web%20App-Online-55b467?labelColor=black&logo=vercel&style=flat-square)](https://app.follow.is)                                                     | No installation necessary! Visit our web app to experience it firsthand.                 |
-| :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :--------------------------------------------------------------------------------------- |
-| [![](https://img.shields.io/github/v/release/RSSNext/Follow?color=369eff&labelColor=black&logo=github&style=flat-square&label=Releases)](https://github.com/RSSNext/Follow/releases/latest) | Download and install the desktop client for a smoother experience and enhanced features. |
+| [![](https://img.shields.io/badge/Try%20Web%20App-Online-55b467?labelColor=black&logo=vercel&style=flat-square)](https://app.follow.is)                                                                                                                                                                                                                                                        | No installation necessary! Visit our web app to experience it firsthand.                 |
+| :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------- |
+| [![](https://img.shields.io/github/v/release/RSSNext/Follow?color=369eff&labelColor=black&logo=github&style=flat-square&label=Releases)](https://github.com/RSSNext/Follow/releases/latest) [![](https://img.shields.io/github/downloads/RSSNext/Follow/total?color=369eff&labelColor=black&logo=github&style=flat-square&label=Downloads)](https://github.com/RSSNext/Follow/releases/latest) | Download and install the desktop client for a smoother experience and enhanced features. |
 
 You can also install using the following methods maintained by our community:
 
@@ -38,9 +38,9 @@ You can also install using the following methods maintained by our community:
 - If you are using Nix, you can install package [follow](https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/fo/follow/package.nix) that maintained by [iosmanthus](https://github.com/iosmanthus).
 - If you are using macOS with [Homebrew](https://brew.sh), you can install cask [follow](https://formulae.brew.sh/cask/follow) (also [@alpha](https://formulae.brew.sh/cask/follow@alpha) and [@nightly](https://formulae.brew.sh/cask/follow@nightly)) that maintained by [realSunyz](https://github.com/realSunyz).
 
-| [![Discord](https://img.shields.io/discord/1243823539426033696?color=5865F2&label=Discord&labelColor=black&logo=discord&logoColor=white&style=flat-square)](https://discord.gg/followapp) | Join our Discord server to connect with developers, request features, and receive support. |
-| :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------- |
-| [![](https://img.shields.io/badge/any_text-Follow-blue?color=2CA5E0&label=_&logo=x&labelColor=black&style=flat-square)](https://x.com/intent/follow?screen_name=follow_app_)              | Follow us on X/Twitter for product updates and to join in on reward activities.            |
+| [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Finvites%2Ffollowapp%3Fwith_counts%3Dtrue&query=approximate_member_count&color=5865F2&label=Discord&labelColor=black&logo=discord&logoColor=white&style=flat-square)](https://discord.gg/followapp) | Join our Discord server to connect with developers, request features, and receive support. |
+| :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------- |
+| [![](https://img.shields.io/badge/any_text-Follow-blue?color=2CA5E0&label=_&logo=x&labelColor=black&style=flat-square)](https://x.com/intent/follow?screen_name=follow_app_)                                                                                                                   | Follow us on X/Twitter for product updates and to join in on reward activities.            |
 
 > \[!IMPORTANT]
 >
@@ -104,7 +104,7 @@ pnpm install
 ### Develop in the browser
 
 ```sh
-pnpm run dev:web
+pnpm run dev
 ```
 
 Then the browser opens `https://app.follow.is/__debug_proxy`，you can access the online API environment to development and debugging.
@@ -120,13 +120,13 @@ cp .env.example .env
 Then set `VITE_API_URL` to `https://api.follow.is` and run:
 
 ```sh
-pnpm run dev
+pnpm run dev:electron
 ```
 
 Since it is not very convenient to develop in Electron, the first way to develop and contribute is recommended at this stage.
 
 > [!TIP]
-> If you can't log in to the app, copy the `authjs.session-token` in the cookie from your browser into the app.
+> If you can't log in to the app, copy the `__Secure-better-auth.session_token` in the cookie from your browser into the app.
 
 ## 📝 License
 

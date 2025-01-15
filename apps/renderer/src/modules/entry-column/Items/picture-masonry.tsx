@@ -29,10 +29,13 @@ import { useEventCallback } from "usehooks-ts"
 
 import { useGeneralSettingKey } from "~/atoms/settings/general"
 import { MediaContainerWidthProvider } from "~/components/ui/media"
-import { getEntry } from "~/store/entry"
+import { useAuthQuery } from "~/hooks/common/useBizQuery"
+import { Queries } from "~/queries"
+import { getEntry, useEntry } from "~/store/entry"
 import { imageActions } from "~/store/image"
 
-import { batchMarkRead } from "../hooks"
+import { getMasonryColumnValue, setMasonryColumnValue, useMasonryColumnValue } from "../atoms"
+import { batchMarkRead } from "../hooks/useEntryMarkReadHandler"
 import { PictureWaterFallItem } from "./picture-item"
 
 // grid grid-cols-1 @lg:grid-cols-2 @3xl:grid-cols-3 @6xl:grid-cols-4 @7xl:grid-cols-5 px-4 gap-1.5
@@ -66,9 +69,22 @@ export const PictureMasonry: FC<MasonryProps> = (props) => {
     })
   }, [])
 
-  const { containerRef, currentColumn, currentItemWidth } = useMasonryColumn(gutter, () => {
-    setIsInitLayout(true)
-  })
+  const customizeColumn = useMasonryColumnValue()
+  const { containerRef, currentColumn, currentItemWidth, calcItemWidth } = useMasonryColumn(
+    gutter,
+    (column) => {
+      setIsInitLayout(true)
+      if (getMasonryColumnValue() === -1) {
+        setMasonryColumnValue(column)
+      }
+    },
+  )
+
+  const finalColumn = customizeColumn !== -1 ? customizeColumn : currentColumn
+  const finalItemWidth = useMemo(
+    () => (customizeColumn !== -1 ? calcItemWidth(finalColumn) : currentItemWidth),
+    [calcItemWidth, currentItemWidth, customizeColumn, finalColumn],
+  )
 
   const items = useMemo(() => {
     const result = data.map((entryId) => {
@@ -197,17 +213,17 @@ export const PictureMasonry: FC<MasonryProps> = (props) => {
   return (
     <div ref={containerRef} className="mx-4 pt-2">
       {isInitDim && deferIsInitLayout && (
-        <MasonryItemWidthContext.Provider value={currentItemWidth}>
+        <MasonryItemWidthContext.Provider value={finalItemWidth}>
           <MasonryItemsAspectRatioContext.Provider value={masonryItemsRadio}>
             <MasonryItemsAspectRatioSetterContext.Provider value={setMasonryItemsRadio}>
               <MasonryIntersectionContext.Provider value={intersectionObserver}>
-                <MediaContainerWidthProvider width={currentItemWidth}>
+                <MediaContainerWidthProvider width={finalItemWidth}>
                   <FirstScreenReadyContext.Provider value={firstScreenReady}>
                     <Masonry
                       items={firstScreenReady ? items : items.slice(0, FirstScreenItemCount)}
                       columnGutter={gutter}
-                      columnWidth={currentItemWidth}
-                      columnCount={currentColumn}
+                      columnWidth={finalItemWidth}
+                      columnCount={finalColumn}
                       overscanBy={2}
                       render={MasonryRender}
                       onRender={handleRender}
@@ -231,6 +247,23 @@ const MasonryRender: React.ComponentType<
   }>
 > = ({ data, index }) => {
   const firstScreenReady = useContext(FirstScreenReadyContext)
+  const entry = useEntry(data.entryId)
+  const translation = useAuthQuery(
+    Queries.ai.translation({
+      entry: entry!,
+      view: entry?.view,
+      language: entry?.settings?.translation,
+    }),
+    {
+      enabled: !!entry?.settings?.translation,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      meta: {
+        persist: true,
+      },
+    },
+  )
+
   if (data.entryId.startsWith("placeholder")) {
     return <LoadingSkeletonItem />
   }
@@ -243,12 +276,13 @@ const MasonryRender: React.ComponentType<
       )}
       entryId={data.entryId}
       index={index}
+      translation={translation.data}
     />
   )
 }
 interface MasonryProps {
   data: string[]
-  endReached: () => Promise<any>
+  endReached: () => any
   hasNextPage: boolean
 }
 

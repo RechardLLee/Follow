@@ -1,6 +1,8 @@
+import { isMobile } from "@follow/components/hooks/useMobile.js"
 import { Skeleton } from "@follow/components/ui/skeleton/index.jsx"
 import { IN_ELECTRON } from "@follow/shared/constants"
 import { stopPropagation } from "@follow/utils/dom"
+import { transformVideoUrl } from "@follow/utils/url-for-video"
 import { cn } from "@follow/utils/utils"
 import { useHover } from "@use-gesture/react"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -15,12 +17,10 @@ import { FixedModalCloseButton } from "~/components/ui/modal/components/close"
 import { PlainModal } from "~/components/ui/modal/stacked/custom-modal"
 import { useModalStack } from "~/components/ui/modal/stacked/hooks"
 import { useRouteParamsSelector } from "~/hooks/biz/useRouteParams"
-import { urlToIframe } from "~/lib/url-to-iframe"
 import { FeedIcon } from "~/modules/feed/feed-icon"
 import { FeedTitle } from "~/modules/feed/feed-title"
 import { useEntry } from "~/store/entry/hooks"
 
-import { ReactVirtuosoItemPlaceholder } from "../../../components/ui/placeholder"
 import { GridItem } from "../templates/grid-item-template"
 import type { EntryItemStatelessProps, UniversalItemProps } from "../types"
 
@@ -32,7 +32,17 @@ export function VideoItem({ entryId, entryPreview, translation }: UniversalItemP
   const isActive = useRouteParamsSelector(({ entryId }) => entryId === entry?.entries.id)
 
   const [miniIframeSrc, iframeSrc] = useMemo(
-    () => [urlToIframe(entry?.entries.url, true), urlToIframe(entry?.entries.url)],
+    () => [
+      transformVideoUrl({
+        url: entry?.entries.url ?? "",
+        mini: true,
+        isIframe: !IN_ELECTRON,
+      }),
+      transformVideoUrl({
+        url: entry?.entries.url ?? "",
+        isIframe: !IN_ELECTRON,
+      }),
+    ],
     [entry?.entries.url],
   )
   const modalStack = useModalStack()
@@ -62,12 +72,17 @@ export function VideoItem({ entryId, entryPreview, translation }: UniversalItemP
     }
   }, [hovered])
 
-  if (!entry) return <ReactVirtuosoItemPlaceholder />
+  if (!entry) return null
   return (
     <GridItem entryId={entryId} entryPreview={entryPreview} translation={translation}>
       <div
         className="w-full cursor-card"
-        onClick={() => {
+        onClick={(e) => {
+          if (isMobile() && entry.entries.url) {
+            window.open(entry.entries.url, "_blank")
+            e.stopPropagation()
+            return
+          }
           if (iframeSrc) {
             modalStack.present({
               title: "",
@@ -213,13 +228,13 @@ export const VideoItemSkeleton = (
         </div>
         <div className="relative flex-1 px-2 pb-3 pt-1 text-sm">
           <div className="relative mb-1 mt-1.5 truncate font-medium leading-none">
-            <Skeleton className="h-4 w-3/4 " />
+            <Skeleton className="h-4 w-3/4" />
           </div>
           <div className="mt-1 flex items-center gap-1 truncate text-[13px]">
             <Skeleton className="mr-0.5 size-4" />
-            <Skeleton className="h-3 w-1/2 " />
+            <Skeleton className="h-3 w-1/2" />
             <span className="text-zinc-500">·</span>
-            <Skeleton className="h-3 w-12 " />
+            <Skeleton className="h-3 w-12" />
           </div>
         </div>
       </div>

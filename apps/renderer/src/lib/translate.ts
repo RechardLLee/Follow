@@ -1,5 +1,7 @@
+import { parseHtml } from "@follow/components/ui/markdown/parse-html.js"
 import { views } from "@follow/constants"
 import type { SupportedLanguages } from "@follow/models/types"
+import { franc } from "franc-min"
 
 import type { FlatEntryModel } from "~/store/entry"
 
@@ -8,22 +10,54 @@ import { apiClient } from "./api-fetch"
 export const LanguageMap: Record<
   SupportedLanguages,
   {
+    label: string
+    value: string
     code: string
   }
 > = {
   en: {
+    value: "en",
+    label: "English",
     code: "eng",
   },
   ja: {
+    value: "ja",
+    label: "Japanese",
     code: "jpn",
   },
   "zh-CN": {
+    value: "zh-CN",
+    label: "Simplified Chinese",
     code: "cmn",
   },
   "zh-TW": {
+    value: "zh-TW",
+    label: "Traditional Chinese (Taiwan)",
     code: "cmn",
   },
 }
+
+export const checkLanguage = ({
+  content,
+  language,
+}: {
+  content: string
+  language: SupportedLanguages
+}) => {
+  if (!content) return true
+  const pureContent = parseHtml(content)
+    .toText()
+    .replaceAll(/https?:\/\/\S+|www\.\S+/g, " ")
+  const sourceLanguage = franc(pureContent, {
+    only: [LanguageMap[language].code],
+  })
+  if (sourceLanguage === LanguageMap[language].code) {
+    return true
+  } else {
+    return false
+  }
+}
+
 export async function translate({
   entry,
   view,
@@ -40,22 +74,18 @@ export async function translate({
   if (!language) {
     return null
   }
-  let fields =
-    entry.settings?.translation && view !== undefined ? views[view!].translation.split(",") : []
+  let fields = language && view !== undefined ? views[view!].translation.split(",") : []
   if (extraFields) {
     fields = [...fields, ...extraFields]
   }
-  const { franc } = await import("franc-min")
 
   fields = fields.filter((field) => {
-    if (entry.settings?.translation && entry.entries[field]) {
-      const sourceLanguage = franc(entry.entries[field])
-
-      if (sourceLanguage === LanguageMap[entry.settings?.translation].code) {
-        return false
-      } else {
-        return true
-      }
+    if (language && entry.entries[field]) {
+      const isLanguageMatch = checkLanguage({
+        content: entry.entries[field],
+        language,
+      })
+      return !isLanguageMatch
     } else {
       return false
     }

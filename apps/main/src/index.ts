@@ -3,17 +3,21 @@ import { callWindowExpose } from "@follow/shared/bridge"
 import { APP_PROTOCOL } from "@follow/shared/constants"
 import { env } from "@follow/shared/env"
 import { imageRefererMatches, selfRefererMatches } from "@follow/shared/image"
+import { parse } from "cookie-es"
 import { app, BrowserWindow, session } from "electron"
+import type { Cookie } from "electron/main"
 import squirrelStartup from "electron-squirrel-startup"
 
+import { DEVICE_ID } from "./constants/system"
 import { isDev, isMacOS } from "./env"
 import { initializeAppStage0, initializeAppStage1 } from "./init"
 import { updateProxy } from "./lib/proxy"
 import { handleUrlRouting } from "./lib/router"
 import { store } from "./lib/store"
 import { registerAppTray } from "./lib/tray"
-import { setAuthSessionToken, updateNotificationsToken } from "./lib/user"
+import { setBetterAuthSessionCookie, updateNotificationsToken } from "./lib/user"
 import { registerUpdater } from "./updater"
+import { cleanupOldRender } from "./updater/hot-updater"
 import {
   createMainWindow,
   getMainWindow,
@@ -23,6 +27,9 @@ import {
 
 if (isDev) console.info("[main] env loaded:", env)
 
+const apiURL = process.env["VITE_API_URL"] || import.meta.env.VITE_API_URL
+
+console.info("[main] device id:", DEVICE_ID)
 if (squirrelStartup) {
   app.quit()
 }
@@ -56,7 +63,7 @@ function bootstrap() {
   // This method will be called when Electron has finished
   // initialization and is ready to create browser windows.
   // Some APIs can only be used after this event occurs.
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     // Default open or close DevTools by F12 in development
     // and ignore CommandOrControl + R in production.
     // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
@@ -68,6 +75,28 @@ function bootstrap() {
     electronApp.setAppUserModelId(`re.${APP_PROTOCOL}`)
 
     mainWindow = createMainWindow()
+
+    // restore cookies
+    const cookies = store.get("cookies") as Cookie[]
+    if (cookies) {
+      Promise.all(
+        cookies.map((cookie) => {
+          const setCookieDetails: Electron.CookiesSetDetails = {
+            url: apiURL,
+            name: cookie.name,
+            value: cookie.value,
+            domain: cookie.domain,
+            path: cookie.path,
+            secure: cookie.secure,
+            httpOnly: cookie.httpOnly,
+            expirationDate: cookie.expirationDate,
+            sameSite: cookie.sameSite as "unspecified" | "no_restriction" | "lax" | "strict",
+          }
+
+          return mainWindow.webContents.session.cookies.set(setCookieDetails)
+        }),
+      )
+    }
 
     updateProxy()
     registerUpdater()
@@ -96,6 +125,36 @@ function bootstrap() {
 
       callback({ cancel: false, requestHeaders: details.requestHeaders })
     })
+
+    // handle session cookie when sign in with email in electron
+    session.defaultSession.webRequest.onHeadersReceived(
+      {
+        urls: [`${apiURL}/better-auth/sign-in/email?*`],
+      },
+      (detail, callback) => {
+        const { responseHeaders } = detail
+        if (responseHeaders?.["set-cookie"]) {
+          const cookies = responseHeaders["set-cookie"] as string[]
+          cookies.forEach((cookie) => {
+            const cookieObj = parse(cookie)
+            Object.keys(cookieObj).forEach((name) => {
+              const value = cookieObj[name]
+              mainWindow.webContents.session.cookies.set({
+                url: apiURL,
+                name,
+                value,
+                secure: true,
+                httpOnly: true,
+                domain: new URL(apiURL).hostname,
+                sameSite: "no_restriction",
+              })
+            })
+          })
+        }
+
+        callback({ cancel: false, responseHeaders })
+      },
+    )
 
     app.on("activate", () => {
       // On macOS it's common to re-create a window in the app when the
@@ -135,7 +194,7 @@ function bootstrap() {
     }
   })
 
-  app.on("before-quit", () => {
+  app.on("before-quit", async () => {
     // store window pos when before app quit
     const window = getMainWindow()
     if (!window || window.isDestroyed()) return
@@ -147,6 +206,12 @@ function bootstrap() {
       x: bounds.x,
       y: bounds.y,
     })
+    await session.defaultSession.cookies.flushStore()
+
+    const cookies = await session.defaultSession.cookies.get({})
+    store.set("cookies", cookies)
+
+    await cleanupOldRender()
   })
 
   const handleOpen = async (url: string) => {
@@ -155,30 +220,25 @@ function bootstrap() {
     const urlObj = new URL(url)
 
     if (urlObj.hostname === "auth" || urlObj.pathname === "//auth") {
-      const token = urlObj.searchParams.get("token")
+      const ck = urlObj.searchParams.get("ck")
       const userId = urlObj.searchParams.get("userId")
 
-      const apiURL = process.env["VITE_API_URL"] || import.meta.env.VITE_API_URL
-      if (token && apiURL) {
-        setAuthSessionToken(token)
-        mainWindow.webContents.session.cookies.set({
-          url: apiURL,
-          name: "authjs.session-token",
-          value: token,
-          secure: true,
-          httpOnly: true,
-          domain: new URL(apiURL).hostname,
-          sameSite: "no_restriction",
+      if (ck && apiURL) {
+        setBetterAuthSessionCookie(ck)
+        const cookie = parse(atob(ck))
+        Object.keys(cookie).forEach((name) => {
+          const value = cookie[name]
+          mainWindow.webContents.session.cookies.set({
+            url: apiURL,
+            name,
+            value,
+            secure: true,
+            httpOnly: true,
+            domain: new URL(apiURL).hostname,
+            sameSite: "no_restriction",
+          })
         })
-        mainWindow.webContents.session.cookies.set({
-          url: apiURL,
-          name: "authjs.callback-url",
-          value: env.VITE_WEB_URL,
-          secure: true,
-          httpOnly: true,
-          domain: new URL(apiURL).hostname,
-          sameSite: "no_restriction",
-        })
+
         userId && (await callWindowExpose(mainWindow).clearIfLoginOtherAccount(userId))
         mainWindow.reload()
 

@@ -1,15 +1,103 @@
 import * as hono_hono_base from 'hono/hono-base';
+import * as hono_types from 'hono/types';
+import * as hono_utils_http_status from 'hono/utils/http-status';
 import { HttpBindings } from '@hono/node-server';
+import * as better_call from 'better-call';
 import * as zod from 'zod';
 import { z } from 'zod';
 import * as drizzle_orm_pg_core from 'drizzle-orm/pg-core';
 import { AnyPgColumn } from 'drizzle-orm/pg-core';
 import * as drizzle_orm from 'drizzle-orm';
 import { InferInsertModel, SQL } from 'drizzle-orm';
+import * as better_auth_adapters_drizzle from 'better-auth/adapters/drizzle';
+import * as better_auth_plugins from 'better-auth/plugins';
+import * as better_auth from 'better-auth';
 
 type Env = {
     Bindings: HttpBindings;
 };
+
+declare const authPlugins: ({
+    id: "customGetProviders";
+    endpoints: {
+        customGetProviders: {
+            <C extends [(better_call.Context<"/get-providers", {
+                method: "GET";
+            }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : any>;
+            path: "/get-providers";
+            options: {
+                method: "GET";
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+    };
+} | {
+    id: "customCreateSession";
+    endpoints: {
+        customCreateSession: {
+            <C extends [(better_call.Context<"/create-session", {
+                method: "GET";
+            }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                ck: string;
+                userId: string;
+            } | null>;
+            path: "/create-session";
+            options: {
+                method: "GET";
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+    };
+} | {
+    id: "getAccountInfo";
+    endpoints: {
+        getAccountInfo: {
+            <C extends [(better_call.Context<"/get-account-info", {
+                method: "GET";
+            }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                id: string;
+                provider: string;
+                profile: {
+                    id?: string;
+                    email?: string;
+                    name?: string;
+                    image?: string;
+                } | null;
+            }[] | null>;
+            path: "/get-account-info";
+            options: {
+                method: "GET";
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+    };
+} | {
+    id: "customUpdateUser";
+    endpoints: {
+        customUpdateUser: {
+            <C extends [(better_call.Context<"/update-user-ccc", {
+                method: "POST";
+            }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : string | null>;
+            path: "/update-user-ccc";
+            options: {
+                method: "POST";
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+    };
+})[];
 
 declare const achievements: drizzle_orm_pg_core.PgTableWithColumns<{
     name: "achievements";
@@ -29,6 +117,7 @@ declare const achievements: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: true;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         userId: drizzle_orm_pg_core.PgColumn<{
@@ -45,6 +134,7 @@ declare const achievements: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         type: drizzle_orm_pg_core.PgColumn<{
@@ -61,6 +151,7 @@ declare const achievements: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: ["checking", "completed", "incomplete", "audit", "received"];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         actionId: drizzle_orm_pg_core.PgColumn<{
@@ -77,6 +168,7 @@ declare const achievements: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         progress: drizzle_orm_pg_core.PgColumn<{
@@ -93,6 +185,7 @@ declare const achievements: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         progressMax: drizzle_orm_pg_core.PgColumn<{
@@ -109,6 +202,7 @@ declare const achievements: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         done: drizzle_orm_pg_core.PgColumn<{
@@ -125,6 +219,7 @@ declare const achievements: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         doneAt: drizzle_orm_pg_core.PgColumn<{
@@ -141,6 +236,7 @@ declare const achievements: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         tx: drizzle_orm_pg_core.PgColumn<{
@@ -157,6 +253,7 @@ declare const achievements: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -229,6 +326,7 @@ declare const actions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         rules: drizzle_orm_pg_core.PgColumn<{
@@ -268,8 +366,34 @@ declare const actions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
-        }, {}, {}>;
+        }, {}, {
+            $type: {
+                name: string;
+                condition: ConditionItem[] | ConditionItem[][];
+                result: {
+                    disabled?: boolean;
+                    translation?: z.infer<typeof languageSchema>;
+                    summary?: boolean;
+                    readability?: boolean;
+                    sourceContent?: boolean;
+                    silence?: boolean;
+                    block?: boolean;
+                    newEntryNotification?: boolean;
+                    rewriteRules?: {
+                        from: string;
+                        to: string;
+                    }[];
+                    blockRules?: {
+                        field: z.infer<typeof ruleFieldSchema>;
+                        operator: z.infer<typeof ruleOperatorSchema>;
+                        value: string | number;
+                    }[];
+                    webhooks?: string[];
+                };
+            }[];
+        }>;
     };
     dialect: "pg";
 }>;
@@ -325,18 +449,18 @@ declare const actionsItemOpenAPISchema: z.ZodObject<{
             value: z.ZodUnion<[z.ZodString, z.ZodNumber]>;
         }, "strip", z.ZodTypeAny, {
             value: string | number;
-            field: "title" | "all" | "content" | "author" | "url" | "order";
+            field: "title" | "content" | "all" | "author" | "url" | "order";
             operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
         }, {
             value: string | number;
-            field: "title" | "all" | "content" | "author" | "url" | "order";
+            field: "title" | "content" | "all" | "author" | "url" | "order";
             operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
         }>, "many">>;
         webhooks: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     }, "strip", z.ZodTypeAny, {
-        summary?: boolean | undefined;
         disabled?: boolean | undefined;
         translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+        summary?: boolean | undefined;
         readability?: boolean | undefined;
         sourceContent?: boolean | undefined;
         silence?: boolean | undefined;
@@ -348,14 +472,14 @@ declare const actionsItemOpenAPISchema: z.ZodObject<{
         }[] | undefined;
         blockRules?: {
             value: string | number;
-            field: "title" | "all" | "content" | "author" | "url" | "order";
+            field: "title" | "content" | "all" | "author" | "url" | "order";
             operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
         }[] | undefined;
         webhooks?: string[] | undefined;
     }, {
-        summary?: boolean | undefined;
         disabled?: boolean | undefined;
         translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+        summary?: boolean | undefined;
         readability?: boolean | undefined;
         sourceContent?: boolean | undefined;
         silence?: boolean | undefined;
@@ -367,17 +491,26 @@ declare const actionsItemOpenAPISchema: z.ZodObject<{
         }[] | undefined;
         blockRules?: {
             value: string | number;
-            field: "title" | "all" | "content" | "author" | "url" | "order";
+            field: "title" | "content" | "all" | "author" | "url" | "order";
             operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
         }[] | undefined;
         webhooks?: string[] | undefined;
     }>;
 }, "strip", z.ZodTypeAny, {
     name: string;
+    condition: {
+        value: string;
+        field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+        operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+    }[] | {
+        value: string;
+        field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+        operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+    }[][];
     result: {
-        summary?: boolean | undefined;
         disabled?: boolean | undefined;
         translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+        summary?: boolean | undefined;
         readability?: boolean | undefined;
         sourceContent?: boolean | undefined;
         silence?: boolean | undefined;
@@ -389,26 +522,26 @@ declare const actionsItemOpenAPISchema: z.ZodObject<{
         }[] | undefined;
         blockRules?: {
             value: string | number;
-            field: "title" | "all" | "content" | "author" | "url" | "order";
+            field: "title" | "content" | "all" | "author" | "url" | "order";
             operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
         }[] | undefined;
         webhooks?: string[] | undefined;
     };
-    condition: {
-        value: string;
-        field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-        operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-    }[] | {
-        value: string;
-        field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-        operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-    }[][];
 }, {
     name: string;
+    condition: {
+        value: string;
+        field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+        operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+    }[] | {
+        value: string;
+        field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+        operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+    }[][];
     result: {
-        summary?: boolean | undefined;
         disabled?: boolean | undefined;
         translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+        summary?: boolean | undefined;
         readability?: boolean | undefined;
         sourceContent?: boolean | undefined;
         silence?: boolean | undefined;
@@ -420,28 +553,63 @@ declare const actionsItemOpenAPISchema: z.ZodObject<{
         }[] | undefined;
         blockRules?: {
             value: string | number;
-            field: "title" | "all" | "content" | "author" | "url" | "order";
+            field: "title" | "content" | "all" | "author" | "url" | "order";
             operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
         }[] | undefined;
         webhooks?: string[] | undefined;
     };
-    condition: {
-        value: string;
-        field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-        operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-    }[] | {
-        value: string;
-        field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-        operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-    }[][];
 }>;
 declare const actionsOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
     userId: z.ZodString;
     rules: z.ZodNullable<z.ZodType<string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
 }, "rules">, {
     rules: z.ZodNullable<z.ZodOptional<z.ZodArray<z.ZodObject<{
         name: z.ZodString;
@@ -495,18 +663,18 @@ declare const actionsOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
                 value: z.ZodUnion<[z.ZodString, z.ZodNumber]>;
             }, "strip", z.ZodTypeAny, {
                 value: string | number;
-                field: "title" | "all" | "content" | "author" | "url" | "order";
+                field: "title" | "content" | "all" | "author" | "url" | "order";
                 operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
             }, {
                 value: string | number;
-                field: "title" | "all" | "content" | "author" | "url" | "order";
+                field: "title" | "content" | "all" | "author" | "url" | "order";
                 operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
             }>, "many">>;
             webhooks: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         }, "strip", z.ZodTypeAny, {
-            summary?: boolean | undefined;
             disabled?: boolean | undefined;
             translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+            summary?: boolean | undefined;
             readability?: boolean | undefined;
             sourceContent?: boolean | undefined;
             silence?: boolean | undefined;
@@ -518,14 +686,14 @@ declare const actionsOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
             }[] | undefined;
             blockRules?: {
                 value: string | number;
-                field: "title" | "all" | "content" | "author" | "url" | "order";
+                field: "title" | "content" | "all" | "author" | "url" | "order";
                 operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
             }[] | undefined;
             webhooks?: string[] | undefined;
         }, {
-            summary?: boolean | undefined;
             disabled?: boolean | undefined;
             translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+            summary?: boolean | undefined;
             readability?: boolean | undefined;
             sourceContent?: boolean | undefined;
             silence?: boolean | undefined;
@@ -537,17 +705,26 @@ declare const actionsOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
             }[] | undefined;
             blockRules?: {
                 value: string | number;
-                field: "title" | "all" | "content" | "author" | "url" | "order";
+                field: "title" | "content" | "all" | "author" | "url" | "order";
                 operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
             }[] | undefined;
             webhooks?: string[] | undefined;
         }>;
     }, "strip", z.ZodTypeAny, {
         name: string;
+        condition: {
+            value: string;
+            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+        }[] | {
+            value: string;
+            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+        }[][];
         result: {
-            summary?: boolean | undefined;
             disabled?: boolean | undefined;
             translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+            summary?: boolean | undefined;
             readability?: boolean | undefined;
             sourceContent?: boolean | undefined;
             silence?: boolean | undefined;
@@ -559,26 +736,26 @@ declare const actionsOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
             }[] | undefined;
             blockRules?: {
                 value: string | number;
-                field: "title" | "all" | "content" | "author" | "url" | "order";
+                field: "title" | "content" | "all" | "author" | "url" | "order";
                 operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
             }[] | undefined;
             webhooks?: string[] | undefined;
         };
-        condition: {
-            value: string;
-            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-        }[] | {
-            value: string;
-            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-        }[][];
     }, {
         name: string;
+        condition: {
+            value: string;
+            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+        }[] | {
+            value: string;
+            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+        }[][];
         result: {
-            summary?: boolean | undefined;
             disabled?: boolean | undefined;
             translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+            summary?: boolean | undefined;
             readability?: boolean | undefined;
             sourceContent?: boolean | undefined;
             silence?: boolean | undefined;
@@ -590,29 +767,29 @@ declare const actionsOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
             }[] | undefined;
             blockRules?: {
                 value: string | number;
-                field: "title" | "all" | "content" | "author" | "url" | "order";
+                field: "title" | "content" | "all" | "author" | "url" | "order";
                 operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
             }[] | undefined;
             webhooks?: string[] | undefined;
         };
-        condition: {
-            value: string;
-            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-        }[] | {
-            value: string;
-            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-        }[][];
     }>, "many">>>;
 }>, "strip", z.ZodTypeAny, {
     userId: string;
     rules?: {
         name: string;
+        condition: {
+            value: string;
+            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+        }[] | {
+            value: string;
+            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+        }[][];
         result: {
-            summary?: boolean | undefined;
             disabled?: boolean | undefined;
             translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+            summary?: boolean | undefined;
             readability?: boolean | undefined;
             sourceContent?: boolean | undefined;
             silence?: boolean | undefined;
@@ -624,29 +801,29 @@ declare const actionsOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
             }[] | undefined;
             blockRules?: {
                 value: string | number;
-                field: "title" | "all" | "content" | "author" | "url" | "order";
+                field: "title" | "content" | "all" | "author" | "url" | "order";
                 operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
             }[] | undefined;
             webhooks?: string[] | undefined;
         };
-        condition: {
-            value: string;
-            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-        }[] | {
-            value: string;
-            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-        }[][];
     }[] | null | undefined;
 }, {
     userId: string;
     rules?: {
         name: string;
+        condition: {
+            value: string;
+            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+        }[] | {
+            value: string;
+            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+        }[][];
         result: {
-            summary?: boolean | undefined;
             disabled?: boolean | undefined;
             translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+            summary?: boolean | undefined;
             readability?: boolean | undefined;
             sourceContent?: boolean | undefined;
             silence?: boolean | undefined;
@@ -658,20 +835,11 @@ declare const actionsOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
             }[] | undefined;
             blockRules?: {
                 value: string | number;
-                field: "title" | "all" | "content" | "author" | "url" | "order";
+                field: "title" | "content" | "all" | "author" | "url" | "order";
                 operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
             }[] | undefined;
             webhooks?: string[] | undefined;
         };
-        condition: {
-            value: string;
-            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-        }[] | {
-            value: string;
-            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-        }[][];
     }[] | null | undefined;
 }>;
 declare const actionsRelations: drizzle_orm.Relations<"actions", {
@@ -789,6 +957,7 @@ declare const airdrops: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: ["public_beta"];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         userId: drizzle_orm_pg_core.PgColumn<{
@@ -805,6 +974,7 @@ declare const airdrops: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         amount: drizzle_orm_pg_core.PgColumn<{
@@ -821,6 +991,7 @@ declare const airdrops: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         rank: drizzle_orm_pg_core.PgColumn<{
@@ -837,6 +1008,7 @@ declare const airdrops: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         detail: drizzle_orm_pg_core.PgColumn<{
@@ -882,8 +1054,40 @@ declare const airdrops: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
-        }, {}, {}>;
+        }, {}, {
+            $type: {
+                "Invitations count": number;
+                "Purchase lists cost": number;
+                "Total tip amount": number;
+                "Feeds subscriptions count": number;
+                "Lists subscriptions count": number;
+                "Inbox subscriptions count": number;
+                "Recent read count in the last month": number;
+                "Mint count": number;
+                "Claimed feeds count": number;
+                "Claimed feeds subscriptions count": number;
+                "Lists with more than 1 feed count": number;
+                "Created lists subscriptions count": number;
+                "Created lists income amount": number;
+                "GitHub Community Contributions": number;
+                "Invitations count Rank": number;
+                "Purchase lists cost Rank": number;
+                "Total tip amount Rank": number;
+                "Feeds subscriptions count Rank": number;
+                "Lists subscriptions count Rank": number;
+                "Inbox subscriptions count Rank": number;
+                "Recent read count in the last month Rank": number;
+                "Mint count Rank": number;
+                "Claimed feeds count Rank": number;
+                "Claimed feeds subscriptions count Rank": number;
+                "Lists with more than 1 feed count Rank": number;
+                "Created lists subscriptions count Rank": number;
+                "Created lists income amount Rank": number;
+                "GitHub Community Contributions Rank": number;
+            } | null;
+        }>;
         verify: drizzle_orm_pg_core.PgColumn<{
             name: "verify";
             tableName: "airdrops";
@@ -898,6 +1102,7 @@ declare const airdrops: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         tx: drizzle_orm_pg_core.PgColumn<{
@@ -914,6 +1119,7 @@ declare const airdrops: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -925,10 +1131,54 @@ declare const airdropsOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
     amount: z.ZodString;
     rank: z.ZodNullable<z.ZodString>;
     detail: z.ZodNullable<z.ZodType<string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
     verify: z.ZodNullable<z.ZodString>;
     tx: z.ZodNullable<z.ZodString>;
 }, "detail">, {
@@ -1023,9 +1273,9 @@ declare const airdropsOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
 }>, "strip", z.ZodTypeAny, {
     userId: string;
     tx: string | null;
-    rank: string | null;
-    amount: string;
     activity: "public_beta";
+    amount: string;
+    rank: string | null;
     detail: {
         "Invitations count": number;
         "Purchase lists cost": number;
@@ -1060,9 +1310,9 @@ declare const airdropsOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
 }, {
     userId: string;
     tx: string | null;
-    rank: string | null;
-    amount: string;
     activity: "public_beta";
+    amount: string;
+    rank: string | null;
     detail: {
         "Invitations count": number;
         "Purchase lists cost": number;
@@ -1114,6 +1364,7 @@ declare const collections: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         feedId: drizzle_orm_pg_core.PgColumn<{
@@ -1130,6 +1381,7 @@ declare const collections: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         entryId: drizzle_orm_pg_core.PgColumn<{
@@ -1146,6 +1398,7 @@ declare const collections: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         createdAt: drizzle_orm_pg_core.PgColumn<{
@@ -1162,6 +1415,7 @@ declare const collections: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         view: drizzle_orm_pg_core.PgColumn<{
@@ -1178,6 +1432,7 @@ declare const collections: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -1238,7 +1493,6 @@ declare const CommonEntryFields: {
         data: string;
         enumValues: [string, ...string[]];
         driverParam: string;
-        generated: undefined;
     }>>>>>;
     title: drizzle_orm_pg_core.PgTextBuilder<{
         name: "title";
@@ -1247,7 +1501,6 @@ declare const CommonEntryFields: {
         data: string;
         enumValues: [string, ...string[]];
         driverParam: string;
-        generated: undefined;
     }>;
     url: drizzle_orm_pg_core.PgTextBuilder<{
         name: "url";
@@ -1256,7 +1509,6 @@ declare const CommonEntryFields: {
         data: string;
         enumValues: [string, ...string[]];
         driverParam: string;
-        generated: undefined;
     }>;
     content: drizzle_orm_pg_core.PgTextBuilder<{
         name: "content";
@@ -1265,7 +1517,6 @@ declare const CommonEntryFields: {
         data: string;
         enumValues: [string, ...string[]];
         driverParam: string;
-        generated: undefined;
     }>;
     description: drizzle_orm_pg_core.PgTextBuilder<{
         name: "description";
@@ -1274,7 +1525,6 @@ declare const CommonEntryFields: {
         data: string;
         enumValues: [string, ...string[]];
         driverParam: string;
-        generated: undefined;
     }>;
     guid: drizzle_orm.NotNull<drizzle_orm_pg_core.PgTextBuilder<{
         name: "guid";
@@ -1283,7 +1533,6 @@ declare const CommonEntryFields: {
         data: string;
         enumValues: [string, ...string[]];
         driverParam: string;
-        generated: undefined;
     }>>;
     author: drizzle_orm_pg_core.PgTextBuilder<{
         name: "author";
@@ -1292,7 +1541,6 @@ declare const CommonEntryFields: {
         data: string;
         enumValues: [string, ...string[]];
         driverParam: string;
-        generated: undefined;
     }>;
     authorUrl: drizzle_orm_pg_core.PgTextBuilder<{
         name: "author_url";
@@ -1301,7 +1549,6 @@ declare const CommonEntryFields: {
         data: string;
         enumValues: [string, ...string[]];
         driverParam: string;
-        generated: undefined;
     }>;
     authorAvatar: drizzle_orm_pg_core.PgTextBuilder<{
         name: "author_avatar";
@@ -1310,7 +1557,6 @@ declare const CommonEntryFields: {
         data: string;
         enumValues: [string, ...string[]];
         driverParam: string;
-        generated: undefined;
     }>;
     insertedAt: drizzle_orm.NotNull<drizzle_orm_pg_core.PgTimestampBuilderInitial<"inserted_at">>;
     publishedAt: drizzle_orm.NotNull<drizzle_orm_pg_core.PgTimestampBuilderInitial<"published_at">>;
@@ -1322,7 +1568,15 @@ declare const CommonEntryFields: {
         data: string[];
         driverParam: string | string[];
         enumValues: [string, ...string[]];
-        generated: drizzle_orm.GeneratedColumnConfig<string>;
+        size: undefined;
+        baseBuilder: {
+            name: "categories";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            enumValues: [string, ...string[]];
+            driverParam: string;
+        };
     }, {
         name: "categories";
         dataType: "string";
@@ -1330,10 +1584,17 @@ declare const CommonEntryFields: {
         data: string;
         enumValues: [string, ...string[]];
         driverParam: string;
-        generated: undefined;
     }>;
     attachments: drizzle_orm.$Type<drizzle_orm_pg_core.PgJsonbBuilderInitial<"attachments">, AttachmentsModel[]>;
     extra: drizzle_orm.$Type<drizzle_orm_pg_core.PgJsonbBuilderInitial<"extra">, ExtraModel>;
+    language: drizzle_orm_pg_core.PgTextBuilder<{
+        name: "language";
+        dataType: "string";
+        columnType: "PgText";
+        data: string;
+        enumValues: [string, ...string[]];
+        driverParam: string;
+    }>;
 };
 declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
     name: "entries";
@@ -1353,6 +1614,7 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: true;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         title: drizzle_orm_pg_core.PgColumn<{
@@ -1369,6 +1631,7 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         url: drizzle_orm_pg_core.PgColumn<{
@@ -1385,6 +1648,7 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         content: drizzle_orm_pg_core.PgColumn<{
@@ -1401,6 +1665,7 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         description: drizzle_orm_pg_core.PgColumn<{
@@ -1417,6 +1682,7 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         guid: drizzle_orm_pg_core.PgColumn<{
@@ -1433,6 +1699,7 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         author: drizzle_orm_pg_core.PgColumn<{
@@ -1449,6 +1716,7 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         authorUrl: drizzle_orm_pg_core.PgColumn<{
@@ -1465,6 +1733,7 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         authorAvatar: drizzle_orm_pg_core.PgColumn<{
@@ -1481,6 +1750,7 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         insertedAt: drizzle_orm_pg_core.PgColumn<{
@@ -1497,6 +1767,7 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         publishedAt: drizzle_orm_pg_core.PgColumn<{
@@ -1513,6 +1784,7 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         media: drizzle_orm_pg_core.PgColumn<{
@@ -1529,8 +1801,11 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
-        }, {}, {}>;
+        }, {}, {
+            $type: MediaModel[];
+        }>;
         categories: drizzle_orm_pg_core.PgColumn<{
             name: "categories";
             tableName: "entries";
@@ -1558,10 +1833,22 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
                 hasRuntimeDefault: false;
                 enumValues: [string, ...string[]];
                 baseColumn: never;
+                identity: undefined;
                 generated: undefined;
-            }, object, object>;
+            }, {}, {}>;
+            identity: undefined;
             generated: undefined;
-        }, {}, {}>;
+        }, {}, {
+            baseBuilder: drizzle_orm_pg_core.PgColumnBuilder<{
+                name: "categories";
+                dataType: "string";
+                columnType: "PgText";
+                data: string;
+                enumValues: [string, ...string[]];
+                driverParam: string;
+            }, {}, {}, drizzle_orm.ColumnBuilderExtraConfig>;
+            size: undefined;
+        }>;
         attachments: drizzle_orm_pg_core.PgColumn<{
             name: "attachments";
             tableName: "entries";
@@ -1576,8 +1863,11 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
-        }, {}, {}>;
+        }, {}, {
+            $type: AttachmentsModel[];
+        }>;
         extra: drizzle_orm_pg_core.PgColumn<{
             name: "extra";
             tableName: "entries";
@@ -1592,6 +1882,26 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            $type: ExtraModel;
+        }>;
+        language: drizzle_orm_pg_core.PgColumn<{
+            name: "language";
+            tableName: "entries";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         feedId: drizzle_orm_pg_core.PgColumn<{
@@ -1608,6 +1918,7 @@ declare const entries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -1694,21 +2005,154 @@ declare const entriesOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
     insertedAt: z.ZodString;
     publishedAt: z.ZodString;
     media: z.ZodNullable<z.ZodType<string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
     categories: z.ZodNullable<z.ZodArray<z.ZodString, "many">>;
     attachments: z.ZodNullable<z.ZodType<string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
     extra: z.ZodNullable<z.ZodType<string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
+    language: z.ZodNullable<z.ZodString>;
     feedId: z.ZodString;
 }, "media" | "attachments" | "extra">, {
     attachments: z.ZodNullable<z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -1786,6 +2230,7 @@ declare const entriesOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
     id: string;
     author: string | null;
     url: string | null;
+    language: string | null;
     feedId: string;
     guid: string;
     categories: string[] | null;
@@ -1822,6 +2267,7 @@ declare const entriesOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<Omit<{
     id: string;
     author: string | null;
     url: string | null;
+    language: string | null;
     feedId: string;
     guid: string;
     categories: string[] | null;
@@ -1880,6 +2326,7 @@ declare const entryReadHistories: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         userIds: drizzle_orm_pg_core.PgColumn<{
@@ -1909,10 +2356,22 @@ declare const entryReadHistories: drizzle_orm_pg_core.PgTableWithColumns<{
                 hasRuntimeDefault: false;
                 enumValues: [string, ...string[]];
                 baseColumn: never;
+                identity: undefined;
                 generated: undefined;
-            }, object, object>;
+            }, {}, {}>;
+            identity: undefined;
             generated: undefined;
-        }, {}, {}>;
+        }, {}, {
+            baseBuilder: drizzle_orm_pg_core.PgColumnBuilder<{
+                name: "user_ids";
+                dataType: "string";
+                columnType: "PgText";
+                data: string;
+                enumValues: [string, ...string[]];
+                driverParam: string;
+            }, {}, {}, drizzle_orm.ColumnBuilderExtraConfig>;
+            size: undefined;
+        }>;
         readCount: drizzle_orm_pg_core.PgColumn<{
             name: "read_count";
             tableName: "entryReadHistories";
@@ -1927,6 +2386,7 @@ declare const entryReadHistories: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -1949,6 +2409,104 @@ declare const entryReadHistoriesOpenAPISchema: z.ZodObject<{
     userIds: string[];
     readCount: number;
 }>;
+declare const urlReads: drizzle_orm_pg_core.PgTableWithColumns<{
+    name: "urlReads";
+    schema: undefined;
+    columns: {
+        url: drizzle_orm_pg_core.PgColumn<{
+            name: "url";
+            tableName: "urlReads";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        userIds: drizzle_orm_pg_core.PgColumn<{
+            name: "user_ids";
+            tableName: "urlReads";
+            dataType: "array";
+            columnType: "PgArray";
+            data: string[];
+            driverParam: string | string[];
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: drizzle_orm.Column<{
+                name: "user_ids";
+                tableName: "urlReads";
+                dataType: "string";
+                columnType: "PgText";
+                data: string;
+                driverParam: string;
+                notNull: false;
+                hasDefault: false;
+                isPrimaryKey: false;
+                isAutoincrement: false;
+                hasRuntimeDefault: false;
+                enumValues: [string, ...string[]];
+                baseColumn: never;
+                identity: undefined;
+                generated: undefined;
+            }, {}, {}>;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            baseBuilder: drizzle_orm_pg_core.PgColumnBuilder<{
+                name: "user_ids";
+                dataType: "string";
+                columnType: "PgText";
+                data: string;
+                enumValues: [string, ...string[]];
+                driverParam: string;
+            }, {}, {}, drizzle_orm.ColumnBuilderExtraConfig>;
+            size: undefined;
+        }>;
+        count: drizzle_orm_pg_core.PgColumn<{
+            name: "count";
+            tableName: "urlReads";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+type UrlReadsModel = InferInsertModel<typeof urlReads>;
+declare const urlReadsOpenAPISchema: z.ZodObject<{
+    url: z.ZodString;
+    userIds: z.ZodArray<z.ZodString, "many">;
+    count: z.ZodNumber;
+}, z.UnknownKeysParam, z.ZodTypeAny, {
+    url: string;
+    userIds: string[];
+    count: number;
+}, {
+    url: string;
+    userIds: string[];
+    count: number;
+}>;
 
 declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
     name: "feeds";
@@ -1968,6 +2526,7 @@ declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: true;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         url: drizzle_orm_pg_core.PgColumn<{
@@ -1984,6 +2543,7 @@ declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         title: drizzle_orm_pg_core.PgColumn<{
@@ -2000,6 +2560,7 @@ declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         description: drizzle_orm_pg_core.PgColumn<{
@@ -2016,6 +2577,7 @@ declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         siteUrl: drizzle_orm_pg_core.PgColumn<{
@@ -2032,6 +2594,7 @@ declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         image: drizzle_orm_pg_core.PgColumn<{
@@ -2048,6 +2611,7 @@ declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         checkedAt: drizzle_orm_pg_core.PgColumn<{
@@ -2064,6 +2628,7 @@ declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         lastModifiedHeader: drizzle_orm_pg_core.PgColumn<{
@@ -2080,6 +2645,7 @@ declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         etagHeader: drizzle_orm_pg_core.PgColumn<{
@@ -2096,6 +2662,7 @@ declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         ttl: drizzle_orm_pg_core.PgColumn<{
@@ -2112,6 +2679,7 @@ declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         errorMessage: drizzle_orm_pg_core.PgColumn<{
@@ -2128,6 +2696,7 @@ declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         errorAt: drizzle_orm_pg_core.PgColumn<{
@@ -2144,6 +2713,7 @@ declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         ownerUserId: drizzle_orm_pg_core.PgColumn<{
@@ -2160,6 +2730,41 @@ declare const feeds: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        language: drizzle_orm_pg_core.PgColumn<{
+            name: "language";
+            tableName: "feeds";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        migrateTo: drizzle_orm_pg_core.PgColumn<{
+            name: "migrate_to";
+            tableName: "feeds";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -2179,6 +2784,8 @@ declare const feedsOpenAPISchema: zod.ZodObject<{
     errorMessage: zod.ZodNullable<zod.ZodString>;
     errorAt: zod.ZodNullable<zod.ZodString>;
     ownerUserId: zod.ZodNullable<zod.ZodString>;
+    language: zod.ZodNullable<zod.ZodString>;
+    migrateTo: zod.ZodNullable<zod.ZodString>;
 }, zod.UnknownKeysParam, zod.ZodTypeAny, {
     description: string | null;
     title: string | null;
@@ -2193,6 +2800,8 @@ declare const feedsOpenAPISchema: zod.ZodObject<{
     errorMessage: string | null;
     errorAt: string | null;
     ownerUserId: string | null;
+    language: string | null;
+    migrateTo: string | null;
 }, {
     description: string | null;
     title: string | null;
@@ -2207,11 +2816,14 @@ declare const feedsOpenAPISchema: zod.ZodObject<{
     errorMessage: string | null;
     errorAt: string | null;
     ownerUserId: string | null;
+    language: string | null;
+    migrateTo: string | null;
 }>;
 declare const feedsRelations: drizzle_orm.Relations<"feeds", {
     subscriptions: drizzle_orm.Many<"subscriptions">;
     entries: drizzle_orm.Many<"entries">;
     owner: drizzle_orm.One<"user", false>;
+    migrateTo: drizzle_orm.One<"feeds", false>;
 }>;
 type FeedModel = InferInsertModel<typeof feeds>;
 
@@ -2233,6 +2845,7 @@ declare const subscriptions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         feedId: drizzle_orm_pg_core.PgColumn<{
@@ -2249,6 +2862,7 @@ declare const subscriptions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         view: drizzle_orm_pg_core.PgColumn<{
@@ -2265,6 +2879,7 @@ declare const subscriptions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         category: drizzle_orm_pg_core.PgColumn<{
@@ -2281,6 +2896,7 @@ declare const subscriptions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         title: drizzle_orm_pg_core.PgColumn<{
@@ -2297,6 +2913,24 @@ declare const subscriptions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: drizzle_orm_pg_core.PgColumn<{
+            name: "created_at";
+            tableName: "subscriptions";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         isPrivate: drizzle_orm_pg_core.PgColumn<{
@@ -2313,6 +2947,7 @@ declare const subscriptions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -2324,9 +2959,11 @@ declare const subscriptionsOpenAPISchema: zod.ZodObject<{
     view: zod.ZodNumber;
     category: zod.ZodNullable<zod.ZodString>;
     title: zod.ZodNullable<zod.ZodString>;
+    createdAt: zod.ZodString;
     isPrivate: zod.ZodBoolean;
 }, zod.UnknownKeysParam, zod.ZodTypeAny, {
     title: string | null;
+    createdAt: string;
     userId: string;
     view: number;
     category: string | null;
@@ -2334,6 +2971,7 @@ declare const subscriptionsOpenAPISchema: zod.ZodObject<{
     isPrivate: boolean;
 }, {
     title: string | null;
+    createdAt: string;
     userId: string;
     view: number;
     category: string | null;
@@ -2344,6 +2982,7 @@ declare const subscriptionsRelations: drizzle_orm.Relations<"subscriptions", {
     users: drizzle_orm.One<"user", true>;
     feeds: drizzle_orm.One<"feeds", true>;
     timeline: drizzle_orm.Many<"timeline">;
+    rsshubUsage: drizzle_orm.One<"rsshub_usage", true>;
 }>;
 
 declare const timeline: drizzle_orm_pg_core.PgTableWithColumns<{
@@ -2364,6 +3003,7 @@ declare const timeline: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         feedId: drizzle_orm_pg_core.PgColumn<{
@@ -2380,6 +3020,7 @@ declare const timeline: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         entryId: drizzle_orm_pg_core.PgColumn<{
@@ -2396,6 +3037,7 @@ declare const timeline: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         publishedAt: drizzle_orm_pg_core.PgColumn<{
@@ -2412,6 +3054,7 @@ declare const timeline: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         insertedAt: drizzle_orm_pg_core.PgColumn<{
@@ -2428,6 +3071,7 @@ declare const timeline: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         view: drizzle_orm_pg_core.PgColumn<{
@@ -2444,6 +3088,7 @@ declare const timeline: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         read: drizzle_orm_pg_core.PgColumn<{
@@ -2460,6 +3105,7 @@ declare const timeline: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -2515,6 +3161,7 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: true;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         title: drizzle_orm_pg_core.PgColumn<{
@@ -2531,6 +3178,7 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         url: drizzle_orm_pg_core.PgColumn<{
@@ -2547,6 +3195,7 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         content: drizzle_orm_pg_core.PgColumn<{
@@ -2563,6 +3212,7 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         description: drizzle_orm_pg_core.PgColumn<{
@@ -2579,6 +3229,7 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         guid: drizzle_orm_pg_core.PgColumn<{
@@ -2595,6 +3246,7 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         author: drizzle_orm_pg_core.PgColumn<{
@@ -2611,6 +3263,7 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         authorUrl: drizzle_orm_pg_core.PgColumn<{
@@ -2627,6 +3280,7 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         authorAvatar: drizzle_orm_pg_core.PgColumn<{
@@ -2643,6 +3297,7 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         insertedAt: drizzle_orm_pg_core.PgColumn<{
@@ -2659,6 +3314,7 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         publishedAt: drizzle_orm_pg_core.PgColumn<{
@@ -2675,6 +3331,7 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         media: drizzle_orm_pg_core.PgColumn<{
@@ -2691,8 +3348,11 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
-        }, {}, {}>;
+        }, {}, {
+            $type: MediaModel[];
+        }>;
         categories: drizzle_orm_pg_core.PgColumn<{
             name: "categories";
             tableName: "inboxes_entries";
@@ -2720,10 +3380,22 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
                 hasRuntimeDefault: false;
                 enumValues: [string, ...string[]];
                 baseColumn: never;
+                identity: undefined;
                 generated: undefined;
-            }, object, object>;
+            }, {}, {}>;
+            identity: undefined;
             generated: undefined;
-        }, {}, {}>;
+        }, {}, {
+            baseBuilder: drizzle_orm_pg_core.PgColumnBuilder<{
+                name: "categories";
+                dataType: "string";
+                columnType: "PgText";
+                data: string;
+                enumValues: [string, ...string[]];
+                driverParam: string;
+            }, {}, {}, drizzle_orm.ColumnBuilderExtraConfig>;
+            size: undefined;
+        }>;
         attachments: drizzle_orm_pg_core.PgColumn<{
             name: "attachments";
             tableName: "inboxes_entries";
@@ -2738,8 +3410,11 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
-        }, {}, {}>;
+        }, {}, {
+            $type: AttachmentsModel[];
+        }>;
         extra: drizzle_orm_pg_core.PgColumn<{
             name: "extra";
             tableName: "inboxes_entries";
@@ -2754,6 +3429,26 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            $type: ExtraModel;
+        }>;
+        language: drizzle_orm_pg_core.PgColumn<{
+            name: "language";
+            tableName: "inboxes_entries";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         inboxHandle: drizzle_orm_pg_core.PgColumn<{
@@ -2770,6 +3465,7 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         read: drizzle_orm_pg_core.PgColumn<{
@@ -2786,6 +3482,7 @@ declare const inboxesEntries: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -2804,21 +3501,154 @@ declare const inboxesEntriesOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<
     insertedAt: z.ZodString;
     publishedAt: z.ZodString;
     media: z.ZodNullable<z.ZodType<string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
     categories: z.ZodNullable<z.ZodArray<z.ZodString, "many">>;
     attachments: z.ZodNullable<z.ZodType<string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
     extra: z.ZodNullable<z.ZodType<string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>;
+    language: z.ZodNullable<z.ZodString>;
     inboxHandle: z.ZodString;
     read: z.ZodNullable<z.ZodBoolean>;
 }, "media" | "attachments" | "extra">, {
@@ -2897,6 +3727,7 @@ declare const inboxesEntriesOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<
     id: string;
     author: string | null;
     url: string | null;
+    language: string | null;
     guid: string;
     categories: string[] | null;
     authorUrl: string | null;
@@ -2934,6 +3765,7 @@ declare const inboxesEntriesOpenAPISchema: z.ZodObject<z.objectUtil.extendShape<
     id: string;
     author: string | null;
     url: string | null;
+    language: string | null;
     guid: string;
     categories: string[] | null;
     authorUrl: string | null;
@@ -2972,23 +3804,156 @@ declare const inboxesEntriesInsertOpenAPISchema: z.ZodObject<z.objectUtil.extend
     id: z.ZodOptional<z.ZodString>;
     author: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     url: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    language: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     guid: z.ZodString;
     media: z.ZodOptional<z.ZodNullable<z.ZodType<string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>>;
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>>;
     categories: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString, "many">>>;
     attachments: z.ZodOptional<z.ZodNullable<z.ZodType<string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>>;
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>>;
     extra: z.ZodOptional<z.ZodNullable<z.ZodType<string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
-        [key: string]: string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
-    } | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | (string | number | boolean | any | any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>>;
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null, z.ZodTypeDef, string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | (string | number | boolean | /*elided*/ any | /*elided*/ any | null)[] | null;
+    } | (string | number | boolean | {
+        [key: string]: string | number | boolean | /*elided*/ any | /*elided*/ any | null;
+    } | /*elided*/ any | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null)[] | null>>>;
     authorUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     authorAvatar: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     insertedAt: z.ZodString;
@@ -3073,6 +4038,7 @@ declare const inboxesEntriesInsertOpenAPISchema: z.ZodObject<z.objectUtil.extend
     content?: string | null | undefined;
     author?: string | null | undefined;
     url?: string | null | undefined;
+    language?: string | null | undefined;
     media?: {
         type: "photo" | "video";
         url: string;
@@ -3107,6 +4073,7 @@ declare const inboxesEntriesInsertOpenAPISchema: z.ZodObject<z.objectUtil.extend
     content?: string | null | undefined;
     author?: string | null | undefined;
     url?: string | null | undefined;
+    language?: string | null | undefined;
     media?: {
         type: "photo" | "video";
         url: string;
@@ -3160,6 +4127,7 @@ declare const inboxes: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         handle: drizzle_orm_pg_core.PgColumn<{
@@ -3176,6 +4144,7 @@ declare const inboxes: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         secret: drizzle_orm_pg_core.PgColumn<{
@@ -3192,6 +4161,7 @@ declare const inboxes: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: true;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         title: drizzle_orm_pg_core.PgColumn<{
@@ -3208,6 +4178,7 @@ declare const inboxes: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -3253,6 +4224,7 @@ declare const invitations: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         createdAt: drizzle_orm_pg_core.PgColumn<{
@@ -3269,6 +4241,24 @@ declare const invitations: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        usedAt: drizzle_orm_pg_core.PgColumn<{
+            name: "used_at";
+            tableName: "invitations";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         fromUserId: drizzle_orm_pg_core.PgColumn<{
@@ -3285,6 +4275,7 @@ declare const invitations: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         toUserId: drizzle_orm_pg_core.PgColumn<{
@@ -3301,6 +4292,7 @@ declare const invitations: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -3309,16 +4301,19 @@ declare const invitations: drizzle_orm_pg_core.PgTableWithColumns<{
 declare const invitationsOpenAPISchema: zod.ZodObject<{
     code: zod.ZodString;
     createdAt: zod.ZodNullable<zod.ZodString>;
+    usedAt: zod.ZodNullable<zod.ZodString>;
     fromUserId: zod.ZodString;
     toUserId: zod.ZodNullable<zod.ZodString>;
 }, zod.UnknownKeysParam, zod.ZodTypeAny, {
     code: string;
     createdAt: string | null;
+    usedAt: string | null;
     fromUserId: string;
     toUserId: string | null;
 }, {
     code: string;
     createdAt: string | null;
+    usedAt: string | null;
     fromUserId: string;
     toUserId: string | null;
 }>;
@@ -3344,6 +4339,7 @@ declare const lists: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: true;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         feedIds: drizzle_orm_pg_core.PgColumn<{
@@ -3373,10 +4369,22 @@ declare const lists: drizzle_orm_pg_core.PgTableWithColumns<{
                 hasRuntimeDefault: false;
                 enumValues: [string, ...string[]];
                 baseColumn: never;
+                identity: undefined;
                 generated: undefined;
-            }, object, object>;
+            }, {}, {}>;
+            identity: undefined;
             generated: undefined;
-        }, {}, {}>;
+        }, {}, {
+            baseBuilder: drizzle_orm_pg_core.PgColumnBuilder<{
+                name: "feed_ids";
+                dataType: "string";
+                columnType: "PgText";
+                data: string;
+                enumValues: [string, ...string[]];
+                driverParam: string;
+            }, {}, {}, drizzle_orm.ColumnBuilderExtraConfig>;
+            size: undefined;
+        }>;
         title: drizzle_orm_pg_core.PgColumn<{
             name: "title";
             tableName: "lists";
@@ -3391,6 +4399,7 @@ declare const lists: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         description: drizzle_orm_pg_core.PgColumn<{
@@ -3407,6 +4416,7 @@ declare const lists: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         image: drizzle_orm_pg_core.PgColumn<{
@@ -3423,6 +4433,7 @@ declare const lists: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         view: drizzle_orm_pg_core.PgColumn<{
@@ -3439,6 +4450,7 @@ declare const lists: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         fee: drizzle_orm_pg_core.PgColumn<{
@@ -3455,6 +4467,7 @@ declare const lists: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         timelineUpdatedAt: drizzle_orm_pg_core.PgColumn<{
@@ -3471,6 +4484,24 @@ declare const lists: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        language: drizzle_orm_pg_core.PgColumn<{
+            name: "language";
+            tableName: "lists";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         ownerUserId: drizzle_orm_pg_core.PgColumn<{
@@ -3487,6 +4518,7 @@ declare const lists: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -3501,6 +4533,7 @@ declare const listsOpenAPISchema: zod.ZodObject<{
     view: zod.ZodNumber;
     fee: zod.ZodNumber;
     timelineUpdatedAt: zod.ZodString;
+    language: zod.ZodNullable<zod.ZodString>;
     ownerUserId: zod.ZodString;
 }, zod.UnknownKeysParam, zod.ZodTypeAny, {
     description: string | null;
@@ -3509,6 +4542,7 @@ declare const listsOpenAPISchema: zod.ZodObject<{
     image: string | null;
     view: number;
     ownerUserId: string;
+    language: string | null;
     feedIds: string[];
     fee: number;
     timelineUpdatedAt: string;
@@ -3519,6 +4553,7 @@ declare const listsOpenAPISchema: zod.ZodObject<{
     image: string | null;
     view: number;
     ownerUserId: string;
+    language: string | null;
     feedIds: string[];
     fee: number;
     timelineUpdatedAt: string;
@@ -3546,6 +4581,7 @@ declare const listsSubscriptions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         listId: drizzle_orm_pg_core.PgColumn<{
@@ -3562,6 +4598,7 @@ declare const listsSubscriptions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         view: drizzle_orm_pg_core.PgColumn<{
@@ -3578,6 +4615,7 @@ declare const listsSubscriptions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         title: drizzle_orm_pg_core.PgColumn<{
@@ -3594,6 +4632,7 @@ declare const listsSubscriptions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         lastViewedAt: drizzle_orm_pg_core.PgColumn<{
@@ -3610,6 +4649,24 @@ declare const listsSubscriptions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: drizzle_orm_pg_core.PgColumn<{
+            name: "created_at";
+            tableName: "lists_subscriptions";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         isPrivate: drizzle_orm_pg_core.PgColumn<{
@@ -3626,6 +4683,7 @@ declare const listsSubscriptions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -3637,9 +4695,11 @@ declare const listsSubscriptionsOpenAPISchema: zod.ZodObject<{
     view: zod.ZodNumber;
     title: zod.ZodNullable<zod.ZodString>;
     lastViewedAt: zod.ZodNullable<zod.ZodString>;
+    createdAt: zod.ZodString;
     isPrivate: zod.ZodBoolean;
 }, zod.UnknownKeysParam, zod.ZodTypeAny, {
     title: string | null;
+    createdAt: string;
     userId: string;
     view: number;
     isPrivate: boolean;
@@ -3647,6 +4707,7 @@ declare const listsSubscriptionsOpenAPISchema: zod.ZodObject<{
     lastViewedAt: string | null;
 }, {
     title: string | null;
+    createdAt: string;
     userId: string;
     view: number;
     isPrivate: boolean;
@@ -3676,6 +4737,7 @@ declare const listsTimeline: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         feedId: drizzle_orm_pg_core.PgColumn<{
@@ -3692,6 +4754,7 @@ declare const listsTimeline: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         entryId: drizzle_orm_pg_core.PgColumn<{
@@ -3708,6 +4771,7 @@ declare const listsTimeline: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         insertedAt: drizzle_orm_pg_core.PgColumn<{
@@ -3724,6 +4788,7 @@ declare const listsTimeline: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -3768,6 +4833,7 @@ declare const messaging: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         token: drizzle_orm_pg_core.PgColumn<{
@@ -3784,6 +4850,7 @@ declare const messaging: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         channel: drizzle_orm_pg_core.PgColumn<{
@@ -3800,6 +4867,7 @@ declare const messaging: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -3835,6 +4903,232 @@ type MessagingData = {
     description: string;
 };
 
+declare const rsshub: drizzle_orm_pg_core.PgTableWithColumns<{
+    name: "rsshub";
+    schema: undefined;
+    columns: {
+        id: drizzle_orm_pg_core.PgColumn<{
+            name: "id";
+            tableName: "rsshub";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: true;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        baseUrl: drizzle_orm_pg_core.PgColumn<{
+            name: "base_url";
+            tableName: "rsshub";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        accessKey: drizzle_orm_pg_core.PgColumn<{
+            name: "access_key";
+            tableName: "rsshub";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        ownerUserId: drizzle_orm_pg_core.PgColumn<{
+            name: "owner_user_id";
+            tableName: "rsshub";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        price: drizzle_orm_pg_core.PgColumn<{
+            name: "price";
+            tableName: "rsshub";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        description: drizzle_orm_pg_core.PgColumn<{
+            name: "description";
+            tableName: "rsshub";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        userLimit: drizzle_orm_pg_core.PgColumn<{
+            name: "user_limit";
+            tableName: "rsshub";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+declare const rsshubOpenAPISchema: zod.ZodObject<{
+    id: zod.ZodString;
+    baseUrl: zod.ZodString;
+    accessKey: zod.ZodNullable<zod.ZodString>;
+    ownerUserId: zod.ZodString;
+    price: zod.ZodNumber;
+    description: zod.ZodNullable<zod.ZodString>;
+    userLimit: zod.ZodNullable<zod.ZodNumber>;
+}, zod.UnknownKeysParam, zod.ZodTypeAny, {
+    description: string | null;
+    id: string;
+    ownerUserId: string;
+    baseUrl: string;
+    accessKey: string | null;
+    price: number;
+    userLimit: number | null;
+}, {
+    description: string | null;
+    id: string;
+    ownerUserId: string;
+    baseUrl: string;
+    accessKey: string | null;
+    price: number;
+    userLimit: number | null;
+}>;
+declare const rsshubUsage: drizzle_orm_pg_core.PgTableWithColumns<{
+    name: "rsshub_usage";
+    schema: undefined;
+    columns: {
+        id: drizzle_orm_pg_core.PgColumn<{
+            name: "id";
+            tableName: "rsshub_usage";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: true;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        rsshubId: drizzle_orm_pg_core.PgColumn<{
+            name: "rsshub_id";
+            tableName: "rsshub_usage";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        userId: drizzle_orm_pg_core.PgColumn<{
+            name: "user_id";
+            tableName: "rsshub_usage";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+declare const rsshubUsageOpenAPISchema: zod.ZodObject<{
+    id: zod.ZodString;
+    rsshubId: zod.ZodString;
+    userId: zod.ZodString;
+}, zod.UnknownKeysParam, zod.ZodTypeAny, {
+    id: string;
+    userId: string;
+    rsshubId: string;
+}, {
+    id: string;
+    userId: string;
+    rsshubId: string;
+}>;
+declare const rsshubUsageRelations: drizzle_orm.Relations<"rsshub_usage", {
+    rsshub: drizzle_orm.One<"rsshub", true>;
+}>;
+
 declare const settings: drizzle_orm_pg_core.PgTableWithColumns<{
     name: "settings";
     schema: undefined;
@@ -3853,6 +5147,7 @@ declare const settings: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: true;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         userId: drizzle_orm_pg_core.PgColumn<{
@@ -3869,6 +5164,7 @@ declare const settings: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         tab: drizzle_orm_pg_core.PgColumn<{
@@ -3885,6 +5181,7 @@ declare const settings: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: ["general", "appearance", "integration"];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         payload: drizzle_orm_pg_core.PgColumn<{
@@ -3901,8 +5198,11 @@ declare const settings: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
-        }, {}, {}>;
+        }, {}, {
+            $type: Record<string, any>;
+        }>;
         updateAt: drizzle_orm_pg_core.PgColumn<{
             name: "update_at";
             tableName: "settings";
@@ -3917,6 +5217,7 @@ declare const settings: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         version: drizzle_orm_pg_core.PgColumn<{
@@ -3933,12 +5234,173 @@ declare const settings: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
     dialect: "pg";
 }>;
 
+declare const user: drizzle_orm_pg_core.PgTableWithColumns<{
+    name: "user";
+    schema: undefined;
+    columns: {
+        id: drizzle_orm_pg_core.PgColumn<{
+            name: "id";
+            tableName: "user";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: true;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        name: drizzle_orm_pg_core.PgColumn<{
+            name: "name";
+            tableName: "user";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        email: drizzle_orm_pg_core.PgColumn<{
+            name: "email";
+            tableName: "user";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        emailVerified: drizzle_orm_pg_core.PgColumn<{
+            name: "emailVerified";
+            tableName: "user";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        image: drizzle_orm_pg_core.PgColumn<{
+            name: "image";
+            tableName: "user";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        handle: drizzle_orm_pg_core.PgColumn<{
+            name: "handle";
+            tableName: "user";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: drizzle_orm_pg_core.PgColumn<{
+            name: "created_at";
+            tableName: "user";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: drizzle_orm_pg_core.PgColumn<{
+            name: "updatedAt";
+            tableName: "user";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        twoFactorEnabled: drizzle_orm_pg_core.PgColumn<{
+            name: "two_factor_enabled";
+            tableName: "user";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
 declare const users: drizzle_orm_pg_core.PgTableWithColumns<{
     name: "user";
     schema: undefined;
@@ -3957,6 +5419,7 @@ declare const users: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: true;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         name: drizzle_orm_pg_core.PgColumn<{
@@ -3973,6 +5436,7 @@ declare const users: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         email: drizzle_orm_pg_core.PgColumn<{
@@ -3989,15 +5453,16 @@ declare const users: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         emailVerified: drizzle_orm_pg_core.PgColumn<{
             name: "emailVerified";
             tableName: "user";
-            dataType: "date";
-            columnType: "PgTimestamp";
-            data: Date;
-            driverParam: string;
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
             notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
@@ -4005,6 +5470,7 @@ declare const users: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         image: drizzle_orm_pg_core.PgColumn<{
@@ -4021,6 +5487,7 @@ declare const users: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         handle: drizzle_orm_pg_core.PgColumn<{
@@ -4037,6 +5504,7 @@ declare const users: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         createdAt: drizzle_orm_pg_core.PgColumn<{
@@ -4053,39 +5521,97 @@ declare const users: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: drizzle_orm_pg_core.PgColumn<{
+            name: "updatedAt";
+            tableName: "user";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        twoFactorEnabled: drizzle_orm_pg_core.PgColumn<{
+            name: "two_factor_enabled";
+            tableName: "user";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
     dialect: "pg";
 }>;
 declare function lower(handle: AnyPgColumn): SQL;
-declare const usersOpenApiSchema: z.ZodObject<Omit<{
-    id: z.ZodString;
-    name: z.ZodNullable<z.ZodString>;
-    email: z.ZodString;
-    emailVerified: z.ZodNullable<z.ZodString>;
-    image: z.ZodNullable<z.ZodString>;
-    handle: z.ZodNullable<z.ZodString>;
-    createdAt: z.ZodDate;
-}, "email">, z.UnknownKeysParam, z.ZodTypeAny, {
+declare const usersOpenApiSchema: zod.ZodObject<Omit<{
+    id: zod.ZodString;
+    name: zod.ZodNullable<zod.ZodString>;
+    email: zod.ZodString;
+    emailVerified: zod.ZodNullable<zod.ZodBoolean>;
+    image: zod.ZodNullable<zod.ZodString>;
+    handle: zod.ZodNullable<zod.ZodString>;
+    createdAt: zod.ZodDate;
+    updatedAt: zod.ZodDate;
+    twoFactorEnabled: zod.ZodNullable<zod.ZodBoolean>;
+}, "email">, "strip", zod.ZodTypeAny, {
     name: string | null;
     id: string;
-    emailVerified: string | null;
+    emailVerified: boolean | null;
     image: string | null;
     handle: string | null;
     createdAt: Date;
+    updatedAt: Date;
+    twoFactorEnabled: boolean | null;
 }, {
     name: string | null;
     id: string;
-    emailVerified: string | null;
+    emailVerified: boolean | null;
     image: string | null;
     handle: string | null;
     createdAt: Date;
+    updatedAt: Date;
+    twoFactorEnabled: boolean | null;
 }>;
-declare const accounts: drizzle_orm_pg_core.PgTableWithColumns<{
+declare const account: drizzle_orm_pg_core.PgTableWithColumns<{
     name: "account";
     schema: undefined;
     columns: {
+        id: drizzle_orm_pg_core.PgColumn<{
+            name: "id";
+            tableName: "account";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: true;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         userId: drizzle_orm_pg_core.PgColumn<{
             name: "userId";
             tableName: "account";
@@ -4100,25 +5626,10 @@ declare const accounts: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        type: drizzle_orm_pg_core.PgColumn<{
-            name: "type";
-            tableName: "account";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: true;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            generated: undefined;
-        }, {}, {}>;
-        provider: drizzle_orm_pg_core.PgColumn<{
+        providerId: drizzle_orm_pg_core.PgColumn<{
             name: "provider";
             tableName: "account";
             dataType: "string";
@@ -4132,9 +5643,10 @@ declare const accounts: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        providerAccountId: drizzle_orm_pg_core.PgColumn<{
+        accountId: drizzle_orm_pg_core.PgColumn<{
             name: "providerAccountId";
             tableName: "account";
             dataType: "string";
@@ -4148,9 +5660,10 @@ declare const accounts: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        refresh_token: drizzle_orm_pg_core.PgColumn<{
+        refreshToken: drizzle_orm_pg_core.PgColumn<{
             name: "refresh_token";
             tableName: "account";
             dataType: "string";
@@ -4164,9 +5677,10 @@ declare const accounts: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        access_token: drizzle_orm_pg_core.PgColumn<{
+        accessToken: drizzle_orm_pg_core.PgColumn<{
             name: "access_token";
             tableName: "account";
             dataType: "string";
@@ -4180,15 +5694,16 @@ declare const accounts: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        expires_at: drizzle_orm_pg_core.PgColumn<{
+        accessTokenExpiresAt: drizzle_orm_pg_core.PgColumn<{
             name: "expires_at";
             tableName: "account";
-            dataType: "number";
-            columnType: "PgInteger";
-            data: number;
-            driverParam: string | number;
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
             notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
@@ -4196,22 +5711,24 @@ declare const accounts: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        token_type: drizzle_orm_pg_core.PgColumn<{
-            name: "token_type";
+        refreshTokenExpiresAt: drizzle_orm_pg_core.PgColumn<{
+            name: "refreshTokenExpiresAt";
             tableName: "account";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
             driverParam: string;
             notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
+            enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         scope: drizzle_orm_pg_core.PgColumn<{
@@ -4228,9 +5745,10 @@ declare const accounts: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        id_token: drizzle_orm_pg_core.PgColumn<{
+        idToken: drizzle_orm_pg_core.PgColumn<{
             name: "id_token";
             tableName: "account";
             dataType: "string";
@@ -4244,10 +5762,11 @@ declare const accounts: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        session_state: drizzle_orm_pg_core.PgColumn<{
-            name: "session_state";
+        password: drizzle_orm_pg_core.PgColumn<{
+            name: "password";
             tableName: "account";
             dataType: "string";
             columnType: "PgText";
@@ -4260,29 +5779,82 @@ declare const accounts: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: drizzle_orm_pg_core.PgColumn<{
+            name: "createdAt";
+            tableName: "account";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: drizzle_orm_pg_core.PgColumn<{
+            name: "updatedAt";
+            tableName: "account";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
     dialect: "pg";
 }>;
-declare const sessions: drizzle_orm_pg_core.PgTableWithColumns<{
+declare const session: drizzle_orm_pg_core.PgTableWithColumns<{
     name: "session";
     schema: undefined;
     columns: {
-        sessionToken: drizzle_orm_pg_core.PgColumn<{
-            name: "sessionToken";
+        id: drizzle_orm_pg_core.PgColumn<{
+            name: "id";
             tableName: "session";
             dataType: "string";
             columnType: "PgText";
             data: string;
             driverParam: string;
             notNull: true;
-            hasDefault: false;
+            hasDefault: true;
             isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: true;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        token: drizzle_orm_pg_core.PgColumn<{
+            name: "sessionToken";
+            tableName: "session";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         userId: drizzle_orm_pg_core.PgColumn<{
@@ -4299,9 +5871,10 @@ declare const sessions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        expires: drizzle_orm_pg_core.PgColumn<{
+        expiresAt: drizzle_orm_pg_core.PgColumn<{
             name: "expires";
             tableName: "session";
             dataType: "date";
@@ -4315,15 +5888,101 @@ declare const sessions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: drizzle_orm_pg_core.PgColumn<{
+            name: "createdAt";
+            tableName: "session";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: drizzle_orm_pg_core.PgColumn<{
+            name: "updatedAt";
+            tableName: "session";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        ipAddress: drizzle_orm_pg_core.PgColumn<{
+            name: "ipAddress";
+            tableName: "session";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        userAgent: drizzle_orm_pg_core.PgColumn<{
+            name: "userAgent";
+            tableName: "session";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
     dialect: "pg";
 }>;
-declare const verificationTokens: drizzle_orm_pg_core.PgTableWithColumns<{
+declare const verification: drizzle_orm_pg_core.PgTableWithColumns<{
     name: "verificationToken";
     schema: undefined;
     columns: {
+        id: drizzle_orm_pg_core.PgColumn<{
+            name: "id";
+            tableName: "verificationToken";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: true;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         identifier: drizzle_orm_pg_core.PgColumn<{
             name: "identifier";
             tableName: "verificationToken";
@@ -4338,9 +5997,10 @@ declare const verificationTokens: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        token: drizzle_orm_pg_core.PgColumn<{
+        value: drizzle_orm_pg_core.PgColumn<{
             name: "token";
             tableName: "verificationToken";
             dataType: "string";
@@ -4354,9 +6014,10 @@ declare const verificationTokens: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        expires: drizzle_orm_pg_core.PgColumn<{
+        expiresAt: drizzle_orm_pg_core.PgColumn<{
             name: "expires";
             tableName: "verificationToken";
             dataType: "date";
@@ -4370,6 +6031,116 @@ declare const verificationTokens: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: drizzle_orm_pg_core.PgColumn<{
+            name: "createdAt";
+            tableName: "verificationToken";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: drizzle_orm_pg_core.PgColumn<{
+            name: "updatedAt";
+            tableName: "verificationToken";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+declare const twoFactor: drizzle_orm_pg_core.PgTableWithColumns<{
+    name: "two_factor";
+    schema: undefined;
+    columns: {
+        id: drizzle_orm_pg_core.PgColumn<{
+            name: "id";
+            tableName: "two_factor";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: true;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        secret: drizzle_orm_pg_core.PgColumn<{
+            name: "secret";
+            tableName: "two_factor";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        backupCodes: drizzle_orm_pg_core.PgColumn<{
+            name: "backup_codes";
+            tableName: "two_factor";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        userId: drizzle_orm_pg_core.PgColumn<{
+            name: "user_id";
+            tableName: "two_factor";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -4404,10 +6175,8 @@ declare const wallets: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
-            generated: drizzle_orm.GeneratedColumnConfig<number> & {
-                as: any;
-                type: "always";
-            };
+            identity: "always";
+            generated: undefined;
         }, {}, {}>;
         address: drizzle_orm_pg_core.PgColumn<{
             name: "address";
@@ -4423,6 +6192,7 @@ declare const wallets: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         userId: drizzle_orm_pg_core.PgColumn<{
@@ -4439,6 +6209,7 @@ declare const wallets: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         createdAt: drizzle_orm_pg_core.PgColumn<{
@@ -4455,6 +6226,7 @@ declare const wallets: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         powerToken: drizzle_orm_pg_core.PgColumn<{
@@ -4471,6 +6243,7 @@ declare const wallets: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         dailyPowerToken: drizzle_orm_pg_core.PgColumn<{
@@ -4487,6 +6260,7 @@ declare const wallets: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         cashablePowerToken: drizzle_orm_pg_core.PgColumn<{
@@ -4503,6 +6277,7 @@ declare const wallets: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -4519,17 +6294,17 @@ declare const walletsOpenAPISchema: zod.ZodObject<{
 }, zod.UnknownKeysParam, zod.ZodTypeAny, {
     createdAt: string;
     userId: string;
+    powerToken: string;
     addressIndex: number;
     address: string | null;
-    powerToken: string;
     dailyPowerToken: string;
     cashablePowerToken: string;
 }, {
     createdAt: string;
     userId: string;
+    powerToken: string;
     addressIndex: number;
     address: string | null;
-    powerToken: string;
     dailyPowerToken: string;
     cashablePowerToken: string;
 }>;
@@ -4558,6 +6333,7 @@ declare const transactions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         type: drizzle_orm_pg_core.PgColumn<{
@@ -4574,6 +6350,7 @@ declare const transactions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: ["tip", "mint", "burn", "withdraw", "purchase", "airdrop"];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         fromUserId: drizzle_orm_pg_core.PgColumn<{
@@ -4590,6 +6367,7 @@ declare const transactions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         toUserId: drizzle_orm_pg_core.PgColumn<{
@@ -4606,6 +6384,7 @@ declare const transactions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         toFeedId: drizzle_orm_pg_core.PgColumn<{
@@ -4622,6 +6401,7 @@ declare const transactions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         toListId: drizzle_orm_pg_core.PgColumn<{
@@ -4638,6 +6418,7 @@ declare const transactions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         toEntryId: drizzle_orm_pg_core.PgColumn<{
@@ -4654,6 +6435,24 @@ declare const transactions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        toRSSHubId: drizzle_orm_pg_core.PgColumn<{
+            name: "to_rsshub_id";
+            tableName: "transactions";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         powerToken: drizzle_orm_pg_core.PgColumn<{
@@ -4670,6 +6469,7 @@ declare const transactions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         tax: drizzle_orm_pg_core.PgColumn<{
@@ -4686,6 +6486,7 @@ declare const transactions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         createdAt: drizzle_orm_pg_core.PgColumn<{
@@ -4702,6 +6503,7 @@ declare const transactions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         comment: drizzle_orm_pg_core.PgColumn<{
@@ -4718,6 +6520,7 @@ declare const transactions: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -4731,6 +6534,7 @@ declare const transactionsOpenAPISchema: zod.ZodObject<{
     toFeedId: zod.ZodNullable<zod.ZodString>;
     toListId: zod.ZodNullable<zod.ZodString>;
     toEntryId: zod.ZodNullable<zod.ZodString>;
+    toRSSHubId: zod.ZodNullable<zod.ZodString>;
     powerToken: zod.ZodString;
     tax: zod.ZodString;
     createdAt: zod.ZodString;
@@ -4738,25 +6542,27 @@ declare const transactionsOpenAPISchema: zod.ZodObject<{
 }, zod.UnknownKeysParam, zod.ZodTypeAny, {
     type: "tip" | "mint" | "burn" | "withdraw" | "purchase" | "airdrop";
     createdAt: string;
-    fromUserId: string | null;
-    toUserId: string | null;
     hash: string;
     powerToken: string;
+    fromUserId: string | null;
+    toUserId: string | null;
     toFeedId: string | null;
     toListId: string | null;
     toEntryId: string | null;
+    toRSSHubId: string | null;
     tax: string;
     comment: string | null;
 }, {
     type: "tip" | "mint" | "burn" | "withdraw" | "purchase" | "airdrop";
     createdAt: string;
-    fromUserId: string | null;
-    toUserId: string | null;
     hash: string;
     powerToken: string;
+    fromUserId: string | null;
+    toUserId: string | null;
     toFeedId: string | null;
     toListId: string | null;
     toEntryId: string | null;
+    toRSSHubId: string | null;
     tax: string;
     comment: string | null;
 }>;
@@ -4785,6 +6591,7 @@ declare const feedPowerTokens: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         powerToken: drizzle_orm_pg_core.PgColumn<{
@@ -4801,6 +6608,7 @@ declare const feedPowerTokens: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -4837,6 +6645,7 @@ declare const levels: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         rank: drizzle_orm_pg_core.PgColumn<{
@@ -4853,6 +6662,7 @@ declare const levels: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         level: drizzle_orm_pg_core.PgColumn<{
@@ -4869,6 +6679,7 @@ declare const levels: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         prevActivityPoints: drizzle_orm_pg_core.PgColumn<{
@@ -4885,6 +6696,7 @@ declare const levels: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         activityPoints: drizzle_orm_pg_core.PgColumn<{
@@ -4901,6 +6713,7 @@ declare const levels: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         powerToken: drizzle_orm_pg_core.PgColumn<{
@@ -4917,6 +6730,7 @@ declare const levels: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         userId: drizzle_orm_pg_core.PgColumn<{
@@ -4933,6 +6747,7 @@ declare const levels: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
@@ -4948,17 +6763,17 @@ declare const levelsOpenAPISchema: zod.ZodObject<{
     userId: zod.ZodString;
 }, zod.UnknownKeysParam, zod.ZodTypeAny, {
     userId: string;
-    address: string;
-    powerToken: string;
     rank: number | null;
+    powerToken: string;
+    address: string;
     level: number | null;
     prevActivityPoints: number | null;
     activityPoints: number | null;
 }, {
     userId: string;
-    address: string;
-    powerToken: string;
     rank: number | null;
+    powerToken: string;
+    address: string;
     level: number | null;
     prevActivityPoints: number | null;
     activityPoints: number | null;
@@ -4985,6 +6800,7 @@ declare const boosts: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: [string, ...string[]];
             baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
         expiresAt: drizzle_orm_pg_core.PgColumn<{
@@ -5001,1742 +6817,7292 @@ declare const boosts: drizzle_orm_pg_core.PgTableWithColumns<{
             hasRuntimeDefault: false;
             enumValues: undefined;
             baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+declare const rsshubPurchase: drizzle_orm_pg_core.PgTableWithColumns<{
+    name: "rsshub_purchase";
+    schema: undefined;
+    columns: {
+        hash: drizzle_orm_pg_core.PgColumn<{
+            name: "hash";
+            tableName: "rsshub_purchase";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        expiresAt: drizzle_orm_pg_core.PgColumn<{
+            name: "expires_at";
+            tableName: "rsshub_purchase";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
             generated: undefined;
         }, {}, {}>;
     };
     dialect: "pg";
 }>;
 
-declare const _routes: hono_hono_base.HonoBase<Env, {
-    "/probes/postgresql": {
-        $get: {
-            input: {};
-            output: {
-                code: 0;
-                data: number;
+declare const auth: {
+    handler: (request: Request) => Promise<Response>;
+    api: better_auth.InferAPI<{
+        ok: {
+            <C extends [(better_call.Context<"/ok", {
+                method: "GET";
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                ok: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                    isAction: false;
+                };
+            }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                ok: boolean;
+            }>;
+            path: "/ok";
+            options: {
+                method: "GET";
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                ok: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                    isAction: false;
+                };
             };
-            outputFormat: "json" | "text";
-            status: 200;
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
         };
-    };
-    "/probes/redis": {
-        $get: {
-            input: {};
-            output: {
-                code: 0;
-                data: number;
+        error: {
+            <C extends [(better_call.Context<"/error", {
+                method: "GET";
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "text/html": {
+                                        schema: {
+                                            type: "string";
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                    isAction: false;
+                };
+            }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : Response>;
+            path: "/error";
+            options: {
+                method: "GET";
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "text/html": {
+                                        schema: {
+                                            type: "string";
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                    isAction: false;
+                };
             };
-            outputFormat: "json" | "text";
-            status: 200;
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
         };
-    };
-    "/probes/bullmq": {
-        $get: {
-            input: {
-                query: {
-                    name: string | string[];
+        signInSocial: {
+            <C extends [better_call.Context<"/sign-in/social", {
+                method: "POST";
+                query: zod.ZodOptional<zod.ZodObject<{
+                    currentURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    currentURL?: string | undefined;
+                }, {
+                    currentURL?: string | undefined;
+                }>>;
+                body: zod.ZodObject<{
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                    newUserCallbackURL: zod.ZodOptional<zod.ZodString>;
+                    errorCallbackURL: zod.ZodOptional<zod.ZodString>;
+                    provider: zod.ZodEnum<["github", ...("github" | "apple" | "discord" | "facebook" | "microsoft" | "google" | "spotify" | "twitch" | "twitter" | "dropbox" | "linkedin" | "gitlab" | "reddit")[]]>;
+                    disableRedirect: zod.ZodOptional<zod.ZodBoolean>;
+                    idToken: zod.ZodOptional<zod.ZodObject<{
+                        token: zod.ZodString;
+                        nonce: zod.ZodOptional<zod.ZodString>;
+                        accessToken: zod.ZodOptional<zod.ZodString>;
+                        refreshToken: zod.ZodOptional<zod.ZodString>;
+                        expiresAt: zod.ZodOptional<zod.ZodNumber>;
+                    }, "strip", zod.ZodTypeAny, {
+                        token: string;
+                        expiresAt?: number | undefined;
+                        accessToken?: string | undefined;
+                        refreshToken?: string | undefined;
+                        nonce?: string | undefined;
+                    }, {
+                        token: string;
+                        expiresAt?: number | undefined;
+                        accessToken?: string | undefined;
+                        refreshToken?: string | undefined;
+                        nonce?: string | undefined;
+                    }>>;
+                }, "strip", zod.ZodTypeAny, {
+                    provider: "github" | "apple" | "discord" | "facebook" | "microsoft" | "google" | "spotify" | "twitch" | "twitter" | "dropbox" | "linkedin" | "gitlab" | "reddit";
+                    idToken?: {
+                        token: string;
+                        expiresAt?: number | undefined;
+                        accessToken?: string | undefined;
+                        refreshToken?: string | undefined;
+                        nonce?: string | undefined;
+                    } | undefined;
+                    callbackURL?: string | undefined;
+                    newUserCallbackURL?: string | undefined;
+                    errorCallbackURL?: string | undefined;
+                    disableRedirect?: boolean | undefined;
+                }, {
+                    provider: "github" | "apple" | "discord" | "facebook" | "microsoft" | "google" | "spotify" | "twitch" | "twitter" | "dropbox" | "linkedin" | "gitlab" | "reddit";
+                    idToken?: {
+                        token: string;
+                        expiresAt?: number | undefined;
+                        accessToken?: string | undefined;
+                        refreshToken?: string | undefined;
+                        nonce?: string | undefined;
+                    } | undefined;
+                    callbackURL?: string | undefined;
+                    newUserCallbackURL?: string | undefined;
+                    errorCallbackURL?: string | undefined;
+                    disableRedirect?: boolean | undefined;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                session: {
+                                                    type: string;
+                                                };
+                                                user: {
+                                                    type: string;
+                                                };
+                                                url: {
+                                                    type: string;
+                                                };
+                                                redirect: {
+                                                    type: string;
+                                                };
+                                            };
+                                            required: string[];
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
                 };
-            };
-            output: {
-                code: 0;
-                data: {
-                    completed: number;
-                    wait: number;
-                    failed: number;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-} & {
-    boosts: {
-        $get: {
-            input: {
-                query: {
-                    feedId: string | string[];
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    level: number;
-                    monthlyBoostCost: number;
-                    boostCount: number;
-                    remainingBoostsToLevelUp: number;
-                    lastValidBoost: {
-                        hash: string | null;
-                        expiresAt: string;
-                    } | null;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $post: {
-            input: {
-                json: {
-                    feedId: string;
-                    amount: string;
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    transactionHash: string;
-                    expiresAt: string;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "boosts/boosters": {
-        $get: {
-            input: {
-                query: {
-                    feedId: string | string[];
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    name: string | null;
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                redirect: boolean;
+                token: string;
+                url: undefined;
+                user: {
                     id: string;
-                    emailVerified: string | null;
+                    email: string;
+                    name: string;
+                    image: string | null | undefined;
+                    emailVerified: boolean;
+                    createdAt: Date;
+                    updatedAt: Date;
+                };
+            } | {
+                url: string;
+                redirect: boolean;
+            }>;
+            path: "/sign-in/social";
+            options: {
+                method: "POST";
+                query: zod.ZodOptional<zod.ZodObject<{
+                    currentURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    currentURL?: string | undefined;
+                }, {
+                    currentURL?: string | undefined;
+                }>>;
+                body: zod.ZodObject<{
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                    newUserCallbackURL: zod.ZodOptional<zod.ZodString>;
+                    errorCallbackURL: zod.ZodOptional<zod.ZodString>;
+                    provider: zod.ZodEnum<["github", ...("github" | "apple" | "discord" | "facebook" | "microsoft" | "google" | "spotify" | "twitch" | "twitter" | "dropbox" | "linkedin" | "gitlab" | "reddit")[]]>;
+                    disableRedirect: zod.ZodOptional<zod.ZodBoolean>;
+                    idToken: zod.ZodOptional<zod.ZodObject<{
+                        token: zod.ZodString;
+                        nonce: zod.ZodOptional<zod.ZodString>;
+                        accessToken: zod.ZodOptional<zod.ZodString>;
+                        refreshToken: zod.ZodOptional<zod.ZodString>;
+                        expiresAt: zod.ZodOptional<zod.ZodNumber>;
+                    }, "strip", zod.ZodTypeAny, {
+                        token: string;
+                        expiresAt?: number | undefined;
+                        accessToken?: string | undefined;
+                        refreshToken?: string | undefined;
+                        nonce?: string | undefined;
+                    }, {
+                        token: string;
+                        expiresAt?: number | undefined;
+                        accessToken?: string | undefined;
+                        refreshToken?: string | undefined;
+                        nonce?: string | undefined;
+                    }>>;
+                }, "strip", zod.ZodTypeAny, {
+                    provider: "github" | "apple" | "discord" | "facebook" | "microsoft" | "google" | "spotify" | "twitch" | "twitter" | "dropbox" | "linkedin" | "gitlab" | "reddit";
+                    idToken?: {
+                        token: string;
+                        expiresAt?: number | undefined;
+                        accessToken?: string | undefined;
+                        refreshToken?: string | undefined;
+                        nonce?: string | undefined;
+                    } | undefined;
+                    callbackURL?: string | undefined;
+                    newUserCallbackURL?: string | undefined;
+                    errorCallbackURL?: string | undefined;
+                    disableRedirect?: boolean | undefined;
+                }, {
+                    provider: "github" | "apple" | "discord" | "facebook" | "microsoft" | "google" | "spotify" | "twitch" | "twitter" | "dropbox" | "linkedin" | "gitlab" | "reddit";
+                    idToken?: {
+                        token: string;
+                        expiresAt?: number | undefined;
+                        accessToken?: string | undefined;
+                        refreshToken?: string | undefined;
+                        nonce?: string | undefined;
+                    } | undefined;
+                    callbackURL?: string | undefined;
+                    newUserCallbackURL?: string | undefined;
+                    errorCallbackURL?: string | undefined;
+                    disableRedirect?: boolean | undefined;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                session: {
+                                                    type: string;
+                                                };
+                                                user: {
+                                                    type: string;
+                                                };
+                                                url: {
+                                                    type: string;
+                                                };
+                                                redirect: {
+                                                    type: string;
+                                                };
+                                            };
+                                            required: string[];
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        callbackOAuth: {
+            <C extends [better_call.Context<"/callback/:id", {
+                method: ("GET" | "POST")[];
+                body: zod.ZodOptional<zod.ZodObject<{
+                    code: zod.ZodOptional<zod.ZodString>;
+                    error: zod.ZodOptional<zod.ZodString>;
+                    error_description: zod.ZodOptional<zod.ZodString>;
+                    state: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    code?: string | undefined;
+                    error?: string | undefined;
+                    error_description?: string | undefined;
+                    state?: string | undefined;
+                }, {
+                    code?: string | undefined;
+                    error?: string | undefined;
+                    error_description?: string | undefined;
+                    state?: string | undefined;
+                }>>;
+                query: zod.ZodOptional<zod.ZodObject<{
+                    code: zod.ZodOptional<zod.ZodString>;
+                    error: zod.ZodOptional<zod.ZodString>;
+                    error_description: zod.ZodOptional<zod.ZodString>;
+                    state: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    code?: string | undefined;
+                    error?: string | undefined;
+                    error_description?: string | undefined;
+                    state?: string | undefined;
+                }, {
+                    code?: string | undefined;
+                    error?: string | undefined;
+                    error_description?: string | undefined;
+                    state?: string | undefined;
+                }>>;
+                metadata: {
+                    isAction: false;
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : void>;
+            path: "/callback/:id";
+            options: {
+                method: ("GET" | "POST")[];
+                body: zod.ZodOptional<zod.ZodObject<{
+                    code: zod.ZodOptional<zod.ZodString>;
+                    error: zod.ZodOptional<zod.ZodString>;
+                    error_description: zod.ZodOptional<zod.ZodString>;
+                    state: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    code?: string | undefined;
+                    error?: string | undefined;
+                    error_description?: string | undefined;
+                    state?: string | undefined;
+                }, {
+                    code?: string | undefined;
+                    error?: string | undefined;
+                    error_description?: string | undefined;
+                    state?: string | undefined;
+                }>>;
+                query: zod.ZodOptional<zod.ZodObject<{
+                    code: zod.ZodOptional<zod.ZodString>;
+                    error: zod.ZodOptional<zod.ZodString>;
+                    error_description: zod.ZodOptional<zod.ZodString>;
+                    state: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    code?: string | undefined;
+                    error?: string | undefined;
+                    error_description?: string | undefined;
+                    state?: string | undefined;
+                }, {
+                    code?: string | undefined;
+                    error?: string | undefined;
+                    error_description?: string | undefined;
+                    state?: string | undefined;
+                }>>;
+                metadata: {
+                    isAction: false;
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        getSession: {
+            <C extends [better_call.Context<"/get-session", {
+                method: "GET";
+                query: zod.ZodOptional<zod.ZodObject<{
+                    disableCookieCache: zod.ZodOptional<zod.ZodUnion<[zod.ZodBoolean, zod.ZodEffects<zod.ZodString, boolean, string>]>>;
+                    disableRefresh: zod.ZodOptional<zod.ZodBoolean>;
+                }, "strip", zod.ZodTypeAny, {
+                    disableCookieCache?: boolean | undefined;
+                    disableRefresh?: boolean | undefined;
+                }, {
+                    disableCookieCache?: string | boolean | undefined;
+                    disableRefresh?: boolean | undefined;
+                }>>;
+                requireHeaders: true;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                session: {
+                                                    type: string;
+                                                    properties: {
+                                                        token: {
+                                                            type: string;
+                                                        };
+                                                        userId: {
+                                                            type: string;
+                                                        };
+                                                        expiresAt: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                                user: {
+                                                    type: string;
+                                                    $ref: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                session: {
+                    id: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    userId: string;
+                    expiresAt: Date;
+                    token: string;
+                    ipAddress?: string | null | undefined | undefined;
+                    userAgent?: string | null | undefined | undefined;
+                };
+                user: {
+                    id: string;
+                    email: string;
+                    emailVerified: boolean;
+                    name: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    image?: string | null | undefined | undefined;
+                    handle: string;
+                } & {
+                    id: string;
+                    email: string;
+                    emailVerified: boolean;
+                    name: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    image?: string | null | undefined | undefined;
+                    twoFactorEnabled: boolean | null | undefined;
+                    handle: string;
+                };
+            } | null>;
+            path: "/get-session";
+            options: {
+                method: "GET";
+                query: zod.ZodOptional<zod.ZodObject<{
+                    disableCookieCache: zod.ZodOptional<zod.ZodUnion<[zod.ZodBoolean, zod.ZodEffects<zod.ZodString, boolean, string>]>>;
+                    disableRefresh: zod.ZodOptional<zod.ZodBoolean>;
+                }, "strip", zod.ZodTypeAny, {
+                    disableCookieCache?: boolean | undefined;
+                    disableRefresh?: boolean | undefined;
+                }, {
+                    disableCookieCache?: string | boolean | undefined;
+                    disableRefresh?: boolean | undefined;
+                }>>;
+                requireHeaders: true;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                session: {
+                                                    type: string;
+                                                    properties: {
+                                                        token: {
+                                                            type: string;
+                                                        };
+                                                        userId: {
+                                                            type: string;
+                                                        };
+                                                        expiresAt: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                                user: {
+                                                    type: string;
+                                                    $ref: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        signOut: {
+            <C extends [better_call.Context<"/sign-out", {
+                method: "POST";
+                requireHeaders: true;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                success: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                success: boolean;
+            }>;
+            path: "/sign-out";
+            options: {
+                method: "POST";
+                requireHeaders: true;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                success: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        signUpEmail: {
+            <C extends [better_call.Context<"/sign-up/email", {
+                method: "POST";
+                query: zod.ZodOptional<zod.ZodObject<{
+                    currentURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    currentURL?: string | undefined;
+                }, {
+                    currentURL?: string | undefined;
+                }>>;
+                body: zod.ZodObject<{
+                    name: zod.ZodString;
+                    email: zod.ZodString;
+                    password: zod.ZodString;
+                }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+                    password: string;
+                    email: string;
+                    name: string;
+                }, {
+                    password: string;
+                    email: string;
+                    name: string;
+                }> & zod.ZodObject<{
+                    handle: zod.ZodString;
+                } | {
+                    handle: zod.ZodString;
+                }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+                    handle: string;
+                } | {
+                    handle: string;
+                }, {
+                    handle: string;
+                } | {
+                    handle: string;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        requestBody: {
+                            content: {
+                                "application/json": {
+                                    schema: {
+                                        type: "object";
+                                        properties: {
+                                            name: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                            email: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                            password: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                            callbackURL: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                        };
+                                        required: string[];
+                                    };
+                                };
+                            };
+                        };
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                id: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                email: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                name: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                image: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                emailVerified: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                token: null;
+                user: {
+                    id: string;
+                    email: string;
+                    name: string;
+                    image: string | null | undefined;
+                    emailVerified: boolean;
+                    createdAt: Date;
+                    updatedAt: Date;
+                };
+            } | {
+                token: string;
+                user: {
+                    id: string;
+                    email: string;
+                    name: string;
+                    image: string | null | undefined;
+                    emailVerified: boolean;
+                    createdAt: Date;
+                    updatedAt: Date;
+                };
+            }>;
+            path: "/sign-up/email";
+            options: {
+                method: "POST";
+                query: zod.ZodOptional<zod.ZodObject<{
+                    currentURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    currentURL?: string | undefined;
+                }, {
+                    currentURL?: string | undefined;
+                }>>;
+                body: zod.ZodObject<{
+                    name: zod.ZodString;
+                    email: zod.ZodString;
+                    password: zod.ZodString;
+                }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+                    password: string;
+                    email: string;
+                    name: string;
+                }, {
+                    password: string;
+                    email: string;
+                    name: string;
+                }> & zod.ZodObject<{
+                    handle: zod.ZodString;
+                } | {
+                    handle: zod.ZodString;
+                }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+                    handle: string;
+                } | {
+                    handle: string;
+                }, {
+                    handle: string;
+                } | {
+                    handle: string;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        requestBody: {
+                            content: {
+                                "application/json": {
+                                    schema: {
+                                        type: "object";
+                                        properties: {
+                                            name: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                            email: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                            password: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                            callbackURL: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                        };
+                                        required: string[];
+                                    };
+                                };
+                            };
+                        };
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                id: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                email: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                name: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                image: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                emailVerified: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        signInEmail: {
+            <C extends [better_call.Context<"/sign-in/email", {
+                method: "POST";
+                body: zod.ZodObject<{
+                    email: zod.ZodString;
+                    password: zod.ZodString;
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                    rememberMe: zod.ZodOptional<zod.ZodDefault<zod.ZodBoolean>>;
+                }, "strip", zod.ZodTypeAny, {
+                    password: string;
+                    email: string;
+                    callbackURL?: string | undefined;
+                    rememberMe?: boolean | undefined;
+                }, {
+                    password: string;
+                    email: string;
+                    callbackURL?: string | undefined;
+                    rememberMe?: boolean | undefined;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                user: {
+                                                    type: string;
+                                                };
+                                                url: {
+                                                    type: string;
+                                                };
+                                                redirect: {
+                                                    type: string;
+                                                };
+                                            };
+                                            required: string[];
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                redirect: boolean;
+                token: string;
+                url: string | undefined;
+                user: {
+                    id: string;
+                    email: string;
+                    name: string;
+                    image: string | null | undefined;
+                    emailVerified: boolean;
+                    createdAt: Date;
+                    updatedAt: Date;
+                };
+            }>;
+            path: "/sign-in/email";
+            options: {
+                method: "POST";
+                body: zod.ZodObject<{
+                    email: zod.ZodString;
+                    password: zod.ZodString;
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                    rememberMe: zod.ZodOptional<zod.ZodDefault<zod.ZodBoolean>>;
+                }, "strip", zod.ZodTypeAny, {
+                    password: string;
+                    email: string;
+                    callbackURL?: string | undefined;
+                    rememberMe?: boolean | undefined;
+                }, {
+                    password: string;
+                    email: string;
+                    callbackURL?: string | undefined;
+                    rememberMe?: boolean | undefined;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                user: {
+                                                    type: string;
+                                                };
+                                                url: {
+                                                    type: string;
+                                                };
+                                                redirect: {
+                                                    type: string;
+                                                };
+                                            };
+                                            required: string[];
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        forgetPassword: {
+            <C extends [better_call.Context<"/forget-password", {
+                method: "POST";
+                body: zod.ZodObject<{
+                    email: zod.ZodString;
+                    redirectTo: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    email: string;
+                    redirectTo?: string | undefined;
+                }, {
+                    email: string;
+                    redirectTo?: string | undefined;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+            }>;
+            path: "/forget-password";
+            options: {
+                method: "POST";
+                body: zod.ZodObject<{
+                    email: zod.ZodString;
+                    redirectTo: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    email: string;
+                    redirectTo?: string | undefined;
+                }, {
+                    email: string;
+                    redirectTo?: string | undefined;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        resetPassword: {
+            <C extends [better_call.Context<"/reset-password", {
+                query: zod.ZodOptional<zod.ZodObject<{
+                    token: zod.ZodOptional<zod.ZodString>;
+                    currentURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    token?: string | undefined;
+                    currentURL?: string | undefined;
+                }, {
+                    token?: string | undefined;
+                    currentURL?: string | undefined;
+                }>>;
+                method: "POST";
+                body: zod.ZodObject<{
+                    newPassword: zod.ZodString;
+                    token: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    newPassword: string;
+                    token?: string | undefined;
+                }, {
+                    newPassword: string;
+                    token?: string | undefined;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+            }>;
+            path: "/reset-password";
+            options: {
+                query: zod.ZodOptional<zod.ZodObject<{
+                    token: zod.ZodOptional<zod.ZodString>;
+                    currentURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    token?: string | undefined;
+                    currentURL?: string | undefined;
+                }, {
+                    token?: string | undefined;
+                    currentURL?: string | undefined;
+                }>>;
+                method: "POST";
+                body: zod.ZodObject<{
+                    newPassword: zod.ZodString;
+                    token: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    newPassword: string;
+                    token?: string | undefined;
+                }, {
+                    newPassword: string;
+                    token?: string | undefined;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        verifyEmail: {
+            <C extends [better_call.Context<"/verify-email", {
+                method: "GET";
+                query: zod.ZodObject<{
+                    token: zod.ZodString;
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    token: string;
+                    callbackURL?: string | undefined;
+                }, {
+                    token: string;
+                    callbackURL?: string | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, void>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                user: {
+                                                    type: string;
+                                                };
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                            required: string[];
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : void | {
+                status: boolean;
+                user: {
+                    id: any;
+                    email: any;
+                    name: any;
+                    image: any;
+                    emailVerified: any;
+                    createdAt: any;
+                    updatedAt: any;
+                };
+            } | {
+                status: boolean;
+                user: null;
+            }>;
+            path: "/verify-email";
+            options: {
+                method: "GET";
+                query: zod.ZodObject<{
+                    token: zod.ZodString;
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    token: string;
+                    callbackURL?: string | undefined;
+                }, {
+                    token: string;
+                    callbackURL?: string | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, void>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                user: {
+                                                    type: string;
+                                                };
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                            required: string[];
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        sendVerificationEmail: {
+            <C extends [better_call.Context<"/send-verification-email", {
+                method: "POST";
+                query: zod.ZodOptional<zod.ZodObject<{
+                    currentURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    currentURL?: string | undefined;
+                }, {
+                    currentURL?: string | undefined;
+                }>>;
+                body: zod.ZodObject<{
+                    email: zod.ZodString;
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    email: string;
+                    callbackURL?: string | undefined;
+                }, {
+                    email: string;
+                    callbackURL?: string | undefined;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        requestBody: {
+                            content: {
+                                "application/json": {
+                                    schema: {
+                                        type: "object";
+                                        properties: {
+                                            email: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                            callbackURL: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                        };
+                                        required: string[];
+                                    };
+                                };
+                            };
+                        };
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+            }>;
+            path: "/send-verification-email";
+            options: {
+                method: "POST";
+                query: zod.ZodOptional<zod.ZodObject<{
+                    currentURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    currentURL?: string | undefined;
+                }, {
+                    currentURL?: string | undefined;
+                }>>;
+                body: zod.ZodObject<{
+                    email: zod.ZodString;
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    email: string;
+                    callbackURL?: string | undefined;
+                }, {
+                    email: string;
+                    callbackURL?: string | undefined;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        requestBody: {
+                            content: {
+                                "application/json": {
+                                    schema: {
+                                        type: "object";
+                                        properties: {
+                                            email: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                            callbackURL: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                        };
+                                        required: string[];
+                                    };
+                                };
+                            };
+                        };
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        changeEmail: {
+            <C extends [better_call.Context<"/change-email", {
+                method: "POST";
+                query: zod.ZodOptional<zod.ZodObject<{
+                    currentURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    currentURL?: string | undefined;
+                }, {
+                    currentURL?: string | undefined;
+                }>>;
+                body: zod.ZodObject<{
+                    newEmail: zod.ZodString;
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    newEmail: string;
+                    callbackURL?: string | undefined;
+                }, {
+                    newEmail: string;
+                    callbackURL?: string | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                user: {
+                                                    type: string;
+                                                };
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+            }>;
+            path: "/change-email";
+            options: {
+                method: "POST";
+                query: zod.ZodOptional<zod.ZodObject<{
+                    currentURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    currentURL?: string | undefined;
+                }, {
+                    currentURL?: string | undefined;
+                }>>;
+                body: zod.ZodObject<{
+                    newEmail: zod.ZodString;
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    newEmail: string;
+                    callbackURL?: string | undefined;
+                }, {
+                    newEmail: string;
+                    callbackURL?: string | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                user: {
+                                                    type: string;
+                                                };
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        changePassword: {
+            <C extends [better_call.Context<"/change-password", {
+                method: "POST";
+                body: zod.ZodObject<{
+                    newPassword: zod.ZodString;
+                    currentPassword: zod.ZodString;
+                    revokeOtherSessions: zod.ZodOptional<zod.ZodBoolean>;
+                }, "strip", zod.ZodTypeAny, {
+                    newPassword: string;
+                    currentPassword: string;
+                    revokeOtherSessions?: boolean | undefined;
+                }, {
+                    newPassword: string;
+                    currentPassword: string;
+                    revokeOtherSessions?: boolean | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                user: {
+                                                    description: string;
+                                                    $ref: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                token: string | null;
+                user: {
+                    id: string;
+                    email: string;
+                    name: string;
+                    image: string | null | undefined;
+                    emailVerified: boolean;
+                    createdAt: Date;
+                    updatedAt: Date;
+                };
+            }>;
+            path: "/change-password";
+            options: {
+                method: "POST";
+                body: zod.ZodObject<{
+                    newPassword: zod.ZodString;
+                    currentPassword: zod.ZodString;
+                    revokeOtherSessions: zod.ZodOptional<zod.ZodBoolean>;
+                }, "strip", zod.ZodTypeAny, {
+                    newPassword: string;
+                    currentPassword: string;
+                    revokeOtherSessions?: boolean | undefined;
+                }, {
+                    newPassword: string;
+                    currentPassword: string;
+                    revokeOtherSessions?: boolean | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                user: {
+                                                    description: string;
+                                                    $ref: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        setPassword: {
+            <C extends [better_call.Context<"/set-password", {
+                method: "POST";
+                body: zod.ZodObject<{
+                    newPassword: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    newPassword: string;
+                }, {
+                    newPassword: string;
+                }>;
+                metadata: {
+                    SERVER_ONLY: true;
+                };
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+            }>;
+            path: "/set-password";
+            options: {
+                method: "POST";
+                body: zod.ZodObject<{
+                    newPassword: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    newPassword: string;
+                }, {
+                    newPassword: string;
+                }>;
+                metadata: {
+                    SERVER_ONLY: true;
+                };
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        updateUser: {
+            <C extends [better_call.Context<"/update-user", {
+                method: "POST";
+                body: zod.ZodObject<{
+                    handle: zod.ZodString;
+                } | {
+                    handle: zod.ZodString;
+                }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+                    handle: string;
+                } | {
+                    handle: string;
+                }, {
+                    handle: string;
+                } | {
+                    handle: string;
+                }> & zod.ZodObject<{
+                    name: zod.ZodOptional<zod.ZodString>;
+                    image: zod.ZodOptional<zod.ZodString | zod.ZodNull>;
+                }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+                    name?: string | undefined;
+                    image?: string | null | undefined;
+                }, {
+                    name?: string | undefined;
+                    image?: string | null | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        requestBody: {
+                            content: {
+                                "application/json": {
+                                    schema: {
+                                        type: "object";
+                                        properties: {
+                                            name: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                            image: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                user: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+            }>;
+            path: "/update-user";
+            options: {
+                method: "POST";
+                body: zod.ZodObject<{
+                    handle: zod.ZodString;
+                } | {
+                    handle: zod.ZodString;
+                }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+                    handle: string;
+                } | {
+                    handle: string;
+                }, {
+                    handle: string;
+                } | {
+                    handle: string;
+                }> & zod.ZodObject<{
+                    name: zod.ZodOptional<zod.ZodString>;
+                    image: zod.ZodOptional<zod.ZodString | zod.ZodNull>;
+                }, zod.UnknownKeysParam, zod.ZodTypeAny, {
+                    name?: string | undefined;
+                    image?: string | null | undefined;
+                }, {
+                    name?: string | undefined;
+                    image?: string | null | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        requestBody: {
+                            content: {
+                                "application/json": {
+                                    schema: {
+                                        type: "object";
+                                        properties: {
+                                            name: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                            image: {
+                                                type: string;
+                                                description: string;
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                user: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        deleteUser: {
+            <C extends [better_call.Context<"/delete-user", {
+                method: "POST";
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                body: zod.ZodObject<{
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                    password: zod.ZodOptional<zod.ZodString>;
+                    token: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    password?: string | undefined;
+                    token?: string | undefined;
+                    callbackURL?: string | undefined;
+                }, {
+                    password?: string | undefined;
+                    token?: string | undefined;
+                    callbackURL?: string | undefined;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                success: boolean;
+                message: string;
+            }>;
+            path: "/delete-user";
+            options: {
+                method: "POST";
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                body: zod.ZodObject<{
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                    password: zod.ZodOptional<zod.ZodString>;
+                    token: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    password?: string | undefined;
+                    token?: string | undefined;
+                    callbackURL?: string | undefined;
+                }, {
+                    password?: string | undefined;
+                    token?: string | undefined;
+                    callbackURL?: string | undefined;
+                }>;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        forgetPasswordCallback: {
+            <C extends [better_call.Context<"/reset-password/:token", {
+                method: "GET";
+                query: zod.ZodObject<{
+                    callbackURL: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    callbackURL: string;
+                }, {
+                    callbackURL: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, void>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                token: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : never>;
+            path: "/reset-password/:token";
+            options: {
+                method: "GET";
+                query: zod.ZodObject<{
+                    callbackURL: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    callbackURL: string;
+                }, {
+                    callbackURL: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, void>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                token: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        listSessions: {
+            <C extends [better_call.Context<"/list-sessions", {
+                method: "GET";
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                requireHeaders: true;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "array";
+                                            items: {
+                                                type: string;
+                                                properties: {
+                                                    token: {
+                                                        type: string;
+                                                    };
+                                                    userId: {
+                                                        type: string;
+                                                    };
+                                                    expiresAt: {
+                                                        type: string;
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : better_auth.Prettify<{
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                userId: string;
+                expiresAt: Date;
+                token: string;
+                ipAddress?: string | null | undefined | undefined;
+                userAgent?: string | null | undefined | undefined;
+            }>[]>;
+            path: "/list-sessions";
+            options: {
+                method: "GET";
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                requireHeaders: true;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "array";
+                                            items: {
+                                                type: string;
+                                                properties: {
+                                                    token: {
+                                                        type: string;
+                                                    };
+                                                    userId: {
+                                                        type: string;
+                                                    };
+                                                    expiresAt: {
+                                                        type: string;
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        revokeSession: {
+            <C extends [better_call.Context<"/revoke-session", {
+                method: "POST";
+                body: zod.ZodObject<{
+                    token: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    token: string;
+                }, {
+                    token: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                requireHeaders: true;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        requestBody: {
+                            content: {
+                                "application/json": {
+                                    schema: {
+                                        type: "object";
+                                        properties: {
+                                            token: {
+                                                type: string;
+                                            };
+                                        };
+                                        required: string[];
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+            }>;
+            path: "/revoke-session";
+            options: {
+                method: "POST";
+                body: zod.ZodObject<{
+                    token: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    token: string;
+                }, {
+                    token: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                requireHeaders: true;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        requestBody: {
+                            content: {
+                                "application/json": {
+                                    schema: {
+                                        type: "object";
+                                        properties: {
+                                            token: {
+                                                type: string;
+                                            };
+                                        };
+                                        required: string[];
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        revokeSessions: {
+            <C extends [better_call.Context<"/revoke-sessions", {
+                method: "POST";
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                requireHeaders: true;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                            required: string[];
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+            }>;
+            path: "/revoke-sessions";
+            options: {
+                method: "POST";
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                requireHeaders: true;
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                            required: string[];
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        revokeOtherSessions: {
+            <C extends [better_call.Context<"/revoke-other-sessions", {
+                method: "POST";
+                requireHeaders: true;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+            }>;
+            path: "/revoke-other-sessions";
+            options: {
+                method: "POST";
+                requireHeaders: true;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        linkSocialAccount: {
+            <C extends [better_call.Context<"/link-social", {
+                method: "POST";
+                requireHeaders: true;
+                query: zod.ZodOptional<zod.ZodObject<{
+                    currentURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    currentURL?: string | undefined;
+                }, {
+                    currentURL?: string | undefined;
+                }>>;
+                body: zod.ZodObject<{
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                    provider: zod.ZodEnum<["github", ...("github" | "apple" | "discord" | "facebook" | "microsoft" | "google" | "spotify" | "twitch" | "twitter" | "dropbox" | "linkedin" | "gitlab" | "reddit")[]]>;
+                }, "strip", zod.ZodTypeAny, {
+                    provider: "github" | "apple" | "discord" | "facebook" | "microsoft" | "google" | "spotify" | "twitch" | "twitter" | "dropbox" | "linkedin" | "gitlab" | "reddit";
+                    callbackURL?: string | undefined;
+                }, {
+                    provider: "github" | "apple" | "discord" | "facebook" | "microsoft" | "google" | "spotify" | "twitch" | "twitter" | "dropbox" | "linkedin" | "gitlab" | "reddit";
+                    callbackURL?: string | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                url: {
+                                                    type: string;
+                                                };
+                                                redirect: {
+                                                    type: string;
+                                                };
+                                            };
+                                            required: string[];
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                url: string;
+                redirect: boolean;
+            }>;
+            path: "/link-social";
+            options: {
+                method: "POST";
+                requireHeaders: true;
+                query: zod.ZodOptional<zod.ZodObject<{
+                    currentURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    currentURL?: string | undefined;
+                }, {
+                    currentURL?: string | undefined;
+                }>>;
+                body: zod.ZodObject<{
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                    provider: zod.ZodEnum<["github", ...("github" | "apple" | "discord" | "facebook" | "microsoft" | "google" | "spotify" | "twitch" | "twitter" | "dropbox" | "linkedin" | "gitlab" | "reddit")[]]>;
+                }, "strip", zod.ZodTypeAny, {
+                    provider: "github" | "apple" | "discord" | "facebook" | "microsoft" | "google" | "spotify" | "twitch" | "twitter" | "dropbox" | "linkedin" | "gitlab" | "reddit";
+                    callbackURL?: string | undefined;
+                }, {
+                    provider: "github" | "apple" | "discord" | "facebook" | "microsoft" | "google" | "spotify" | "twitch" | "twitter" | "dropbox" | "linkedin" | "gitlab" | "reddit";
+                    callbackURL?: string | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                url: {
+                                                    type: string;
+                                                };
+                                                redirect: {
+                                                    type: string;
+                                                };
+                                            };
+                                            required: string[];
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        listUserAccounts: {
+            <C extends [(better_call.Context<"/list-accounts", {
+                method: "GET";
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "array";
+                                            items: {
+                                                type: string;
+                                                properties: {
+                                                    id: {
+                                                        type: string;
+                                                    };
+                                                    provider: {
+                                                        type: string;
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                id: string;
+                provider: string;
+                createdAt: Date;
+                updatedAt: Date;
+                accountId: string;
+                scopes: string[];
+            }[]>;
+            path: "/list-accounts";
+            options: {
+                method: "GET";
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        description: string;
+                        responses: {
+                            "200": {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "array";
+                                            items: {
+                                                type: string;
+                                                properties: {
+                                                    id: {
+                                                        type: string;
+                                                    };
+                                                    provider: {
+                                                        type: string;
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        deleteUserCallback: {
+            <C extends [better_call.Context<"/delete-user/callback", {
+                method: "GET";
+                query: zod.ZodObject<{
+                    token: zod.ZodString;
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    token: string;
+                    callbackURL?: string | undefined;
+                }, {
+                    token: string;
+                    callbackURL?: string | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, void>, better_call.EndpointOptions>[];
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                success: boolean;
+                message: string;
+            }>;
+            path: "/delete-user/callback";
+            options: {
+                method: "GET";
+                query: zod.ZodObject<{
+                    token: zod.ZodString;
+                    callbackURL: zod.ZodOptional<zod.ZodString>;
+                }, "strip", zod.ZodTypeAny, {
+                    token: string;
+                    callbackURL?: string | undefined;
+                }, {
+                    token: string;
+                    callbackURL?: string | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, void>, better_call.EndpointOptions>[];
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        unlinkAccount: {
+            <C extends [better_call.Context<"/unlink-account", {
+                method: "POST";
+                body: zod.ZodObject<{
+                    providerId: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    providerId: string;
+                }, {
+                    providerId: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+            }>;
+            path: "/unlink-account";
+            options: {
+                method: "POST";
+                body: zod.ZodObject<{
+                    providerId: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    providerId: string;
+                }, {
+                    providerId: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+    } & {
+        customGetProviders: {
+            <C extends [(better_call.Context<"/get-providers", {
+                method: "GET";
+            }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : any>;
+            path: "/get-providers";
+            options: {
+                method: "GET";
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+    } & {
+        customCreateSession: {
+            <C extends [(better_call.Context<"/create-session", {
+                method: "GET";
+            }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                ck: string;
+                userId: string;
+            } | null>;
+            path: "/create-session";
+            options: {
+                method: "GET";
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+    } & {
+        getAccountInfo: {
+            <C extends [(better_call.Context<"/get-account-info", {
+                method: "GET";
+            }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                id: string;
+                provider: string;
+                profile: {
+                    id?: string;
+                    email?: string;
+                    name?: string;
+                    image?: string;
+                } | null;
+            }[] | null>;
+            path: "/get-account-info";
+            options: {
+                method: "GET";
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+    } & {
+        customUpdateUser: {
+            <C extends [(better_call.Context<"/update-user-ccc", {
+                method: "POST";
+            }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : string | null>;
+            path: "/update-user-ccc";
+            options: {
+                method: "POST";
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+    } & {
+        enableTwoFactor: {
+            <C extends [better_call.Context<"/two-factor/enable", {
+                method: "POST";
+                body: zod.ZodObject<{
+                    password: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    password: string;
+                }, {
+                    password: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                totpURI: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                backupCodes: {
+                                                    type: string;
+                                                    items: {
+                                                        type: string;
+                                                    };
+                                                    description: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                totpURI: string;
+                backupCodes: string[];
+            }>;
+            path: "/two-factor/enable";
+            options: {
+                method: "POST";
+                body: zod.ZodObject<{
+                    password: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    password: string;
+                }, {
+                    password: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                totpURI: {
+                                                    type: string;
+                                                    description: string;
+                                                };
+                                                backupCodes: {
+                                                    type: string;
+                                                    items: {
+                                                        type: string;
+                                                    };
+                                                    description: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        disableTwoFactor: {
+            <C extends [better_call.Context<"/two-factor/disable", {
+                method: "POST";
+                body: zod.ZodObject<{
+                    password: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    password: string;
+                }, {
+                    password: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+            }>;
+            path: "/two-factor/disable";
+            options: {
+                method: "POST";
+                body: zod.ZodObject<{
+                    password: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    password: string;
+                }, {
+                    password: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        verifyBackupCode: {
+            <C extends [better_call.Context<"/two-factor/verify-backup-code", {
+                method: "POST";
+                body: zod.ZodObject<{
+                    code: zod.ZodString;
+                    disableSession: zod.ZodOptional<zod.ZodBoolean>;
+                }, "strip", zod.ZodTypeAny, {
+                    code: string;
+                    disableSession?: boolean | undefined;
+                }, {
+                    code: string;
+                    disableSession?: boolean | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }, {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: better_auth_plugins.UserWithTwoFactor;
+                    };
+                } | {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }>[];
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                user: better_auth_plugins.UserWithTwoFactor;
+                session: {
+                    session: {
+                        id: string;
+                        createdAt: Date;
+                        updatedAt: Date;
+                        userId: string;
+                        expiresAt: Date;
+                        token: string;
+                        ipAddress?: string | null | undefined;
+                        userAgent?: string | null | undefined;
+                    };
+                    user: better_auth_plugins.UserWithTwoFactor;
+                } & {
+                    session: Record<string, any> & {
+                        id: string;
+                        createdAt: Date;
+                        updatedAt: Date;
+                        userId: string;
+                        expiresAt: Date;
+                        token: string;
+                        ipAddress?: string | null | undefined;
+                        userAgent?: string | null | undefined;
+                    };
+                    user: Record<string, any> & {
+                        id: string;
+                        email: string;
+                        emailVerified: boolean;
+                        name: string;
+                        createdAt: Date;
+                        updatedAt: Date;
+                        image?: string | null | undefined;
+                    };
+                } & {
+                    session: better_auth.Session & Record<string, any>;
+                    user: better_auth.User & Record<string, any>;
+                };
+            }>;
+            path: "/two-factor/verify-backup-code";
+            options: {
+                method: "POST";
+                body: zod.ZodObject<{
+                    code: zod.ZodString;
+                    disableSession: zod.ZodOptional<zod.ZodBoolean>;
+                }, "strip", zod.ZodTypeAny, {
+                    code: string;
+                    disableSession?: boolean | undefined;
+                }, {
+                    code: string;
+                    disableSession?: boolean | undefined;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }, {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: better_auth_plugins.UserWithTwoFactor;
+                    };
+                } | {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }>[];
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        generateBackupCodes: {
+            <C extends [better_call.Context<"/two-factor/generate-backup-codes", {
+                method: "POST";
+                body: zod.ZodObject<{
+                    password: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    password: string;
+                }, {
+                    password: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+                backupCodes: string[];
+            }>;
+            path: "/two-factor/generate-backup-codes";
+            options: {
+                method: "POST";
+                body: zod.ZodObject<{
+                    password: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    password: string;
+                }, {
+                    password: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        viewBackupCodes: {
+            <C extends [better_call.Context<"/two-factor/view-backup-codes", {
+                method: "GET";
+                body: zod.ZodObject<{
+                    userId: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    userId: string;
+                }, {
+                    userId: string;
+                }>;
+                metadata: {
+                    SERVER_ONLY: true;
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+                backupCodes: string[];
+            }>;
+            path: "/two-factor/view-backup-codes";
+            options: {
+                method: "GET";
+                body: zod.ZodObject<{
+                    userId: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    userId: string;
+                }, {
+                    userId: string;
+                }>;
+                metadata: {
+                    SERVER_ONLY: true;
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        sendTwoFactorOTP: {
+            <C extends [better_call.Context<"/two-factor/send-otp", {
+                method: "POST";
+                use: better_call.Endpoint<better_call.Handler<string, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }, {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: better_auth_plugins.UserWithTwoFactor;
+                    };
+                } | {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }>[];
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                status: boolean;
+            }>;
+            path: "/two-factor/send-otp";
+            options: {
+                method: "POST";
+                use: better_call.Endpoint<better_call.Handler<string, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }, {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: better_auth_plugins.UserWithTwoFactor;
+                    };
+                } | {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }>[];
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        verifyTwoFactorOTP: {
+            <C extends [better_call.Context<"/two-factor/verify-otp", {
+                method: "POST";
+                body: zod.ZodObject<{
+                    code: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    code: string;
+                }, {
+                    code: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }, {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: better_auth_plugins.UserWithTwoFactor;
+                    };
+                } | {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }>[];
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                token: string;
+                user: {
+                    id: string;
+                    email: string;
+                    emailVerified: boolean;
+                    name: string;
+                    image: string | null | undefined;
+                    createdAt: Date;
+                    updatedAt: Date;
+                };
+            }>;
+            path: "/two-factor/verify-otp";
+            options: {
+                method: "POST";
+                body: zod.ZodObject<{
+                    code: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    code: string;
+                }, {
+                    code: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }, {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: better_auth_plugins.UserWithTwoFactor;
+                    };
+                } | {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }>[];
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        generateTOTP: {
+            <C extends [(better_call.Context<"/totp/generate", {
+                method: "POST";
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                code: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                code: string;
+            }>;
+            path: "/totp/generate";
+            options: {
+                method: "POST";
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                code: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        getTOTPURI: {
+            <C extends [better_call.Context<"/two-factor/get-totp-uri", {
+                method: "POST";
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                body: zod.ZodObject<{
+                    password: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    password: string;
+                }, {
+                    password: string;
+                }>;
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                totpURI: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                totpURI: string;
+            }>;
+            path: "/two-factor/get-totp-uri";
+            options: {
+                method: "POST";
+                use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, better_call.EndpointOptions>[];
+                body: zod.ZodObject<{
+                    password: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    password: string;
+                }, {
+                    password: string;
+                }>;
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                totpURI: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+        verifyTOTP: {
+            <C extends [better_call.Context<"/two-factor/verify-totp", {
+                method: "POST";
+                body: zod.ZodObject<{
+                    code: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    code: string;
+                }, {
+                    code: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }, {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: better_auth_plugins.UserWithTwoFactor;
+                    };
+                } | {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }>[];
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            }>]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                token: string;
+                user: {
+                    id: string;
+                    email: string;
+                    emailVerified: boolean;
+                    name: string;
+                    image: string | null | undefined;
+                    createdAt: Date;
+                    updatedAt: Date;
+                };
+            }>;
+            path: "/two-factor/verify-totp";
+            options: {
+                method: "POST";
+                body: zod.ZodObject<{
+                    code: zod.ZodString;
+                }, "strip", zod.ZodTypeAny, {
+                    code: string;
+                }, {
+                    code: string;
+                }>;
+                use: better_call.Endpoint<better_call.Handler<string, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }, {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: better_auth_plugins.UserWithTwoFactor;
+                    };
+                } | {
+                    valid: () => Promise<{
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            token: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                image: string | null | undefined;
+                                createdAt: Date;
+                                updatedAt: Date;
+                            };
+                        };
+                        _flag: "json";
+                    }>;
+                    invalid: () => Promise<never>;
+                    session: {
+                        session: Record<string, any> & {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined;
+                            userAgent?: string | null | undefined;
+                        };
+                        user: Record<string, any> & {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined;
+                        };
+                    };
+                }>, {
+                    body: zod.ZodObject<{
+                        trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                    }, "strip", zod.ZodTypeAny, {
+                        trustDevice?: boolean | undefined;
+                    }, {
+                        trustDevice?: boolean | undefined;
+                    }>;
+                } & {
+                    method: "*";
+                }>[];
+                metadata: {
+                    openapi: {
+                        summary: string;
+                        description: string;
+                        responses: {
+                            200: {
+                                description: string;
+                                content: {
+                                    "application/json": {
+                                        schema: {
+                                            type: "object";
+                                            properties: {
+                                                status: {
+                                                    type: string;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+    } & {
+        getSession: {
+            <C extends [(better_call.Context<"/get-session", {
+                method: "GET";
+                metadata: {
+                    CUSTOM_SESSION: boolean;
+                };
+                query: zod.ZodOptional<zod.ZodObject<{
+                    disableCookieCache: zod.ZodOptional<zod.ZodUnion<[zod.ZodBoolean, zod.ZodEffects<zod.ZodString, boolean, string>]>>;
+                    disableRefresh: zod.ZodOptional<zod.ZodBoolean>;
+                }, "strip", zod.ZodTypeAny, {
+                    disableCookieCache?: boolean | undefined;
+                    disableRefresh?: boolean | undefined;
+                }, {
+                    disableCookieCache?: string | boolean | undefined;
+                    disableRefresh?: boolean | undefined;
+                }>>;
+            }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                asResponse: true;
+            }] ? Response : {
+                user: {
+                    id: string;
+                    email: string;
+                    emailVerified: boolean;
+                    name: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    image?: string | null | undefined | undefined;
+                } & {
                     image: string | null;
                     handle: string | null;
-                    createdAt: string;
-                }[];
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-} & {
-    "/status/configs": {
-        $get: {
-            input: {};
-            output: {
-                code: 0;
-                data: {
-                    MAX_SUBSCRIPTIONS: number;
-                    MAX_LISTS: number;
-                    MAX_ACTIONS: number;
-                    MAX_WEBHOOKS_PER_ACTION: number;
-                    MAX_INBOXES: number;
-                    IMPORTING_TITLE: string;
-                    DAILY_POWER_PERCENTAGES: number[];
-                    LEVEL_PERCENTAGES: number[];
-                    DAILY_CLAIM_AMOUNT: {
-                        trial: number;
-                        normal: number;
-                    };
-                    TAX_POINT: string;
-                    INVITATION_INTERVAL_DAYS: number;
-                    INVITATION_PRICE: number;
-                    DAILY_POWER_SUPPLY: number;
-                    IS_RSS3_TESTNET: boolean;
-                    PRODUCT_HUNT_VOTE_URL: string;
-                    ANNOUNCEMENT: string;
-                    MAX_TRIAL_USER_FEED_SUBSCRIPTION: number;
-                    MAX_TRIAL_USER_LIST_SUBSCRIPTION: number;
+                    twoFactorEnabled: boolean | null;
                 };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-} & {
-    "/messaging": {
-        $post: {
-            input: {
-                json: {
+                session: {
+                    id: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    userId: string;
+                    expiresAt: Date;
                     token: string;
-                    channel: "desktop" | "mobile";
+                    ipAddress?: string | null | undefined | undefined;
+                    userAgent?: string | null | undefined | undefined;
+                };
+                invitation: {
+                    code: string;
+                    createdAt: Date | null;
+                    usedAt: Date | null;
+                    fromUserId: string;
+                    toUserId: string | null;
+                } | undefined;
+                role: "user" | "trial";
+            } | null>;
+            path: "/get-session";
+            options: {
+                method: "GET";
+                metadata: {
+                    CUSTOM_SESSION: boolean;
+                };
+                query: zod.ZodOptional<zod.ZodObject<{
+                    disableCookieCache: zod.ZodOptional<zod.ZodUnion<[zod.ZodBoolean, zod.ZodEffects<zod.ZodString, boolean, string>]>>;
+                    disableRefresh: zod.ZodOptional<zod.ZodBoolean>;
+                }, "strip", zod.ZodTypeAny, {
+                    disableCookieCache?: boolean | undefined;
+                    disableRefresh?: boolean | undefined;
+                }, {
+                    disableCookieCache?: string | boolean | undefined;
+                    disableRefresh?: boolean | undefined;
+                }>>;
+            };
+            method: better_call.Method | better_call.Method[];
+            headers: Headers;
+        };
+    }>;
+    options: {
+        appName: string;
+        database: (options: better_auth.BetterAuthOptions) => {
+            id: string;
+            create<T extends Record<string, any>, R = T>(data: {
+                model: string;
+                data: T;
+                select?: string[];
+            }): Promise<any>;
+            findOne<T>(data: {
+                model: string;
+                where: better_auth.Where[];
+                select?: string[];
+            }): Promise<any>;
+            findMany<T>(data: {
+                model: string;
+                where?: better_auth.Where[];
+                limit?: number;
+                sortBy?: {
+                    field: string;
+                    direction: "asc" | "desc";
+                };
+                offset?: number;
+            }): Promise<any[]>;
+            update<T>(data: {
+                model: string;
+                where: better_auth.Where[];
+                update: Record<string, any>;
+            }): Promise<any>;
+            updateMany(data: {
+                model: string;
+                where: better_auth.Where[];
+                update: Record<string, any>;
+            }): Promise<any>;
+            delete<T>(data: {
+                model: string;
+                where: better_auth.Where[];
+            }): Promise<void>;
+            deleteMany(data: {
+                model: string;
+                where: better_auth.Where[];
+            }): Promise<any>;
+            options: better_auth_adapters_drizzle.DrizzleAdapterConfig;
+        };
+        advanced: {
+            generateId: false;
+        };
+        session: {
+            updateAge: number;
+            expiresIn: number;
+        };
+        basePath: string;
+        trustedOrigins: string[];
+        user: {
+            additionalFields: {
+                handle: {
+                    type: "string";
                 };
             };
-            output: {
-                code: 0;
+            changeEmail: {
+                enabled: true;
+                sendChangeEmailVerification: ({ newEmail, url }: {
+                    user: better_auth.User;
+                    newEmail: string;
+                    url: string;
+                    token: string;
+                }) => Promise<void>;
             };
-            outputFormat: "json" | "text";
-            status: 200;
         };
-    };
-    "/messaging/test": {
-        $get: {
-            input: {};
-            output: {
-                code: 0;
+        account: {
+            accountLinking: {
+                enabled: true;
+                trustedProviders: ("github" | "apple" | "google")[];
             };
-            outputFormat: "json" | "text";
-            status: 200;
         };
-    };
-} & {
-    "/inboxes": {
-        $delete: {
-            input: {
-                json: {
-                    handle: string;
-                };
+        socialProviders: {
+            google: {
+                clientId: string;
+                clientSecret: string;
             };
-            output: {
-                code: 0;
+            github: {
+                clientId: string;
+                clientSecret: string;
             };
-            outputFormat: "json" | "text";
-            status: 200;
+            apple: {
+                enabled: boolean;
+                clientId: string;
+                clientSecret: string;
+                appBundleIdentifier: string | undefined;
+            };
         };
-        $get: {
-            input: {
-                query: {
-                    handle: string | string[];
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    type: "inbox";
-                    id: string;
-                    secret: string;
-                    description?: string | null | undefined;
-                    title?: string | null | undefined;
-                    image?: string | null | undefined;
-                    ownerUserId?: string | null | undefined;
-                    owner?: {
-                        name: string | null;
-                        id: string;
-                        emailVerified: string | null;
-                        image: string | null;
-                        handle: string | null;
-                        createdAt: string;
-                    } | null | undefined;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
+        emailAndPassword: {
+            enabled: true;
+            sendResetPassword({ user, url }: {
+                user: better_auth.User;
+                url: string;
+                token: string;
+            }): Promise<void>;
         };
-        $post: {
-            input: {
-                json: {
-                    handle: string;
-                    title?: string | undefined;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
+        emailVerification: {
+            sendVerificationEmail({ user, url }: {
+                user: better_auth.User;
+                url: string;
+                token: string;
+            }): Promise<void>;
         };
-        $put: {
-            input: {
-                json: {
-                    title: string;
-                    handle: string;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/inboxes/webhook": {
-        $post: {
-            input: {
-                json: {
-                    guid: string;
-                    publishedAt: string;
-                    description?: string | null | undefined;
-                    title?: string | null | undefined;
-                    content?: string | null | undefined;
-                    author?: string | null | undefined;
-                    url?: string | null | undefined;
-                    media?: {
-                        type: "photo" | "video";
-                        url: string;
-                        width?: number | undefined;
-                        height?: number | undefined;
-                        preview_image_url?: string | undefined;
-                        blurhash?: string | undefined;
-                    }[] | null | undefined;
-                    categories?: string[] | null | undefined;
-                    attachments?: {
-                        url: string;
-                        title?: string | undefined;
-                        duration_in_seconds?: number | undefined;
-                        mime_type?: string | undefined;
-                        size_in_bytes?: number | undefined;
-                    }[] | null | undefined;
-                    extra?: {
-                        links?: {
-                            type: string;
-                            url: string;
-                            content_html?: string | undefined;
-                        }[] | null | undefined;
-                    } | null | undefined;
-                    authorUrl?: string | null | undefined;
-                    authorAvatar?: string | null | undefined;
-                    read?: boolean | null | undefined;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/inboxes/email": {
-        $post: {
-            input: {
-                json: {
-                    date: string;
-                    from: {
-                        name?: string | undefined;
-                        address?: string | undefined;
+        plugins: (better_auth.BetterAuthPlugin | {
+            id: "two-factor";
+            endpoints: {
+                enableTwoFactor: {
+                    <C extends [better_call.Context<"/two-factor/enable", {
+                        method: "POST";
+                        body: zod.ZodObject<{
+                            password: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            password: string;
+                        }, {
+                            password: string;
+                        }>;
+                        use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, better_call.EndpointOptions>[];
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        totpURI: {
+                                                            type: string;
+                                                            description: string;
+                                                        };
+                                                        backupCodes: {
+                                                            type: string;
+                                                            items: {
+                                                                type: string;
+                                                            };
+                                                            description: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    }>]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : {
+                        totpURI: string;
+                        backupCodes: string[];
+                    }>;
+                    path: "/two-factor/enable";
+                    options: {
+                        method: "POST";
+                        body: zod.ZodObject<{
+                            password: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            password: string;
+                        }, {
+                            password: string;
+                        }>;
+                        use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, better_call.EndpointOptions>[];
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        totpURI: {
+                                                            type: string;
+                                                            description: string;
+                                                        };
+                                                        backupCodes: {
+                                                            type: string;
+                                                            items: {
+                                                                type: string;
+                                                            };
+                                                            description: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
                     };
-                    to: {
-                        address: string;
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
+                disableTwoFactor: {
+                    <C extends [better_call.Context<"/two-factor/disable", {
+                        method: "POST";
+                        body: zod.ZodObject<{
+                            password: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            password: string;
+                        }, {
+                            password: string;
+                        }>;
+                        use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, better_call.EndpointOptions>[];
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        status: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    }>]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : {
+                        status: boolean;
+                    }>;
+                    path: "/two-factor/disable";
+                    options: {
+                        method: "POST";
+                        body: zod.ZodObject<{
+                            password: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            password: string;
+                        }, {
+                            password: string;
+                        }>;
+                        use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, better_call.EndpointOptions>[];
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        status: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
                     };
-                    messageId: string;
-                    subject?: string | undefined;
-                    html?: string | undefined;
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
+                verifyBackupCode: {
+                    <C extends [better_call.Context<"/two-factor/verify-backup-code", {
+                        method: "POST";
+                        body: zod.ZodObject<{
+                            code: zod.ZodString;
+                            disableSession: zod.ZodOptional<zod.ZodBoolean>;
+                        }, "strip", zod.ZodTypeAny, {
+                            code: string;
+                            disableSession?: boolean | undefined;
+                        }, {
+                            code: string;
+                            disableSession?: boolean | undefined;
+                        }>;
+                        use: better_call.Endpoint<better_call.Handler<string, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }, {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: better_auth_plugins.UserWithTwoFactor;
+                            };
+                        } | {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }>[];
+                    }>]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : {
+                        user: better_auth_plugins.UserWithTwoFactor;
+                        session: {
+                            session: {
+                                id: string;
+                                createdAt: Date;
+                                updatedAt: Date;
+                                userId: string;
+                                expiresAt: Date;
+                                token: string;
+                                ipAddress?: string | null | undefined;
+                                userAgent?: string | null | undefined;
+                            };
+                            user: better_auth_plugins.UserWithTwoFactor;
+                        } & {
+                            session: Record<string, any> & {
+                                id: string;
+                                createdAt: Date;
+                                updatedAt: Date;
+                                userId: string;
+                                expiresAt: Date;
+                                token: string;
+                                ipAddress?: string | null | undefined;
+                                userAgent?: string | null | undefined;
+                            };
+                            user: Record<string, any> & {
+                                id: string;
+                                email: string;
+                                emailVerified: boolean;
+                                name: string;
+                                createdAt: Date;
+                                updatedAt: Date;
+                                image?: string | null | undefined;
+                            };
+                        } & {
+                            session: better_auth.Session & Record<string, any>;
+                            user: better_auth.User & Record<string, any>;
+                        };
+                    }>;
+                    path: "/two-factor/verify-backup-code";
+                    options: {
+                        method: "POST";
+                        body: zod.ZodObject<{
+                            code: zod.ZodString;
+                            disableSession: zod.ZodOptional<zod.ZodBoolean>;
+                        }, "strip", zod.ZodTypeAny, {
+                            code: string;
+                            disableSession?: boolean | undefined;
+                        }, {
+                            code: string;
+                            disableSession?: boolean | undefined;
+                        }>;
+                        use: better_call.Endpoint<better_call.Handler<string, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }, {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: better_auth_plugins.UserWithTwoFactor;
+                            };
+                        } | {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }>[];
+                    };
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
+                generateBackupCodes: {
+                    <C extends [better_call.Context<"/two-factor/generate-backup-codes", {
+                        method: "POST";
+                        body: zod.ZodObject<{
+                            password: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            password: string;
+                        }, {
+                            password: string;
+                        }>;
+                        use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, better_call.EndpointOptions>[];
+                    }>]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : {
+                        status: boolean;
+                        backupCodes: string[];
+                    }>;
+                    path: "/two-factor/generate-backup-codes";
+                    options: {
+                        method: "POST";
+                        body: zod.ZodObject<{
+                            password: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            password: string;
+                        }, {
+                            password: string;
+                        }>;
+                        use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, better_call.EndpointOptions>[];
+                    };
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
+                viewBackupCodes: {
+                    <C extends [better_call.Context<"/two-factor/view-backup-codes", {
+                        method: "GET";
+                        body: zod.ZodObject<{
+                            userId: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            userId: string;
+                        }, {
+                            userId: string;
+                        }>;
+                        metadata: {
+                            SERVER_ONLY: true;
+                        };
+                    }>]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : {
+                        status: boolean;
+                        backupCodes: string[];
+                    }>;
+                    path: "/two-factor/view-backup-codes";
+                    options: {
+                        method: "GET";
+                        body: zod.ZodObject<{
+                            userId: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            userId: string;
+                        }, {
+                            userId: string;
+                        }>;
+                        metadata: {
+                            SERVER_ONLY: true;
+                        };
+                    };
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
+                sendTwoFactorOTP: {
+                    <C extends [better_call.Context<"/two-factor/send-otp", {
+                        method: "POST";
+                        use: better_call.Endpoint<better_call.Handler<string, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }, {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: better_auth_plugins.UserWithTwoFactor;
+                            };
+                        } | {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }>[];
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        status: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    }>]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : {
+                        status: boolean;
+                    }>;
+                    path: "/two-factor/send-otp";
+                    options: {
+                        method: "POST";
+                        use: better_call.Endpoint<better_call.Handler<string, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }, {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: better_auth_plugins.UserWithTwoFactor;
+                            };
+                        } | {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }>[];
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        status: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
+                verifyTwoFactorOTP: {
+                    <C extends [better_call.Context<"/two-factor/verify-otp", {
+                        method: "POST";
+                        body: zod.ZodObject<{
+                            code: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            code: string;
+                        }, {
+                            code: string;
+                        }>;
+                        use: better_call.Endpoint<better_call.Handler<string, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }, {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: better_auth_plugins.UserWithTwoFactor;
+                            };
+                        } | {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }>[];
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        status: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    }>]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : {
+                        token: string;
+                        user: {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            image: string | null | undefined;
+                            createdAt: Date;
+                            updatedAt: Date;
+                        };
+                    }>;
+                    path: "/two-factor/verify-otp";
+                    options: {
+                        method: "POST";
+                        body: zod.ZodObject<{
+                            code: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            code: string;
+                        }, {
+                            code: string;
+                        }>;
+                        use: better_call.Endpoint<better_call.Handler<string, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }, {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: better_auth_plugins.UserWithTwoFactor;
+                            };
+                        } | {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }>[];
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        status: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
+                generateTOTP: {
+                    <C extends [(better_call.Context<"/totp/generate", {
+                        method: "POST";
+                        use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, better_call.EndpointOptions>[];
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        code: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : {
+                        code: string;
+                    }>;
+                    path: "/totp/generate";
+                    options: {
+                        method: "POST";
+                        use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, better_call.EndpointOptions>[];
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        code: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
+                getTOTPURI: {
+                    <C extends [better_call.Context<"/two-factor/get-totp-uri", {
+                        method: "POST";
+                        use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, better_call.EndpointOptions>[];
+                        body: zod.ZodObject<{
+                            password: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            password: string;
+                        }, {
+                            password: string;
+                        }>;
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        totpURI: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    }>]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : {
+                        totpURI: string;
+                    }>;
+                    path: "/two-factor/get-totp-uri";
+                    options: {
+                        method: "POST";
+                        use: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, better_call.EndpointOptions>[];
+                        body: zod.ZodObject<{
+                            password: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            password: string;
+                        }, {
+                            password: string;
+                        }>;
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        totpURI: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
+                verifyTOTP: {
+                    <C extends [better_call.Context<"/two-factor/verify-totp", {
+                        method: "POST";
+                        body: zod.ZodObject<{
+                            code: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            code: string;
+                        }, {
+                            code: string;
+                        }>;
+                        use: better_call.Endpoint<better_call.Handler<string, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }, {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: better_auth_plugins.UserWithTwoFactor;
+                            };
+                        } | {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }>[];
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        status: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    }>]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : {
+                        token: string;
+                        user: {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            image: string | null | undefined;
+                            createdAt: Date;
+                            updatedAt: Date;
+                        };
+                    }>;
+                    path: "/two-factor/verify-totp";
+                    options: {
+                        method: "POST";
+                        body: zod.ZodObject<{
+                            code: zod.ZodString;
+                        }, "strip", zod.ZodTypeAny, {
+                            code: string;
+                        }, {
+                            code: string;
+                        }>;
+                        use: better_call.Endpoint<better_call.Handler<string, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }, {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: better_auth_plugins.UserWithTwoFactor;
+                            };
+                        } | {
+                            valid: () => Promise<{
+                                response: {
+                                    body: any;
+                                    status: number;
+                                    statusText: string;
+                                    headers: Record<string, string> | undefined;
+                                };
+                                body: {
+                                    token: string;
+                                    user: {
+                                        id: string;
+                                        email: string;
+                                        emailVerified: boolean;
+                                        name: string;
+                                        image: string | null | undefined;
+                                        createdAt: Date;
+                                        updatedAt: Date;
+                                    };
+                                };
+                                _flag: "json";
+                            }>;
+                            invalid: () => Promise<never>;
+                            session: {
+                                session: Record<string, any> & {
+                                    id: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    userId: string;
+                                    expiresAt: Date;
+                                    token: string;
+                                    ipAddress?: string | null | undefined;
+                                    userAgent?: string | null | undefined;
+                                };
+                                user: Record<string, any> & {
+                                    id: string;
+                                    email: string;
+                                    emailVerified: boolean;
+                                    name: string;
+                                    createdAt: Date;
+                                    updatedAt: Date;
+                                    image?: string | null | undefined;
+                                };
+                            };
+                        }>, {
+                            body: zod.ZodObject<{
+                                trustDevice: zod.ZodOptional<zod.ZodBoolean>;
+                            }, "strip", zod.ZodTypeAny, {
+                                trustDevice?: boolean | undefined;
+                            }, {
+                                trustDevice?: boolean | undefined;
+                            }>;
+                        } & {
+                            method: "*";
+                        }>[];
+                        metadata: {
+                            openapi: {
+                                summary: string;
+                                description: string;
+                                responses: {
+                                    200: {
+                                        description: string;
+                                        content: {
+                                            "application/json": {
+                                                schema: {
+                                                    type: "object";
+                                                    properties: {
+                                                        status: {
+                                                            type: string;
+                                                        };
+                                                    };
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
                 };
             };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/inboxes/list": {
-        $get: {
-            input: {};
-            output: {
-                code: 0;
-                data: {
-                    type: "inbox";
-                    id: string;
-                    secret: string;
-                    description?: string | null | undefined;
-                    title?: string | null | undefined;
-                    image?: string | null | undefined;
-                    ownerUserId?: string | null | undefined;
-                    owner?: {
-                        name: string | null;
-                        id: string;
-                        emailVerified: string | null;
-                        image: string | null;
-                        handle: string | null;
-                        createdAt: string;
-                    } | null | undefined;
+            options: better_auth_plugins.TwoFactorOptions | undefined;
+            hooks: {
+                after: {
+                    matcher(context: better_auth.HookEndpointContext<{
+                        returned: better_call.APIError | Response | Record<string, any>;
+                        endpoint: better_call.Endpoint;
+                    }>): boolean;
+                    handler: better_call.Endpoint<better_call.Handler<string, better_call.EndpointOptions, {
+                        response: {
+                            body: any;
+                            status: number;
+                            statusText: string;
+                            headers: Record<string, string> | undefined;
+                        };
+                        body: {
+                            twoFactorRedirect: boolean;
+                        };
+                        _flag: "json";
+                    } | undefined>, better_call.EndpointOptions>;
                 }[];
             };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-} & {
-    "/admin/clean": {
-        $post: {
-            input: {
-                json: {
-                    type: string;
+            schema: {
+                user: {
+                    fields: {
+                        twoFactorEnabled: {
+                            type: "boolean";
+                            required: false;
+                            defaultValue: false;
+                            input: false;
+                        };
+                    };
+                };
+                twoFactor: {
+                    fields: {
+                        secret: {
+                            type: "string";
+                            required: true;
+                            returned: false;
+                        };
+                        backupCodes: {
+                            type: "string";
+                            required: true;
+                            returned: false;
+                        };
+                        userId: {
+                            type: "string";
+                            required: true;
+                            returned: false;
+                            references: {
+                                model: string;
+                                field: string;
+                            };
+                        };
+                    };
                 };
             };
-            output: {
-                code: 0;
+            rateLimit: {
+                pathMatcher(path: string): boolean;
+                window: number;
+                max: number;
+            }[];
+        } | {
+            id: "custom-session";
+            endpoints: {
+                getSession: {
+                    <C extends [(better_call.Context<"/get-session", {
+                        method: "GET";
+                        metadata: {
+                            CUSTOM_SESSION: boolean;
+                        };
+                        query: zod.ZodOptional<zod.ZodObject<{
+                            disableCookieCache: zod.ZodOptional<zod.ZodUnion<[zod.ZodBoolean, zod.ZodEffects<zod.ZodString, boolean, string>]>>;
+                            disableRefresh: zod.ZodOptional<zod.ZodBoolean>;
+                        }, "strip", zod.ZodTypeAny, {
+                            disableCookieCache?: boolean | undefined;
+                            disableRefresh?: boolean | undefined;
+                        }, {
+                            disableCookieCache?: string | boolean | undefined;
+                            disableRefresh?: boolean | undefined;
+                        }>>;
+                    }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : {
+                        user: {
+                            id: string;
+                            email: string;
+                            emailVerified: boolean;
+                            name: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            image?: string | null | undefined | undefined;
+                        } & {
+                            image: string | null;
+                            handle: string | null;
+                            twoFactorEnabled: boolean | null;
+                        };
+                        session: {
+                            id: string;
+                            createdAt: Date;
+                            updatedAt: Date;
+                            userId: string;
+                            expiresAt: Date;
+                            token: string;
+                            ipAddress?: string | null | undefined | undefined;
+                            userAgent?: string | null | undefined | undefined;
+                        };
+                        invitation: {
+                            code: string;
+                            createdAt: Date | null;
+                            usedAt: Date | null;
+                            fromUserId: string;
+                            toUserId: string | null;
+                        } | undefined;
+                        role: "user" | "trial";
+                    } | null>;
+                    path: "/get-session";
+                    options: {
+                        method: "GET";
+                        metadata: {
+                            CUSTOM_SESSION: boolean;
+                        };
+                        query: zod.ZodOptional<zod.ZodObject<{
+                            disableCookieCache: zod.ZodOptional<zod.ZodUnion<[zod.ZodBoolean, zod.ZodEffects<zod.ZodString, boolean, string>]>>;
+                            disableRefresh: zod.ZodOptional<zod.ZodBoolean>;
+                        }, "strip", zod.ZodTypeAny, {
+                            disableCookieCache?: boolean | undefined;
+                            disableRefresh?: boolean | undefined;
+                        }, {
+                            disableCookieCache?: string | boolean | undefined;
+                            disableRefresh?: boolean | undefined;
+                        }>>;
+                    };
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
             };
-            outputFormat: "json" | "text";
-            status: 200;
+        } | {
+            id: "customGetProviders";
+            endpoints: {
+                customGetProviders: {
+                    <C extends [(better_call.Context<"/get-providers", {
+                        method: "GET";
+                    }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : any>;
+                    path: "/get-providers";
+                    options: {
+                        method: "GET";
+                    };
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
+            };
+        } | {
+            id: "customCreateSession";
+            endpoints: {
+                customCreateSession: {
+                    <C extends [(better_call.Context<"/create-session", {
+                        method: "GET";
+                    }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : {
+                        ck: string;
+                        userId: string;
+                    } | null>;
+                    path: "/create-session";
+                    options: {
+                        method: "GET";
+                    };
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
+            };
+        } | {
+            id: "getAccountInfo";
+            endpoints: {
+                getAccountInfo: {
+                    <C extends [(better_call.Context<"/get-account-info", {
+                        method: "GET";
+                    }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : {
+                        id: string;
+                        provider: string;
+                        profile: {
+                            id?: string;
+                            email?: string;
+                            name?: string;
+                            image?: string;
+                        } | null;
+                    }[] | null>;
+                    path: "/get-account-info";
+                    options: {
+                        method: "GET";
+                    };
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
+            };
+        } | {
+            id: "customUpdateUser";
+            endpoints: {
+                customUpdateUser: {
+                    <C extends [(better_call.Context<"/update-user-ccc", {
+                        method: "POST";
+                    }> | undefined)?]>(...ctx: C): Promise<C extends [{
+                        asResponse: true;
+                    }] ? Response : string | null>;
+                    path: "/update-user-ccc";
+                    options: {
+                        method: "POST";
+                    };
+                    method: better_call.Method | better_call.Method[];
+                    headers: Headers;
+                };
+            };
+        })[];
+    };
+    $context: Promise<better_auth.AuthContext>;
+    $Infer: {
+        Session: {
+            session: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                userId: string;
+                expiresAt: Date;
+                token: string;
+                ipAddress?: string | null | undefined | undefined;
+                userAgent?: string | null | undefined | undefined;
+            };
+            user: {
+                id: string;
+                email: string;
+                emailVerified: boolean;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                image?: string | null | undefined | undefined;
+                handle: string;
+                twoFactorEnabled: boolean | null | undefined;
+            };
         };
     };
-} & {
-    "/metrics": {
+    $ERROR_CODES: {
+        USER_NOT_FOUND: string;
+        FAILED_TO_CREATE_USER: string;
+        FAILED_TO_CREATE_SESSION: string;
+        FAILED_TO_UPDATE_USER: string;
+        FAILED_TO_GET_SESSION: string;
+        INVALID_PASSWORD: string;
+        INVALID_EMAIL: string;
+        INVALID_EMAIL_OR_PASSWORD: string;
+        SOCIAL_ACCOUNT_ALREADY_LINKED: string;
+        PROVIDER_NOT_FOUND: string;
+        INVALID_TOKEN: string;
+        ID_TOKEN_NOT_SUPPORTED: string;
+        FAILED_TO_GET_USER_INFO: string;
+        USER_EMAIL_NOT_FOUND: string;
+        EMAIL_NOT_VERIFIED: string;
+        PASSWORD_TOO_SHORT: string;
+        PASSWORD_TOO_LONG: string;
+        USER_ALREADY_EXISTS: string;
+        EMAIL_CAN_NOT_BE_UPDATED: string;
+        CREDENTIAL_ACCOUNT_NOT_FOUND: string;
+        SESSION_EXPIRED: string;
+        FAILED_TO_UNLINK_LAST_ACCOUNT: string;
+        ACCOUNT_NOT_FOUND: string;
+    };
+};
+
+type AuthSession = Awaited<ReturnType<typeof auth.api.getSession>>;
+type AuthUser = NonNullable<AuthSession>["user"];
+
+declare const _routes: hono_hono_base.HonoBase<Env, ({
+    "/better-auth/*": {
         $get: {
             input: {};
             output: {};
             outputFormat: string;
-            status: 200;
+            status: hono_utils_http_status.StatusCode;
         };
     };
 } & {
-    "/lists": {
+    "/better-auth/*": {
+        $post: {
+            input: {};
+            output: {};
+            outputFormat: string;
+            status: hono_utils_http_status.StatusCode;
+        };
+    };
+}) | hono_types.MergeSchemaPath<{
+    "/": {
         $get: {
             input: {
                 query: {
-                    listId: string | string[];
+                    type?: "received" | "checking" | "completed" | "incomplete" | "audit" | "all" | undefined;
                 };
             };
             output: {
-                code: 0;
+                code: number;
                 data: {
-                    list: {
-                        type: "list";
-                        id: string;
-                        view: number;
-                        feedIds: string[];
-                        fee: number;
-                        timelineUpdatedAt: string;
-                        description?: string | null | undefined;
-                        title?: string | null | undefined;
-                        image?: string | null | undefined;
-                        feeds?: {
-                            type: "feed";
-                            id: string;
-                            url: string;
-                            description?: string | null | undefined;
-                            title?: string | null | undefined;
-                            image?: string | null | undefined;
-                            siteUrl?: string | null | undefined;
-                            errorMessage?: string | null | undefined;
-                            errorAt?: string | null | undefined;
-                            ownerUserId?: string | null | undefined;
-                            owner?: {
-                                name: string | null;
-                                id: string;
-                                emailVerified: string | null;
-                                image: string | null;
-                                handle: string | null;
-                                createdAt: string;
-                            } | null | undefined;
-                            tipUsers?: {
-                                name: string | null;
-                                id: string;
-                                emailVerified: string | null;
-                                image: string | null;
-                                handle: string | null;
-                                createdAt: string;
-                            }[] | null | undefined;
-                        }[] | undefined;
-                        ownerUserId?: string | null | undefined;
-                        owner?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        } | null | undefined;
-                    };
-                    subscriptionCount: number;
-                    readCount: number;
-                    feedCount: number;
-                    subscription?: {
-                        title: string | null;
-                        userId: string;
-                        view: number;
-                        isPrivate: boolean;
-                        listId: string;
-                        lastViewedAt: string | null;
-                    } | undefined;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $post: {
-            input: {
-                json: {
-                    title: string;
-                    view: number;
-                    fee: number;
-                    description?: string | null | undefined;
-                    image?: string | null | undefined;
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    type: "list";
+                    type: "received" | "checking" | "completed" | "incomplete" | "audit";
                     id: string;
-                    view: number;
-                    feedIds: string[];
-                    fee: number;
-                    timelineUpdatedAt: string;
-                    description?: string | null | undefined;
-                    title?: string | null | undefined;
-                    image?: string | null | undefined;
-                    feeds?: {
-                        type: "feed";
-                        id: string;
-                        url: string;
-                        description?: string | null | undefined;
-                        title?: string | null | undefined;
-                        image?: string | null | undefined;
-                        siteUrl?: string | null | undefined;
-                        errorMessage?: string | null | undefined;
-                        errorAt?: string | null | undefined;
-                        ownerUserId?: string | null | undefined;
-                        owner?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        } | null | undefined;
-                        tipUsers?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        }[] | null | undefined;
-                    }[] | undefined;
-                    ownerUserId?: string | null | undefined;
-                    owner?: {
-                        name: string | null;
-                        id: string;
-                        emailVerified: string | null;
-                        image: string | null;
-                        handle: string | null;
-                        createdAt: string;
-                    } | null | undefined;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $delete: {
-            input: {
-                json: {
-                    listId: string;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $patch: {
-            input: {
-                json: {
-                    title: string;
-                    view: number;
-                    fee: number;
-                    listId: string;
-                    description?: string | null | undefined;
-                    image?: string | null | undefined;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/lists/list": {
-        $get: {
-            input: {};
-            output: {
-                code: 0;
-                data: {
-                    type: "list";
-                    id: string;
-                    view: number;
-                    feedIds: string[];
-                    fee: number;
-                    timelineUpdatedAt: string;
-                    description?: string | null | undefined;
-                    title?: string | null | undefined;
-                    image?: string | null | undefined;
-                    feeds?: {
-                        type: "feed";
-                        id: string;
-                        url: string;
-                        description?: string | null | undefined;
-                        title?: string | null | undefined;
-                        image?: string | null | undefined;
-                        siteUrl?: string | null | undefined;
-                        errorMessage?: string | null | undefined;
-                        errorAt?: string | null | undefined;
-                        ownerUserId?: string | null | undefined;
-                        owner?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        } | null | undefined;
-                        tipUsers?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        }[] | null | undefined;
-                    }[] | undefined;
-                    ownerUserId?: string | null | undefined;
-                    owner?: {
-                        name: string | null;
-                        id: string;
-                        emailVerified: string | null;
-                        image: string | null;
-                        handle: string | null;
-                        createdAt: string;
-                    } | null | undefined;
-                    subscriptionCount?: number | undefined;
-                    purchaseAmount?: number | undefined;
+                    userId: string;
+                    actionId: number;
+                    progress: number;
+                    progressMax: number;
+                    done: boolean;
+                    doneAt: string | null;
+                    tx: string | null;
+                    power: string;
                 }[];
+                done: number;
+                total: number;
             };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/lists/feeds": {
-        $post: {
-            input: {
-                json: {
-                    feedId: string;
-                    listId: string;
-                } | {
-                    feedIds: string[];
-                    listId: string;
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    type: "feed";
-                    id: string;
-                    url: string;
-                    description?: string | null | undefined;
-                    title?: string | null | undefined;
-                    image?: string | null | undefined;
-                    siteUrl?: string | null | undefined;
-                    errorMessage?: string | null | undefined;
-                    errorAt?: string | null | undefined;
-                    ownerUserId?: string | null | undefined;
-                    owner?: {
-                        name: string | null;
-                        id: string;
-                        emailVerified: string | null;
-                        image: string | null;
-                        handle: string | null;
-                        createdAt: string;
-                    } | null | undefined;
-                    tipUsers?: {
-                        name: string | null;
-                        id: string;
-                        emailVerified: string | null;
-                        image: string | null;
-                        handle: string | null;
-                        createdAt: string;
-                    }[] | null | undefined;
-                }[];
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $delete: {
-            input: {
-                json: {
-                    feedId: string;
-                    listId: string;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
 } & {
-    "/wallets/airdrop": {
-        $post: {
-            input: {};
-            output: {
-                code: 0;
-                data: {
-                    transactionHash: string;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $get: {
-            input: {};
-            output: {
-                code: 0;
-                data: {
-                    tx: string | null;
-                    rank: string | null;
-                    amount: string;
-                    detail: {
-                        "Invitations count": number;
-                        "Purchase lists cost": number;
-                        "Total tip amount": number;
-                        "Feeds subscriptions count": number;
-                        "Lists subscriptions count": number;
-                        "Inbox subscriptions count": number;
-                        "Recent read count in the last month": number;
-                        "Mint count": number;
-                        "Claimed feeds count": number;
-                        "Claimed feeds subscriptions count": number;
-                        "Lists with more than 1 feed count": number;
-                        "Created lists subscriptions count": number;
-                        "Created lists income amount": number;
-                        "GitHub Community Contributions": number;
-                        "Invitations count Rank": number;
-                        "Purchase lists cost Rank": number;
-                        "Total tip amount Rank": number;
-                        "Feeds subscriptions count Rank": number;
-                        "Lists subscriptions count Rank": number;
-                        "Inbox subscriptions count Rank": number;
-                        "Recent read count in the last month Rank": number;
-                        "Mint count Rank": number;
-                        "Claimed feeds count Rank": number;
-                        "Claimed feeds subscriptions count Rank": number;
-                        "Lists with more than 1 feed count Rank": number;
-                        "Created lists subscriptions count Rank": number;
-                        "Created lists income amount Rank": number;
-                        "GitHub Community Contributions Rank": number;
-                    } | null;
-                    verify: string | null;
-                } | null;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
+    "/": {
         $put: {
             input: {
                 json: {
-                    verify: string | null;
+                    actionId: number;
                 };
             };
             output: {
-                code: 0;
+                code: number;
+                data: {
+                    actionId: number;
+                    result: boolean;
+                };
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
-    "/wallets/transactions/tip": {
+} & {
+    "/check": {
         $post: {
             input: {
                 json: {
-                    entryId: string;
-                    amount: string;
+                    actionId: number;
+                };
+            };
+            output: {
+                code: number;
+                data: {
+                    actionId: number;
+                    result: boolean;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/audit": {
+        $post: {
+            input: {
+                json: {
+                    actionId: number;
+                    payload?: any;
+                };
+            };
+            output: {
+                code: number;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/achievement"> | hono_types.MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data?: {
+                    userId: string;
+                    rules?: {
+                        name: string;
+                        condition: {
+                            value: string;
+                            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+                            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+                        }[] | {
+                            value: string;
+                            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+                            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+                        }[][];
+                        result: {
+                            disabled?: boolean | undefined;
+                            translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+                            summary?: boolean | undefined;
+                            readability?: boolean | undefined;
+                            sourceContent?: boolean | undefined;
+                            silence?: boolean | undefined;
+                            block?: boolean | undefined;
+                            newEntryNotification?: boolean | undefined;
+                            rewriteRules?: {
+                                from: string;
+                                to: string;
+                            }[] | undefined;
+                            blockRules?: {
+                                value: string | number;
+                                field: "title" | "content" | "all" | "author" | "url" | "order";
+                                operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+                            }[] | undefined;
+                            webhooks?: string[] | undefined;
+                        };
+                    }[] | null | undefined;
+                } | undefined;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $put: {
+            input: {
+                json: {
+                    rules?: {
+                        name: string;
+                        condition: {
+                            value: string;
+                            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+                            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+                        }[] | {
+                            value: string;
+                            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
+                            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+                        }[][];
+                        result: {
+                            disabled?: boolean | undefined;
+                            translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+                            summary?: boolean | undefined;
+                            readability?: boolean | undefined;
+                            sourceContent?: boolean | undefined;
+                            silence?: boolean | undefined;
+                            block?: boolean | undefined;
+                            newEntryNotification?: boolean | undefined;
+                            rewriteRules?: {
+                                from: string;
+                                to: string;
+                            }[] | undefined;
+                            blockRules?: {
+                                value: string | number;
+                                field: "title" | "content" | "all" | "author" | "url" | "order";
+                                operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
+                            }[] | undefined;
+                            webhooks?: string[] | undefined;
+                        };
+                    }[] | null | undefined;
                 };
             };
             output: {
                 code: 0;
-                data: {
-                    transactionHash: string;
-                };
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
-    "/wallets/transactions": {
+}, "/actions"> | hono_types.MergeSchemaPath<{
+    "/translation": {
         $get: {
             input: {
                 query: {
-                    type?: string | string[] | undefined;
-                    fromUserId?: string | string[] | undefined;
-                    toUserId?: string | string[] | undefined;
-                    hash?: string | string[] | undefined;
-                    fromOrToUserId?: string | string[] | undefined;
-                    toFeedId?: string | string[] | undefined;
-                    createdAfter?: string | string[] | undefined;
+                    id: string;
+                    language: "en" | "ja" | "zh-CN" | "zh-TW";
+                    fields: string;
+                    part?: string | undefined;
                 };
             };
             output: {
                 code: 0;
-                data: {
-                    type: "tip" | "mint" | "burn" | "withdraw" | "purchase" | "airdrop";
-                    createdAt: string;
-                    fromUserId: string | null;
-                    toUserId: string | null;
-                    hash: string;
-                    powerToken: string;
-                    toFeedId: string | null;
-                    toListId: string | null;
-                    toEntryId: string | null;
-                    tax: string;
-                    comment: string | null;
-                    fromUser?: {
-                        name: string | null;
-                        id: string;
-                        emailVerified: string | null;
-                        image: string | null;
-                        handle: string | null;
-                        createdAt: string;
-                    } | null | undefined;
-                    toUser?: {
-                        name: string | null;
-                        id: string;
-                        emailVerified: string | null;
-                        image: string | null;
-                        handle: string | null;
-                        createdAt: string;
-                    } | null | undefined;
-                    toFeed?: {
-                        type: "feed";
-                        id: string;
-                        url: string;
-                        description?: string | null | undefined;
-                        title?: string | null | undefined;
-                        image?: string | null | undefined;
-                        siteUrl?: string | null | undefined;
-                        errorMessage?: string | null | undefined;
-                        errorAt?: string | null | undefined;
-                        ownerUserId?: string | null | undefined;
-                        owner?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        } | null | undefined;
-                        tipUsers?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        }[] | null | undefined;
-                    } | null | undefined;
-                }[];
+                data?: {
+                    description?: string | undefined;
+                    title?: string | undefined;
+                    content?: string | undefined;
+                } | undefined;
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
-    "/wallets/transactions/claim_daily": {
-        $post: {
-            input: {};
-            output: {
-                code: 0;
-                data: {
-                    transactionHash: string;
+} & {
+    "/summary": {
+        $get: {
+            input: {
+                query: {
+                    id: string;
+                    language?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
                 };
             };
-            outputFormat: "json" | "text";
+            output: {
+                code: 0;
+                data?: string | undefined;
+            };
+            outputFormat: "json";
             status: 200;
         };
     };
-    "/wallets/transactions/withdraw": {
-        $post: {
+} & {
+    "/daily": {
+        $get: {
+            input: {
+                query: {
+                    view: "0" | "1";
+                    startDate: string;
+                };
+            };
+            output: {
+                code: 0;
+                data: string;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/ai"> | hono_types.MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {
+                query: {
+                    view?: string | undefined;
+                };
+            };
+            output: {
+                data?: string[] | undefined;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $delete: {
             input: {
                 json: {
-                    address: string;
-                    amount: string;
+                    feedIdList: string[];
+                    deleteSubscriptions: boolean;
                 };
             };
             output: {
                 code: 0;
-                data: {
-                    transactionHash: string;
-                };
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
-    "/wallets/transactions/claim-check": {
+} & {
+    "/": {
+        $patch: {
+            input: {
+                json: {
+                    category: string;
+                    feedIdList: string[];
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/categories"> | hono_types.MergeSchemaPath<{
+    "/": {
         $get: {
-            input: {};
+            input: {
+                query: {
+                    entryId: string;
+                };
+            };
             output: {
                 code: 0;
                 data: boolean;
             };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/wallets": {
-        $get: {
-            input: {};
-            output: {
-                code: 0;
-                data: {
-                    createdAt: string;
-                    userId: string;
-                    addressIndex: number;
-                    address: string | null;
-                    powerToken: string;
-                    dailyPowerToken: string;
-                    cashablePowerToken: string;
-                    level: {
-                        rank: number | null;
-                        level: number | null;
-                        prevActivityPoints: number | null;
-                        activityPoints: number | null;
-                    } | null;
-                    todayDailyPower: string;
-                }[];
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $post: {
-            input: {};
-            output: {
-                code: 0;
-                data: string;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/wallets/refresh": {
-        $post: {
-            input: {};
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/wallets/ranking": {
-        $get: {
-            input: {};
-            output: {
-                code: 0;
-                data: {
-                    user: {
-                        name: string | null;
-                        id: string;
-                        emailVerified: string | null;
-                        image: string | null;
-                        handle: string | null;
-                        createdAt: string;
-                    };
-                    userId: string;
-                    address: string;
-                    powerToken: string;
-                    rank: number | null;
-                    level: number | null;
-                    prevActivityPoints: number | null;
-                    activityPoints: number | null;
-                }[];
-            };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
 } & {
-    "/subscriptions": {
-        $get: {
-            input: {
-                query: {
-                    userId?: string | string[] | undefined;
-                    view?: string | string[] | undefined;
-                };
-            };
-            output: {
-                code: 0;
-                data: ({
-                    title: string | null;
-                    userId: string;
-                    view: number;
-                    category: string | null;
-                    feeds: {
-                        type: "feed";
-                        id: string;
-                        url: string;
-                        description?: string | null | undefined;
-                        title?: string | null | undefined;
-                        image?: string | null | undefined;
-                        siteUrl?: string | null | undefined;
-                        errorMessage?: string | null | undefined;
-                        errorAt?: string | null | undefined;
-                        ownerUserId?: string | null | undefined;
-                        owner?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        } | null | undefined;
-                        tipUsers?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        }[] | null | undefined;
-                    };
-                    feedId: string;
-                    isPrivate: boolean;
-                    boost: {
-                        boosters: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        }[];
-                    };
-                } | {
-                    title: string | null;
-                    userId: string;
-                    view: number;
-                    feedId: string;
-                    lists: {
-                        type: "list";
-                        id: string;
-                        view: number;
-                        feedIds: string[];
-                        fee: number;
-                        timelineUpdatedAt: string;
-                        description?: string | null | undefined;
-                        title?: string | null | undefined;
-                        image?: string | null | undefined;
-                        feeds?: {
-                            type: "feed";
-                            id: string;
-                            url: string;
-                            description?: string | null | undefined;
-                            title?: string | null | undefined;
-                            image?: string | null | undefined;
-                            siteUrl?: string | null | undefined;
-                            errorMessage?: string | null | undefined;
-                            errorAt?: string | null | undefined;
-                            ownerUserId?: string | null | undefined;
-                            owner?: {
-                                name: string | null;
-                                id: string;
-                                emailVerified: string | null;
-                                image: string | null;
-                                handle: string | null;
-                                createdAt: string;
-                            } | null | undefined;
-                            tipUsers?: {
-                                name: string | null;
-                                id: string;
-                                emailVerified: string | null;
-                                image: string | null;
-                                handle: string | null;
-                                createdAt: string;
-                            }[] | null | undefined;
-                        }[] | undefined;
-                        ownerUserId?: string | null | undefined;
-                        owner?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        } | null | undefined;
-                    };
-                    isPrivate: boolean;
-                    listId: string;
-                    lastViewedAt: string | null;
-                    category?: string | undefined;
-                } | {
-                    title: string | null;
-                    userId: string;
-                    view: number;
-                    category: string | null;
-                    feedId: string;
-                    inboxId: string;
-                    isPrivate: boolean;
-                    inboxes: {
-                        type: "inbox";
-                        id: string;
-                        secret: string;
-                        description?: string | null | undefined;
-                        title?: string | null | undefined;
-                        image?: string | null | undefined;
-                        ownerUserId?: string | null | undefined;
-                        owner?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        } | null | undefined;
-                    };
-                })[];
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
+    "/": {
         $post: {
-            input: {
-                json: {
-                    view: number;
-                    title?: string | null | undefined;
-                    category?: string | null | undefined;
-                    url?: string | undefined;
-                    isPrivate?: boolean | undefined;
-                    listId?: string | undefined;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $delete: {
-            input: {
-                json: {
-                    url?: string | undefined;
-                    feedIdList?: string[] | undefined;
-                    feedId?: string | undefined;
-                    listId?: string | undefined;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $patch: {
-            input: {
-                json: {
-                    view: number;
-                    title?: string | null | undefined;
-                    category?: string | null | undefined;
-                    feedId?: string | undefined;
-                    isPrivate?: boolean | undefined;
-                    listId?: string | undefined;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/subscriptions/export": {
-        $get: {
-            input: {};
-            output: {};
-            outputFormat: string;
-            status: 200;
-        };
-    };
-    "/subscriptions/import": {
-        $post: {
-            input: {};
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/subscriptions/batch": {
-        $patch: {
-            input: {
-                json: {
-                    view: number;
-                    feedIds: string[];
-                    title?: string | null | undefined;
-                    category?: string | null | undefined;
-                    isPrivate?: boolean | undefined;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-} & {
-    "/settings": {
-        $get: {
-            input: {
-                query: {
-                    tab?: string | string[] | undefined;
-                };
-            };
-            output: {
-                code: 0;
-                settings: {
-                    [x: string]: any;
-                };
-                updated: {
-                    [x: string]: string;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/settings/:tab": {
-        $patch: {
-            input: {
-                param: {
-                    tab: string;
-                };
-            } & {
-                json: Record<string, any>;
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-} & {
-    "/reads": {
-        $post: {
-            input: {
-                json: {
-                    entryIds: string[];
-                    isInbox?: boolean | undefined;
-                    readHistories?: string[] | undefined;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $delete: {
             input: {
                 json: {
                     entryId: string;
-                    isInbox?: boolean | undefined;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $get: {
-            input: {
-                query: {
-                    view?: string | string[] | undefined;
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    [x: string]: number;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/reads/all": {
-        $post: {
-            input: {
-                json: {
                     view?: number | undefined;
-                    feedIdList?: string[] | undefined;
-                    feedId?: string | undefined;
-                    inboxId?: string | undefined;
-                    listId?: string | undefined;
-                    startTime?: number | undefined;
-                    endTime?: number | undefined;
                 };
             };
             output: {
                 code: 0;
             };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/reads/total-count": {
-        $get: {
-            input: {};
-            output: {
-                code: 0;
-                data: {
-                    count: number;
-                };
-            };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
 } & {
-    "/profiles": {
-        $get: {
-            input: {
-                query: {
-                    id?: string | string[] | undefined;
-                    handle?: string | string[] | undefined;
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    name: string | null;
-                    id: string;
-                    emailVerified: string | null;
-                    image: string | null;
-                    handle: string | null;
-                    createdAt: string;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/profiles/batch": {
-        $post: {
-            input: {
-                json: {
-                    ids: string[];
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    [x: string]: {
-                        name: string | null;
-                        id: string;
-                        emailVerified: string | null;
-                        image: string | null;
-                        handle: string | null;
-                        createdAt: string;
-                    };
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-} & {
-    "/invitations/new": {
-        $post: {
-            input: {};
-            output: {
-                code: 0;
-                data: string;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/invitations/use": {
-        $post: {
-            input: {
-                json: {
-                    code: string;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/invitations": {
-        $get: {
-            input: {};
-            output: {
-                code: 0;
-                data: {
-                    code: string;
-                    createdAt: string | null;
-                    users: {
-                        name: string | null;
-                        id: string;
-                        image: string | null;
-                    } | null;
-                    toUserId: string | null;
-                }[];
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/invitations/limitation": {
-        $get: {
-            input: {};
-            output: {
-                code: 0;
-                data: number;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-} & {
-    "/feeds/claim/message": {
-        $get: {
-            input: {
-                query: {
-                    feedId: string | string[];
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    json: string;
-                    description: string;
-                    xml: string;
-                    content: string;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/feeds/claim/challenge": {
-        $post: {
-            input: {
-                json: {
-                    feedId: string;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/feeds/claim/list": {
-        $get: {
-            input: {};
-            output: {
-                code: 0;
-                data: {
-                    feed: {
-                        type: "feed";
-                        id: string;
-                        url: string;
-                        description?: string | null | undefined;
-                        title?: string | null | undefined;
-                        image?: string | null | undefined;
-                        siteUrl?: string | null | undefined;
-                        errorMessage?: string | null | undefined;
-                        errorAt?: string | null | undefined;
-                        ownerUserId?: string | null | undefined;
-                        owner?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        } | null | undefined;
-                        tipUsers?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        }[] | null | undefined;
-                    };
-                    subscriptionCount: number;
-                    tipAmount: number;
-                }[];
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/feeds": {
-        $get: {
-            input: {
-                query: {
-                    id?: string | string[] | undefined;
-                    url?: string | string[] | undefined;
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    entries: {
-                        description: string | null;
-                        title: string | null;
-                        author: string | null;
-                        url: string | null;
-                        guid: string;
-                        categories: string[] | null;
-                        authorUrl: string | null;
-                        authorAvatar: string | null;
-                        publishedAt: string;
-                        media?: {
-                            type: "photo" | "video";
-                            url: string;
-                            width?: number | undefined;
-                            height?: number | undefined;
-                            preview_image_url?: string | undefined;
-                            blurhash?: string | undefined;
-                        }[] | null | undefined;
-                        attachments?: {
-                            url: string;
-                            title?: string | undefined;
-                            duration_in_seconds?: number | undefined;
-                            mime_type?: string | undefined;
-                            size_in_bytes?: number | undefined;
-                        }[] | null | undefined;
-                        extra?: {
-                            links?: {
-                                type: string;
-                                url: string;
-                                content_html?: string | undefined;
-                            }[] | null | undefined;
-                        } | null | undefined;
-                    }[];
-                    feed: {
-                        type: "feed";
-                        id: string;
-                        url: string;
-                        description?: string | null | undefined;
-                        title?: string | null | undefined;
-                        image?: string | null | undefined;
-                        siteUrl?: string | null | undefined;
-                        errorMessage?: string | null | undefined;
-                        errorAt?: string | null | undefined;
-                        ownerUserId?: string | null | undefined;
-                        owner?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        } | null | undefined;
-                        tipUsers?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        }[] | null | undefined;
-                    };
-                    subscriptionCount: number;
-                    readCount: number;
-                    subscription?: {
-                        title: string | null;
-                        userId: string;
-                        view: number;
-                        category: string | null;
-                        feedId: string;
-                        isPrivate: boolean;
-                    } | undefined;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/feeds/refresh": {
-        $get: {
-            input: {
-                query: {
-                    id: string | string[];
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/feeds/reset": {
-        $get: {
-            input: {
-                query: {
-                    id: string | string[];
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-} & {
-    "/entries/inbox": {
-        $post: {
-            input: {
-                json: {
-                    inboxId: string;
-                    read?: boolean | undefined;
-                    limit?: number | undefined;
-                    publishedAfter?: string | undefined;
-                    publishedBefore?: string | undefined;
-                };
-            };
-            output: {
-                code: 0;
-                remaining: number;
-                data?: {
-                    entries: {
-                        description: string | null;
-                        title: string | null;
-                        id: string;
-                        author: string | null;
-                        url: string | null;
-                        guid: string;
-                        categories: string[] | null;
-                        authorUrl: string | null;
-                        authorAvatar: string | null;
-                        insertedAt: string;
-                        publishedAt: string;
-                        read: boolean | null;
-                        inboxHandle: string;
-                        media?: {
-                            type: "photo" | "video";
-                            url: string;
-                            width?: number | undefined;
-                            height?: number | undefined;
-                            preview_image_url?: string | undefined;
-                            blurhash?: string | undefined;
-                        }[] | null | undefined;
-                        attachments?: {
-                            url: string;
-                            title?: string | undefined;
-                            duration_in_seconds?: number | undefined;
-                            mime_type?: string | undefined;
-                            size_in_bytes?: number | undefined;
-                        }[] | null | undefined;
-                        extra?: {
-                            links?: {
-                                type: string;
-                                url: string;
-                                content_html?: string | undefined;
-                            }[] | null | undefined;
-                        } | null | undefined;
-                    };
-                    feeds: {
-                        type: "inbox";
-                        id: string;
-                        secret: string;
-                        description?: string | null | undefined;
-                        title?: string | null | undefined;
-                        image?: string | null | undefined;
-                        ownerUserId?: string | null | undefined;
-                        owner?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        } | null | undefined;
-                    };
-                    read: boolean | null;
-                    collections?: {
-                        createdAt: string;
-                    } | undefined;
-                    settings?: {
-                        summary?: boolean | undefined;
-                        disabled?: boolean | undefined;
-                        translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
-                        readability?: boolean | undefined;
-                        sourceContent?: boolean | undefined;
-                        silence?: boolean | undefined;
-                        block?: boolean | undefined;
-                        newEntryNotification?: boolean | undefined;
-                        rewriteRules?: {
-                            from: string;
-                            to: string;
-                        }[] | undefined;
-                        webhooks?: string[] | undefined;
-                    } | undefined;
-                }[] | undefined;
-                total?: number | undefined;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $get: {
-            input: {
-                query: {
-                    id: string | string[];
-                };
-            };
-            output: {
-                code: 0;
-                data?: {
-                    entries: {
-                        description: string | null;
-                        title: string | null;
-                        content: string | null;
-                        id: string;
-                        author: string | null;
-                        url: string | null;
-                        guid: string;
-                        categories: string[] | null;
-                        authorUrl: string | null;
-                        authorAvatar: string | null;
-                        insertedAt: string;
-                        publishedAt: string;
-                        read: boolean | null;
-                        inboxHandle: string;
-                        media?: {
-                            type: "photo" | "video";
-                            url: string;
-                            width?: number | undefined;
-                            height?: number | undefined;
-                            preview_image_url?: string | undefined;
-                            blurhash?: string | undefined;
-                        }[] | null | undefined;
-                        attachments?: {
-                            url: string;
-                            title?: string | undefined;
-                            duration_in_seconds?: number | undefined;
-                            mime_type?: string | undefined;
-                            size_in_bytes?: number | undefined;
-                        }[] | null | undefined;
-                        extra?: {
-                            links?: {
-                                type: string;
-                                url: string;
-                                content_html?: string | undefined;
-                            }[] | null | undefined;
-                        } | null | undefined;
-                    };
-                    feeds: {
-                        type: "inbox";
-                        id: string;
-                        secret: string;
-                        description?: string | null | undefined;
-                        title?: string | null | undefined;
-                        image?: string | null | undefined;
-                        ownerUserId?: string | null | undefined;
-                        owner?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        } | null | undefined;
-                    };
-                } | undefined;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
+    "/": {
         $delete: {
             input: {
                 json: {
@@ -6746,321 +14112,12 @@ declare const _routes: hono_hono_base.HonoBase<Env, {
             output: {
                 code: 0;
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
-    "/entries/read-histories/:id": {
-        $get: {
-            input: {
-                param: {
-                    id?: string | undefined;
-                };
-            } & {
-                query: {
-                    page?: string | string[] | undefined;
-                    size?: string | string[] | undefined;
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    total: number;
-                    users: {
-                        [x: string]: {
-                            name: string | null;
-                            id: string;
-                            image: string | null;
-                            handle: string | null;
-                        };
-                    };
-                    entryReadHistories: {
-                        userIds: string[];
-                        readCount: number;
-                    } | null;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/entries/check-new": {
-        $get: {
-            input: {
-                query: {
-                    insertedAfter: string | string[];
-                    view?: string | string[] | undefined;
-                    feedIdList?: string | string[] | undefined;
-                    feedId?: string | string[] | undefined;
-                    read?: string | string[] | undefined;
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    has_new: boolean;
-                    entry_id?: string | undefined;
-                    lastest_at?: string | undefined;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/entries": {
-        $post: {
-            input: {
-                json: {
-                    view?: number | undefined;
-                    feedIdList?: string[] | undefined;
-                    feedId?: string | undefined;
-                    read?: boolean | undefined;
-                    limit?: number | undefined;
-                    publishedAfter?: string | undefined;
-                    publishedBefore?: string | undefined;
-                    listId?: string | undefined;
-                    collected?: boolean | undefined;
-                    isCollection?: boolean | undefined;
-                    isArchived?: boolean | undefined;
-                    withContent?: boolean | undefined;
-                };
-            };
-            output: {
-                code: 0;
-                remaining: number;
-                data?: {
-                    entries: {
-                        description: string | null;
-                        title: string | null;
-                        id: string;
-                        author: string | null;
-                        url: string | null;
-                        guid: string;
-                        categories: string[] | null;
-                        authorUrl: string | null;
-                        authorAvatar: string | null;
-                        insertedAt: string;
-                        publishedAt: string;
-                        media?: {
-                            type: "photo" | "video";
-                            url: string;
-                            width?: number | undefined;
-                            height?: number | undefined;
-                            preview_image_url?: string | undefined;
-                            blurhash?: string | undefined;
-                        }[] | null | undefined;
-                        attachments?: {
-                            url: string;
-                            title?: string | undefined;
-                            duration_in_seconds?: number | undefined;
-                            mime_type?: string | undefined;
-                            size_in_bytes?: number | undefined;
-                        }[] | null | undefined;
-                        extra?: {
-                            links?: {
-                                type: string;
-                                url: string;
-                                content_html?: string | undefined;
-                            }[] | null | undefined;
-                        } | null | undefined;
-                    };
-                    feeds: {
-                        type: "feed";
-                        id: string;
-                        url: string;
-                        description?: string | null | undefined;
-                        title?: string | null | undefined;
-                        image?: string | null | undefined;
-                        siteUrl?: string | null | undefined;
-                        errorMessage?: string | null | undefined;
-                        errorAt?: string | null | undefined;
-                        ownerUserId?: string | null | undefined;
-                        owner?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        } | null | undefined;
-                        tipUsers?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        }[] | null | undefined;
-                    };
-                    read: boolean | null;
-                    collections?: {
-                        createdAt: string;
-                    } | undefined;
-                    settings?: {
-                        summary?: boolean | undefined;
-                        disabled?: boolean | undefined;
-                        translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
-                        readability?: boolean | undefined;
-                        sourceContent?: boolean | undefined;
-                        silence?: boolean | undefined;
-                        block?: boolean | undefined;
-                        newEntryNotification?: boolean | undefined;
-                        rewriteRules?: {
-                            from: string;
-                            to: string;
-                        }[] | undefined;
-                        webhooks?: string[] | undefined;
-                    } | undefined;
-                }[] | undefined;
-                total?: number | undefined;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $get: {
-            input: {
-                query: {
-                    id: string | string[];
-                };
-            };
-            output: {
-                code: 0;
-                data?: {
-                    entries: {
-                        description: string | null;
-                        title: string | null;
-                        content: string | null;
-                        id: string;
-                        author: string | null;
-                        url: string | null;
-                        guid: string;
-                        categories: string[] | null;
-                        authorUrl: string | null;
-                        authorAvatar: string | null;
-                        insertedAt: string;
-                        publishedAt: string;
-                        media?: {
-                            type: "photo" | "video";
-                            url: string;
-                            width?: number | undefined;
-                            height?: number | undefined;
-                            preview_image_url?: string | undefined;
-                            blurhash?: string | undefined;
-                        }[] | null | undefined;
-                        attachments?: {
-                            url: string;
-                            title?: string | undefined;
-                            duration_in_seconds?: number | undefined;
-                            mime_type?: string | undefined;
-                            size_in_bytes?: number | undefined;
-                        }[] | null | undefined;
-                        extra?: {
-                            links?: {
-                                type: string;
-                                url: string;
-                                content_html?: string | undefined;
-                            }[] | null | undefined;
-                        } | null | undefined;
-                    };
-                    feeds: {
-                        type: "feed";
-                        id: string;
-                        url: string;
-                        description?: string | null | undefined;
-                        title?: string | null | undefined;
-                        image?: string | null | undefined;
-                        siteUrl?: string | null | undefined;
-                        errorMessage?: string | null | undefined;
-                        errorAt?: string | null | undefined;
-                        ownerUserId?: string | null | undefined;
-                        owner?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        } | null | undefined;
-                        tipUsers?: {
-                            name: string | null;
-                            id: string;
-                            emailVerified: string | null;
-                            image: string | null;
-                            handle: string | null;
-                            createdAt: string;
-                        }[] | null | undefined;
-                    };
-                } | undefined;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/entries/stream": {
-        $post: {
-            input: {
-                json: {
-                    ids: string[];
-                };
-            };
-            output: {};
-            outputFormat: string;
-            status: 200;
-        };
-    };
-    "/entries/preview": {
-        $get: {
-            input: {
-                query: {
-                    id: string | string[];
-                };
-            };
-            output: {
-                code: 0;
-                data: {
-                    description: string | null;
-                    title: string | null;
-                    content: string | null;
-                    id: string;
-                    author: string | null;
-                    url: string | null;
-                    feedId: string;
-                    guid: string;
-                    categories: string[] | null;
-                    authorUrl: string | null;
-                    authorAvatar: string | null;
-                    insertedAt: string;
-                    publishedAt: string;
-                    media?: {
-                        type: "photo" | "video";
-                        url: string;
-                        width?: number | undefined;
-                        height?: number | undefined;
-                        preview_image_url?: string | undefined;
-                        blurhash?: string | undefined;
-                    }[] | null | undefined;
-                    attachments?: {
-                        url: string;
-                        title?: string | undefined;
-                        duration_in_seconds?: number | undefined;
-                        mime_type?: string | undefined;
-                        size_in_bytes?: number | undefined;
-                    }[] | null | undefined;
-                    extra?: {
-                        links?: {
-                            type: string;
-                            url: string;
-                            content_html?: string | undefined;
-                        }[] | null | undefined;
-                    } | null | undefined;
-                }[];
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-} & {
-    "/discover": {
+}, "/collections"> | hono_types.MergeSchemaPath<{
+    "/": {
         $post: {
             input: {
                 json: {
@@ -7077,6 +14134,7 @@ declare const _routes: hono_hono_base.HonoBase<Env, {
                         id: string;
                         author: string | null;
                         url: string | null;
+                        language: string | null;
                         feedId: string;
                         guid: string;
                         categories: string[] | null;
@@ -7121,18 +14179,20 @@ declare const _routes: hono_hono_base.HonoBase<Env, {
                         owner?: {
                             name: string | null;
                             id: string;
-                            emailVerified: string | null;
+                            emailVerified: boolean | null;
                             image: string | null;
                             handle: string | null;
                             createdAt: string;
+                            updatedAt: string;
                         } | null | undefined;
                         tipUsers?: {
                             name: string | null;
                             id: string;
-                            emailVerified: string | null;
+                            emailVerified: boolean | null;
                             image: string | null;
                             handle: string | null;
                             createdAt: string;
+                            updatedAt: string;
                         }[] | null | undefined;
                     } | undefined;
                     list?: {
@@ -7159,28 +14219,31 @@ declare const _routes: hono_hono_base.HonoBase<Env, {
                             owner?: {
                                 name: string | null;
                                 id: string;
-                                emailVerified: string | null;
+                                emailVerified: boolean | null;
                                 image: string | null;
                                 handle: string | null;
                                 createdAt: string;
+                                updatedAt: string;
                             } | null | undefined;
                             tipUsers?: {
                                 name: string | null;
                                 id: string;
-                                emailVerified: string | null;
+                                emailVerified: boolean | null;
                                 image: string | null;
                                 handle: string | null;
                                 createdAt: string;
+                                updatedAt: string;
                             }[] | null | undefined;
                         }[] | undefined;
                         ownerUserId?: string | null | undefined;
                         owner?: {
                             name: string | null;
                             id: string;
-                            emailVerified: string | null;
+                            emailVerified: boolean | null;
                             image: string | null;
                             handle: string | null;
                             createdAt: string;
+                            updatedAt: string;
                         } | null | undefined;
                     } | undefined;
                     docs?: string | undefined;
@@ -7188,18 +14251,19 @@ declare const _routes: hono_hono_base.HonoBase<Env, {
                     subscriptionCount?: number | undefined;
                 }[];
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
-    "/discover/rsshub": {
+} & {
+    "/rsshub": {
         $get: {
             input: {
                 query: {
-                    category?: string | string[] | undefined;
-                    categories?: string | string[] | undefined;
-                    namespace?: string | string[] | undefined;
-                    lang?: string | string[] | undefined;
+                    category?: string | undefined;
+                    categories?: string | undefined;
+                    namespace?: string | undefined;
+                    lang?: string | undefined;
                 };
             };
             output: {
@@ -7211,14 +14275,14 @@ declare const _routes: hono_hono_base.HonoBase<Env, {
                         lang: string;
                         routes: {
                             [x: string]: {
+                                path: string;
+                                example: string;
                                 description: string;
+                                name: string;
+                                categories: string[];
                                 parameters: {
                                     [x: string]: string;
                                 };
-                                path: string;
-                                example: string;
-                                name: string;
-                                categories: string[];
                                 maintainers: string[];
                                 location: string;
                                 view?: number | undefined;
@@ -7227,15 +14291,16 @@ declare const _routes: hono_hono_base.HonoBase<Env, {
                     };
                 };
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
-    "/discover/rsshub/route": {
+} & {
+    "/rsshub/route": {
         $get: {
             input: {
                 query: {
-                    route: string | string[];
+                    route: string;
                 };
             };
             output: {
@@ -7247,347 +14312,2471 @@ declare const _routes: hono_hono_base.HonoBase<Env, {
                     route?: any;
                 };
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
-} & {
-    "/collections": {
-        $get: {
-            input: {
-                query: {
-                    entryId: string | string[];
-                };
-            };
-            output: {
-                code: 0;
-                data: boolean;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
+}, "/discover"> | hono_types.MergeSchemaPath<hono_types.MergeSchemaPath<{
+    "/": {
         $post: {
             input: {
                 json: {
-                    entryId: string;
-                    view?: number | undefined;
+                    inboxId: string;
+                    read?: boolean | undefined;
+                    limit?: number | undefined;
+                    publishedAfter?: string | undefined;
+                    publishedBefore?: string | undefined;
                 };
             };
             output: {
                 code: 0;
+                remaining: number;
+                data?: {
+                    entries: {
+                        description: string | null;
+                        title: string | null;
+                        id: string;
+                        author: string | null;
+                        url: string | null;
+                        language: string | null;
+                        guid: string;
+                        categories: string[] | null;
+                        authorUrl: string | null;
+                        authorAvatar: string | null;
+                        insertedAt: string;
+                        publishedAt: string;
+                        read: boolean | null;
+                        inboxHandle: string;
+                        media?: {
+                            type: "photo" | "video";
+                            url: string;
+                            width?: number | undefined;
+                            height?: number | undefined;
+                            preview_image_url?: string | undefined;
+                            blurhash?: string | undefined;
+                        }[] | null | undefined;
+                        attachments?: {
+                            url: string;
+                            title?: string | undefined;
+                            duration_in_seconds?: number | undefined;
+                            mime_type?: string | undefined;
+                            size_in_bytes?: number | undefined;
+                        }[] | null | undefined;
+                        extra?: {
+                            links?: {
+                                type: string;
+                                url: string;
+                                content_html?: string | undefined;
+                            }[] | null | undefined;
+                        } | null | undefined;
+                    };
+                    feeds: {
+                        type: "inbox";
+                        id: string;
+                        secret: string;
+                        description?: string | null | undefined;
+                        title?: string | null | undefined;
+                        image?: string | null | undefined;
+                        ownerUserId?: string | null | undefined;
+                        owner?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        } | null | undefined;
+                    };
+                    read: boolean | null;
+                    collections?: {
+                        createdAt: string;
+                    } | undefined;
+                    settings?: {
+                        disabled?: boolean | undefined;
+                        translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+                        summary?: boolean | undefined;
+                        readability?: boolean | undefined;
+                        sourceContent?: boolean | undefined;
+                        silence?: boolean | undefined;
+                        block?: boolean | undefined;
+                        newEntryNotification?: boolean | undefined;
+                        rewriteRules?: {
+                            from: string;
+                            to: string;
+                        }[] | undefined;
+                        webhooks?: string[] | undefined;
+                    } | undefined;
+                }[] | undefined;
+                total?: number | undefined;
             };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $delete: {
-            input: {
-                json: {
-                    entryId: string;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
 } & {
-    "/categories": {
+    "/": {
         $get: {
             input: {
                 query: {
-                    view?: string | string[] | undefined;
-                };
-            };
-            output: {
-                data?: string[] | undefined;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $delete: {
-            input: {
-                json: {
-                    feedIdList: string[];
-                    deleteSubscriptions: boolean;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $patch: {
-            input: {
-                json: {
-                    category: string;
-                    feedIdList: string[];
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-} & {
-    "/auth-app/new-session": {
-        $post: {
-            input: {};
-            output: {
-                code: 0;
-                data: {
-                    userId: string;
-                    sessionToken: string;
-                    expires: string;
-                };
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-    "/auth-app/update-account": {
-        $patch: {
-            input: {
-                json: {
-                    name?: string | null | undefined;
-                    image?: string | null | undefined;
-                    handle?: string | null | undefined;
-                };
-            };
-            output: {
-                code: 0;
-            };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-    };
-} & {
-    "/ai/translation": {
-        $get: {
-            input: {
-                query: {
-                    id: string | string[];
-                    language: string | string[];
-                    fields: string | string[];
-                    part?: string | string[] | undefined;
+                    id: string;
                 };
             };
             output: {
                 code: 0;
                 data?: {
-                    description?: string | undefined;
-                    title?: string | undefined;
-                    content?: string | undefined;
+                    entries: {
+                        description: string | null;
+                        title: string | null;
+                        content: string | null;
+                        id: string;
+                        author: string | null;
+                        url: string | null;
+                        language: string | null;
+                        guid: string;
+                        categories: string[] | null;
+                        authorUrl: string | null;
+                        authorAvatar: string | null;
+                        insertedAt: string;
+                        publishedAt: string;
+                        read: boolean | null;
+                        inboxHandle: string;
+                        media?: {
+                            type: "photo" | "video";
+                            url: string;
+                            width?: number | undefined;
+                            height?: number | undefined;
+                            preview_image_url?: string | undefined;
+                            blurhash?: string | undefined;
+                        }[] | null | undefined;
+                        attachments?: {
+                            url: string;
+                            title?: string | undefined;
+                            duration_in_seconds?: number | undefined;
+                            mime_type?: string | undefined;
+                            size_in_bytes?: number | undefined;
+                        }[] | null | undefined;
+                        extra?: {
+                            links?: {
+                                type: string;
+                                url: string;
+                                content_html?: string | undefined;
+                            }[] | null | undefined;
+                        } | null | undefined;
+                    };
+                    feeds: {
+                        type: "inbox";
+                        id: string;
+                        secret: string;
+                        description?: string | null | undefined;
+                        title?: string | null | undefined;
+                        image?: string | null | undefined;
+                        ownerUserId?: string | null | undefined;
+                        owner?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        } | null | undefined;
+                    };
                 } | undefined;
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
-    "/ai/summary": {
-        $get: {
+} & {
+    "/": {
+        $delete: {
             input: {
-                query: {
-                    id: string | string[];
-                    language?: string | string[] | undefined;
+                json: {
+                    entryId: string;
                 };
             };
             output: {
                 code: 0;
-                data?: string | undefined;
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
-    "/ai/daily": {
+}, "/inbox"> & hono_types.MergeSchemaPath<{
+    "/:id": {
+        $get: {
+            input: {
+                param: {
+                    id?: any;
+                };
+            } & {
+                query: {
+                    size?: number | undefined;
+                    page?: number | undefined;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    users: {
+                        [x: string]: {
+                            name: string | null;
+                            id: string;
+                            image: string | null;
+                            handle: string | null;
+                        };
+                    };
+                    entryReadHistories: {
+                        userIds: string[];
+                        readCount: number;
+                    } | null;
+                    total: number;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/read-histories"> & hono_types.MergeSchemaPath<{
+    "/": {
         $get: {
             input: {
                 query: {
-                    view: string | string[];
-                    startDate: string | string[];
+                    insertedAfter: number;
+                    view?: number | undefined;
+                    feedId?: string | undefined;
+                    read?: string | undefined;
+                    feedIdList?: string[] | undefined;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    has_new: boolean;
+                    entry_id?: string | undefined;
+                    lastest_at?: string | undefined;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/check-new"> & {
+    "/": {
+        $post: {
+            input: {
+                json: {
+                    view?: number | undefined;
+                    feedId?: string | undefined;
+                    read?: boolean | undefined;
+                    listId?: string | undefined;
+                    limit?: number | undefined;
+                    feedIdList?: string[] | undefined;
+                    publishedAfter?: string | undefined;
+                    publishedBefore?: string | undefined;
+                    collected?: boolean | undefined;
+                    isCollection?: boolean | undefined;
+                    isArchived?: boolean | undefined;
+                    withContent?: boolean | undefined;
+                };
+            };
+            output: {
+                code: 0;
+                data?: {
+                    entries: {
+                        description: string | null;
+                        title: string | null;
+                        id: string;
+                        author: string | null;
+                        url: string | null;
+                        language: string | null;
+                        guid: string;
+                        categories: string[] | null;
+                        authorUrl: string | null;
+                        authorAvatar: string | null;
+                        insertedAt: string;
+                        publishedAt: string;
+                        media?: {
+                            type: "photo" | "video";
+                            url: string;
+                            width?: number | undefined;
+                            height?: number | undefined;
+                            preview_image_url?: string | undefined;
+                            blurhash?: string | undefined;
+                        }[] | null | undefined;
+                        attachments?: {
+                            url: string;
+                            title?: string | undefined;
+                            duration_in_seconds?: number | undefined;
+                            mime_type?: string | undefined;
+                            size_in_bytes?: number | undefined;
+                        }[] | null | undefined;
+                        extra?: {
+                            links?: {
+                                type: string;
+                                url: string;
+                                content_html?: string | undefined;
+                            }[] | null | undefined;
+                        } | null | undefined;
+                    };
+                    feeds: {
+                        type: "feed";
+                        id: string;
+                        url: string;
+                        description?: string | null | undefined;
+                        title?: string | null | undefined;
+                        image?: string | null | undefined;
+                        siteUrl?: string | null | undefined;
+                        errorMessage?: string | null | undefined;
+                        errorAt?: string | null | undefined;
+                        ownerUserId?: string | null | undefined;
+                        owner?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        } | null | undefined;
+                        tipUsers?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[] | null | undefined;
+                    };
+                    read: boolean | null;
+                    collections?: {
+                        createdAt: string;
+                    } | undefined;
+                    settings?: {
+                        disabled?: boolean | undefined;
+                        translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
+                        summary?: boolean | undefined;
+                        readability?: boolean | undefined;
+                        sourceContent?: boolean | undefined;
+                        silence?: boolean | undefined;
+                        block?: boolean | undefined;
+                        newEntryNotification?: boolean | undefined;
+                        rewriteRules?: {
+                            from: string;
+                            to: string;
+                        }[] | undefined;
+                        webhooks?: string[] | undefined;
+                    } | undefined;
+                }[] | undefined;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $get: {
+            input: {
+                query: {
+                    id: string;
+                };
+            };
+            output: {
+                code: 0;
+                data?: {
+                    entries: {
+                        description: string | null;
+                        title: string | null;
+                        content: string | null;
+                        id: string;
+                        author: string | null;
+                        url: string | null;
+                        language: string | null;
+                        guid: string;
+                        categories: string[] | null;
+                        authorUrl: string | null;
+                        authorAvatar: string | null;
+                        insertedAt: string;
+                        publishedAt: string;
+                        media?: {
+                            type: "photo" | "video";
+                            url: string;
+                            width?: number | undefined;
+                            height?: number | undefined;
+                            preview_image_url?: string | undefined;
+                            blurhash?: string | undefined;
+                        }[] | null | undefined;
+                        attachments?: {
+                            url: string;
+                            title?: string | undefined;
+                            duration_in_seconds?: number | undefined;
+                            mime_type?: string | undefined;
+                            size_in_bytes?: number | undefined;
+                        }[] | null | undefined;
+                        extra?: {
+                            links?: {
+                                type: string;
+                                url: string;
+                                content_html?: string | undefined;
+                            }[] | null | undefined;
+                        } | null | undefined;
+                    };
+                    feeds: {
+                        type: "feed";
+                        id: string;
+                        url: string;
+                        description?: string | null | undefined;
+                        title?: string | null | undefined;
+                        image?: string | null | undefined;
+                        siteUrl?: string | null | undefined;
+                        errorMessage?: string | null | undefined;
+                        errorAt?: string | null | undefined;
+                        ownerUserId?: string | null | undefined;
+                        owner?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        } | null | undefined;
+                        tipUsers?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[] | null | undefined;
+                    };
+                } | undefined;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/stream": {
+        $post: {
+            input: {
+                json: {
+                    ids: string[];
+                };
+            };
+            output: {};
+            outputFormat: "text";
+            status: 200;
+        };
+    };
+} & {
+    "/preview": {
+        $get: {
+            input: {
+                query: {
+                    id: string;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    description: string | null;
+                    title: string | null;
+                    content: string | null;
+                    id: string;
+                    author: string | null;
+                    url: string | null;
+                    language: string | null;
+                    feedId: string;
+                    guid: string;
+                    categories: string[] | null;
+                    authorUrl: string | null;
+                    authorAvatar: string | null;
+                    insertedAt: string;
+                    publishedAt: string;
+                    media?: {
+                        type: "photo" | "video";
+                        url: string;
+                        width?: number | undefined;
+                        height?: number | undefined;
+                        preview_image_url?: string | undefined;
+                        blurhash?: string | undefined;
+                    }[] | null | undefined;
+                    attachments?: {
+                        url: string;
+                        title?: string | undefined;
+                        duration_in_seconds?: number | undefined;
+                        mime_type?: string | undefined;
+                        size_in_bytes?: number | undefined;
+                    }[] | null | undefined;
+                    extra?: {
+                        links?: {
+                            type: string;
+                            url: string;
+                            content_html?: string | undefined;
+                        }[] | null | undefined;
+                    } | null | undefined;
+                }[];
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/entries"> | hono_types.MergeSchemaPath<hono_types.MergeSchemaPath<{
+    "/message": {
+        $get: {
+            input: {
+                query: {
+                    feedId: string;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    json: string;
+                    xml: string;
+                    description: string;
+                    content: string;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/challenge": {
+        $post: {
+            input: {
+                json: {
+                    feedId: string;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/list": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    feed: {
+                        type: "feed";
+                        id: string;
+                        url: string;
+                        description?: string | null | undefined;
+                        title?: string | null | undefined;
+                        image?: string | null | undefined;
+                        siteUrl?: string | null | undefined;
+                        errorMessage?: string | null | undefined;
+                        errorAt?: string | null | undefined;
+                        ownerUserId?: string | null | undefined;
+                        owner?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        } | null | undefined;
+                        tipUsers?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[] | null | undefined;
+                    };
+                    subscriptionCount: number;
+                    tipAmount: number;
+                }[];
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/claim"> & {
+    "/": {
+        $get: {
+            input: {
+                query: {
+                    id?: string | undefined;
+                    url?: string | undefined;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    entries: {
+                        description: string | null;
+                        title: string | null;
+                        author: string | null;
+                        url: string | null;
+                        language: string | null;
+                        guid: string;
+                        categories: string[] | null;
+                        authorUrl: string | null;
+                        authorAvatar: string | null;
+                        publishedAt: string;
+                        media?: {
+                            type: "photo" | "video";
+                            url: string;
+                            width?: number | undefined;
+                            height?: number | undefined;
+                            preview_image_url?: string | undefined;
+                            blurhash?: string | undefined;
+                        }[] | null | undefined;
+                        attachments?: {
+                            url: string;
+                            title?: string | undefined;
+                            duration_in_seconds?: number | undefined;
+                            mime_type?: string | undefined;
+                            size_in_bytes?: number | undefined;
+                        }[] | null | undefined;
+                        extra?: {
+                            links?: {
+                                type: string;
+                                url: string;
+                                content_html?: string | undefined;
+                            }[] | null | undefined;
+                        } | null | undefined;
+                    }[];
+                    readCount: number;
+                    feed: {
+                        type: "feed";
+                        id: string;
+                        url: string;
+                        description?: string | null | undefined;
+                        title?: string | null | undefined;
+                        image?: string | null | undefined;
+                        siteUrl?: string | null | undefined;
+                        errorMessage?: string | null | undefined;
+                        errorAt?: string | null | undefined;
+                        ownerUserId?: string | null | undefined;
+                        owner?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        } | null | undefined;
+                        tipUsers?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[] | null | undefined;
+                    };
+                    subscriptionCount: number;
+                    subscription?: {
+                        title: string | null;
+                        createdAt: string;
+                        userId: string;
+                        view: number;
+                        category: string | null;
+                        feedId: string;
+                        isPrivate: boolean;
+                    } | undefined;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/refresh": {
+        $get: {
+            input: {
+                query: {
+                    id: string;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/reset": {
+        $get: {
+            input: {
+                query: {
+                    id: string;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/feeds"> | hono_types.MergeSchemaPath<{
+    "/new": {
+        $post: {
+            input: {};
+            output: {
+                code: 0;
+                data: string;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/use": {
+        $post: {
+            input: {
+                json: {
+                    code: string;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    code: string;
+                    createdAt: string | null;
+                    users: {
+                        name: string | null;
+                        id: string;
+                        image: string | null;
+                    } | null;
+                    usedAt: string | null;
+                    toUserId: string | null;
+                }[];
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/limitation": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: number;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/invitations"> | hono_types.MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {
+                query: {
+                    id?: string | undefined;
+                    handle?: string | undefined;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    name: string | null;
+                    id: string;
+                    emailVerified: boolean | null;
+                    image: string | null;
+                    handle: string | null;
+                    createdAt: string;
+                    updatedAt: string;
+                    twoFactorEnabled: boolean | null;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/batch": {
+        $post: {
+            input: {
+                json: {
+                    ids: string[];
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    [x: string]: {
+                        name: string | null;
+                        id: string;
+                        emailVerified: boolean | null;
+                        image: string | null;
+                        handle: string | null;
+                        createdAt: string;
+                        updatedAt: string;
+                        twoFactorEnabled: boolean | null;
+                    };
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/profiles"> | hono_types.MergeSchemaPath<{
+    "/": {
+        $post: {
+            input: {
+                json: {
+                    entryIds: string[];
+                    isInbox?: boolean | undefined;
+                    readHistories?: string[] | undefined;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $delete: {
+            input: {
+                json: {
+                    entryId: string;
+                    isInbox?: boolean | undefined;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $get: {
+            input: {
+                query: {
+                    view?: string | undefined;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    [x: string]: number;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/all": {
+        $post: {
+            input: {
+                json: {
+                    view?: number | undefined;
+                    feedId?: string | undefined;
+                    listId?: string | undefined;
+                    feedIdList?: string[] | undefined;
+                    inboxId?: string | undefined;
+                    startTime?: number | undefined;
+                    endTime?: number | undefined;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/total-count": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    count: number;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/reads"> | hono_types.MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {
+                query: {
+                    tab?: "general" | "appearance" | "integration" | undefined;
+                };
+            };
+            output: {
+                code: 0;
+                settings: {
+                    [x: string]: any;
+                };
+                updated: {
+                    [x: string]: string;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/:tab": {
+        $patch: {
+            input: {
+                param: {
+                    tab: string;
+                };
+            } & {
+                json: Record<string, any>;
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/settings"> | hono_types.MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {
+                query: {
+                    userId?: string | undefined;
+                    view?: string | undefined;
+                };
+            };
+            output: {
+                code: 0;
+                data: ({
+                    title: string | null;
+                    createdAt: string;
+                    userId: string;
+                    view: number;
+                    category: string | null;
+                    feeds: {
+                        type: "feed";
+                        id: string;
+                        url: string;
+                        description?: string | null | undefined;
+                        title?: string | null | undefined;
+                        image?: string | null | undefined;
+                        siteUrl?: string | null | undefined;
+                        errorMessage?: string | null | undefined;
+                        errorAt?: string | null | undefined;
+                        ownerUserId?: string | null | undefined;
+                        owner?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        } | null | undefined;
+                        tipUsers?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[] | null | undefined;
+                    };
+                    feedId: string;
+                    isPrivate: boolean;
+                    boost: {
+                        boosters: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            twoFactorEnabled: boolean | null;
+                        }[];
+                    };
+                } | {
+                    title: string | null;
+                    createdAt: string;
+                    userId: string;
+                    view: number;
+                    feedId: string;
+                    isPrivate: boolean;
+                    lists: {
+                        type: "list";
+                        id: string;
+                        view: number;
+                        feedIds: string[];
+                        fee: number;
+                        timelineUpdatedAt: string;
+                        description?: string | null | undefined;
+                        title?: string | null | undefined;
+                        image?: string | null | undefined;
+                        feeds?: {
+                            type: "feed";
+                            id: string;
+                            url: string;
+                            description?: string | null | undefined;
+                            title?: string | null | undefined;
+                            image?: string | null | undefined;
+                            siteUrl?: string | null | undefined;
+                            errorMessage?: string | null | undefined;
+                            errorAt?: string | null | undefined;
+                            ownerUserId?: string | null | undefined;
+                            owner?: {
+                                name: string | null;
+                                id: string;
+                                emailVerified: boolean | null;
+                                image: string | null;
+                                handle: string | null;
+                                createdAt: string;
+                                updatedAt: string;
+                            } | null | undefined;
+                            tipUsers?: {
+                                name: string | null;
+                                id: string;
+                                emailVerified: boolean | null;
+                                image: string | null;
+                                handle: string | null;
+                                createdAt: string;
+                                updatedAt: string;
+                            }[] | null | undefined;
+                        }[] | undefined;
+                        ownerUserId?: string | null | undefined;
+                        owner?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        } | null | undefined;
+                    };
+                    listId: string;
+                    lastViewedAt: string | null;
+                    category?: string | undefined;
+                } | {
+                    title: string | null;
+                    createdAt: string;
+                    userId: string;
+                    view: number;
+                    category: string | null;
+                    feedId: string;
+                    isPrivate: boolean;
+                    inboxes: {
+                        type: "inbox";
+                        id: string;
+                        secret: string;
+                        description?: string | null | undefined;
+                        title?: string | null | undefined;
+                        image?: string | null | undefined;
+                        ownerUserId?: string | null | undefined;
+                        owner?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        } | null | undefined;
+                    };
+                    inboxId: string;
+                })[];
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $post: {
+            input: {
+                json: {
+                    view: number;
+                    title?: string | null | undefined;
+                    category?: string | null | undefined;
+                    url?: string | undefined;
+                    isPrivate?: boolean | undefined;
+                    listId?: string | undefined;
+                };
+            };
+            output: {
+                code: 0;
+                feed: {
+                    description: string | null;
+                    title: string | null;
+                    id: string;
+                    image: string | null;
+                    url: string;
+                    siteUrl: string | null;
+                    checkedAt: string;
+                    lastModifiedHeader: string | null;
+                    etagHeader: string | null;
+                    ttl: number | null;
+                    errorMessage: string | null;
+                    errorAt: string | null;
+                    ownerUserId: string | null;
+                    language: string | null;
+                    migrateTo: string | null;
+                } | null;
+                list: {
+                    description: string | null;
+                    title: string;
+                    id: string;
+                    image: string | null;
+                    view: number;
+                    ownerUserId: string;
+                    language: string | null;
+                    feedIds: string[];
+                    fee: number;
+                    timelineUpdatedAt: string;
+                } | null;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $delete: {
+            input: {
+                json: {
+                    url?: string | undefined;
+                    feedId?: string | undefined;
+                    listId?: string | undefined;
+                    feedIdList?: string[] | undefined;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $patch: {
+            input: {
+                json: {
+                    view: number;
+                    title?: string | null | undefined;
+                    category?: string | null | undefined;
+                    feedId?: string | undefined;
+                    isPrivate?: boolean | undefined;
+                    listId?: string | undefined;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/export": {
+        $get: {
+            input: {
+                query: {
+                    RSSHubURL?: string | undefined;
+                    folderMode?: "view" | "category" | undefined;
+                };
+            };
+            output: {};
+            outputFormat: string;
+            status: 200;
+        };
+    };
+} & {
+    "/import": {
+        $post: {
+            input: {};
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/batch": {
+        $patch: {
+            input: {
+                json: {
+                    view: number;
+                    feedIds: string[];
+                    title?: string | null | undefined;
+                    category?: string | null | undefined;
+                    isPrivate?: boolean | undefined;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/subscriptions"> | hono_types.MergeSchemaPath<hono_types.MergeSchemaPath<{
+    "/": {
+        $post: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    transactionHash: string;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    tx: string | null;
+                    amount: string;
+                    rank: string | null;
+                    detail: {
+                        "Invitations count": number;
+                        "Purchase lists cost": number;
+                        "Total tip amount": number;
+                        "Feeds subscriptions count": number;
+                        "Lists subscriptions count": number;
+                        "Inbox subscriptions count": number;
+                        "Recent read count in the last month": number;
+                        "Mint count": number;
+                        "Claimed feeds count": number;
+                        "Claimed feeds subscriptions count": number;
+                        "Lists with more than 1 feed count": number;
+                        "Created lists subscriptions count": number;
+                        "Created lists income amount": number;
+                        "GitHub Community Contributions": number;
+                        "Invitations count Rank": number;
+                        "Purchase lists cost Rank": number;
+                        "Total tip amount Rank": number;
+                        "Feeds subscriptions count Rank": number;
+                        "Lists subscriptions count Rank": number;
+                        "Inbox subscriptions count Rank": number;
+                        "Recent read count in the last month Rank": number;
+                        "Mint count Rank": number;
+                        "Claimed feeds count Rank": number;
+                        "Claimed feeds subscriptions count Rank": number;
+                        "Lists with more than 1 feed count Rank": number;
+                        "Created lists subscriptions count Rank": number;
+                        "Created lists income amount Rank": number;
+                        "GitHub Community Contributions Rank": number;
+                    } | null;
+                    verify: string | null;
+                } | null;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $put: {
+            input: {
+                json: {
+                    verify: string | null;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/airdrop"> & hono_types.MergeSchemaPath<{
+    "/tip": {
+        $post: {
+            input: {
+                json: {
+                    amount: string;
+                    entryId: string;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    transactionHash: string;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $get: {
+            input: {
+                query: {
+                    type?: "tip" | "mint" | "burn" | "withdraw" | "purchase" | "airdrop" | undefined;
+                    hash?: string | undefined;
+                    fromUserId?: string | undefined;
+                    toUserId?: string | undefined;
+                    toFeedId?: string | undefined;
+                    fromOrToUserId?: string | undefined;
+                    createdAfter?: string | undefined;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    type: "tip" | "mint" | "burn" | "withdraw" | "purchase" | "airdrop";
+                    createdAt: string;
+                    hash: string;
+                    powerToken: string;
+                    fromUserId: string | null;
+                    toUserId: string | null;
+                    toFeedId: string | null;
+                    toListId: string | null;
+                    toEntryId: string | null;
+                    toRSSHubId: string | null;
+                    tax: string;
+                    comment: string | null;
+                    fromUser?: {
+                        name: string | null;
+                        id: string;
+                        emailVerified: boolean | null;
+                        image: string | null;
+                        handle: string | null;
+                        createdAt: string;
+                        updatedAt: string;
+                        twoFactorEnabled: boolean | null;
+                    } | null | undefined;
+                    toUser?: {
+                        name: string | null;
+                        id: string;
+                        emailVerified: boolean | null;
+                        image: string | null;
+                        handle: string | null;
+                        createdAt: string;
+                        updatedAt: string;
+                        twoFactorEnabled: boolean | null;
+                    } | null | undefined;
+                    toFeed?: {
+                        type: "feed";
+                        id: string;
+                        url: string;
+                        description?: string | null | undefined;
+                        title?: string | null | undefined;
+                        image?: string | null | undefined;
+                        siteUrl?: string | null | undefined;
+                        errorMessage?: string | null | undefined;
+                        errorAt?: string | null | undefined;
+                        ownerUserId?: string | null | undefined;
+                        owner?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        } | null | undefined;
+                        tipUsers?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[] | null | undefined;
+                    } | null | undefined;
+                }[];
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/claim_daily": {
+        $post: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    transactionHash: string;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/claim-check": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: boolean;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/transactions"> & {
+    "/": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    createdAt: string;
+                    userId: string;
+                    powerToken: string;
+                    addressIndex: number;
+                    address: string | null;
+                    dailyPowerToken: string;
+                    cashablePowerToken: string;
+                    level: {
+                        rank: number | null;
+                        level: number | null;
+                        prevActivityPoints: number | null;
+                        activityPoints: number | null;
+                    } | null;
+                    todayDailyPower: string;
+                }[];
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $post: {
+            input: {};
+            output: {
+                code: 0;
+                data: string;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/refresh": {
+        $post: {
+            input: {};
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/ranking": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    user: {
+                        name: string | null;
+                        id: string;
+                        emailVerified: boolean | null;
+                        image: string | null;
+                        handle: string | null;
+                        createdAt: string;
+                        updatedAt: string;
+                        twoFactorEnabled: boolean | null;
+                    };
+                    userId: string;
+                    rank: number | null;
+                    powerToken: string;
+                    address: string;
+                    level: number | null;
+                    prevActivityPoints: number | null;
+                    activityPoints: number | null;
+                }[];
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/power-price": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    rss3: number;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/wallets"> | hono_types.MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {
+                query: {
+                    listId: string;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    entries: {
+                        description: string | null;
+                        title: string | null;
+                        content: string | null;
+                        id: string;
+                        author: string | null;
+                        url: string | null;
+                        feeds: {
+                            type: "feed";
+                            id: string;
+                            url: string;
+                            description?: string | null | undefined;
+                            title?: string | null | undefined;
+                            image?: string | null | undefined;
+                            siteUrl?: string | null | undefined;
+                            errorMessage?: string | null | undefined;
+                            errorAt?: string | null | undefined;
+                            ownerUserId?: string | null | undefined;
+                            owner?: {
+                                name: string | null;
+                                id: string;
+                                emailVerified: boolean | null;
+                                image: string | null;
+                                handle: string | null;
+                                createdAt: string;
+                                updatedAt: string;
+                            } | null | undefined;
+                            tipUsers?: {
+                                name: string | null;
+                                id: string;
+                                emailVerified: boolean | null;
+                                image: string | null;
+                                handle: string | null;
+                                createdAt: string;
+                                updatedAt: string;
+                            }[] | null | undefined;
+                        };
+                        language: string | null;
+                        feedId: string;
+                        guid: string;
+                        categories: string[] | null;
+                        authorUrl: string | null;
+                        authorAvatar: string | null;
+                        insertedAt: string;
+                        publishedAt: string;
+                        media?: {
+                            type: "photo" | "video";
+                            url: string;
+                            width?: number | undefined;
+                            height?: number | undefined;
+                            preview_image_url?: string | undefined;
+                            blurhash?: string | undefined;
+                        }[] | null | undefined;
+                        attachments?: {
+                            url: string;
+                            title?: string | undefined;
+                            duration_in_seconds?: number | undefined;
+                            mime_type?: string | undefined;
+                            size_in_bytes?: number | undefined;
+                        }[] | null | undefined;
+                        extra?: {
+                            links?: {
+                                type: string;
+                                url: string;
+                                content_html?: string | undefined;
+                            }[] | null | undefined;
+                        } | null | undefined;
+                    }[];
+                    readCount: number;
+                    list: {
+                        type: "list";
+                        id: string;
+                        view: number;
+                        feedIds: string[];
+                        fee: number;
+                        timelineUpdatedAt: string;
+                        description?: string | null | undefined;
+                        title?: string | null | undefined;
+                        image?: string | null | undefined;
+                        feeds?: {
+                            type: "feed";
+                            id: string;
+                            url: string;
+                            description?: string | null | undefined;
+                            title?: string | null | undefined;
+                            image?: string | null | undefined;
+                            siteUrl?: string | null | undefined;
+                            errorMessage?: string | null | undefined;
+                            errorAt?: string | null | undefined;
+                            ownerUserId?: string | null | undefined;
+                            owner?: {
+                                name: string | null;
+                                id: string;
+                                emailVerified: boolean | null;
+                                image: string | null;
+                                handle: string | null;
+                                createdAt: string;
+                                updatedAt: string;
+                            } | null | undefined;
+                            tipUsers?: {
+                                name: string | null;
+                                id: string;
+                                emailVerified: boolean | null;
+                                image: string | null;
+                                handle: string | null;
+                                createdAt: string;
+                                updatedAt: string;
+                            }[] | null | undefined;
+                        }[] | undefined;
+                        ownerUserId?: string | null | undefined;
+                        owner?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        } | null | undefined;
+                    };
+                    subscriptionCount: number;
+                    feedCount: number;
+                    subscription?: {
+                        title: string | null;
+                        createdAt: string;
+                        userId: string;
+                        view: number;
+                        isPrivate: boolean;
+                        listId: string;
+                        lastViewedAt: string | null;
+                    } | undefined;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $post: {
+            input: {
+                json: {
+                    title: string;
+                    view: number;
+                    fee: number;
+                    description?: string | null | undefined;
+                    image?: string | null | undefined;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    type: "list";
+                    id: string;
+                    view: number;
+                    feedIds: string[];
+                    fee: number;
+                    timelineUpdatedAt: string;
+                    description?: string | null | undefined;
+                    title?: string | null | undefined;
+                    image?: string | null | undefined;
+                    feeds?: {
+                        type: "feed";
+                        id: string;
+                        url: string;
+                        description?: string | null | undefined;
+                        title?: string | null | undefined;
+                        image?: string | null | undefined;
+                        siteUrl?: string | null | undefined;
+                        errorMessage?: string | null | undefined;
+                        errorAt?: string | null | undefined;
+                        ownerUserId?: string | null | undefined;
+                        owner?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        } | null | undefined;
+                        tipUsers?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[] | null | undefined;
+                    }[] | undefined;
+                    ownerUserId?: string | null | undefined;
+                    owner?: {
+                        name: string | null;
+                        id: string;
+                        emailVerified: boolean | null;
+                        image: string | null;
+                        handle: string | null;
+                        createdAt: string;
+                        updatedAt: string;
+                    } | null | undefined;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $delete: {
+            input: {
+                json: {
+                    listId: string;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $patch: {
+            input: {
+                json: {
+                    title: string;
+                    view: number;
+                    fee: number;
+                    listId: string;
+                    description?: string | null | undefined;
+                    image?: string | null | undefined;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/list": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    type: "list";
+                    id: string;
+                    view: number;
+                    feedIds: string[];
+                    fee: number;
+                    timelineUpdatedAt: string;
+                    description?: string | null | undefined;
+                    title?: string | null | undefined;
+                    image?: string | null | undefined;
+                    feeds?: {
+                        type: "feed";
+                        id: string;
+                        url: string;
+                        description?: string | null | undefined;
+                        title?: string | null | undefined;
+                        image?: string | null | undefined;
+                        siteUrl?: string | null | undefined;
+                        errorMessage?: string | null | undefined;
+                        errorAt?: string | null | undefined;
+                        ownerUserId?: string | null | undefined;
+                        owner?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        } | null | undefined;
+                        tipUsers?: {
+                            name: string | null;
+                            id: string;
+                            emailVerified: boolean | null;
+                            image: string | null;
+                            handle: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[] | null | undefined;
+                    }[] | undefined;
+                    ownerUserId?: string | null | undefined;
+                    owner?: {
+                        name: string | null;
+                        id: string;
+                        emailVerified: boolean | null;
+                        image: string | null;
+                        handle: string | null;
+                        createdAt: string;
+                        updatedAt: string;
+                    } | null | undefined;
+                    subscriptionCount?: number | undefined;
+                    purchaseAmount?: number | undefined;
+                }[];
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/feeds": {
+        $post: {
+            input: {
+                json: {
+                    feedId: string;
+                    listId: string;
+                } | {
+                    feedIds: string[];
+                    listId: string;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    type: "feed";
+                    id: string;
+                    url: string;
+                    description?: string | null | undefined;
+                    title?: string | null | undefined;
+                    image?: string | null | undefined;
+                    siteUrl?: string | null | undefined;
+                    errorMessage?: string | null | undefined;
+                    errorAt?: string | null | undefined;
+                    ownerUserId?: string | null | undefined;
+                    owner?: {
+                        name: string | null;
+                        id: string;
+                        emailVerified: boolean | null;
+                        image: string | null;
+                        handle: string | null;
+                        createdAt: string;
+                        updatedAt: string;
+                    } | null | undefined;
+                    tipUsers?: {
+                        name: string | null;
+                        id: string;
+                        emailVerified: boolean | null;
+                        image: string | null;
+                        handle: string | null;
+                        createdAt: string;
+                        updatedAt: string;
+                    }[] | null | undefined;
+                }[];
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/feeds": {
+        $delete: {
+            input: {
+                json: {
+                    feedId: string;
+                    listId: string;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/lists"> | hono_types.MergeSchemaPath<{
+    "/": {
+        $get: {
+            input: {};
+            output: {};
+            outputFormat: "text";
+            status: 200;
+        };
+    };
+} & {
+    "/pools": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    totalCount: number;
+                    idleCount: number;
+                    waitingCount: number;
+                }[];
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/metrics"> | hono_types.MergeSchemaPath<{
+    "/clean": {
+        $post: {
+            input: {
+                json: {
+                    type: string;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/mintdscsafr": {
+        $post: {
+            input: {
+                json: {
+                    userId: string;
+                    amount: number;
+                    key: string;
+                    comment?: string | undefined;
                 };
             };
             output: {
                 code: 0;
                 data: string;
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/admin"> | hono_types.MergeSchemaPath<{
+    "/": {
+        $delete: {
+            input: {
+                json: {
+                    handle: string;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
             status: 200;
         };
     };
 } & {
-    "/actions": {
+    "/": {
+        $get: {
+            input: {
+                query: {
+                    handle: string;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    type: "inbox";
+                    id: string;
+                    secret: string;
+                    description?: string | null | undefined;
+                    title?: string | null | undefined;
+                    image?: string | null | undefined;
+                    ownerUserId?: string | null | undefined;
+                    owner?: {
+                        name: string | null;
+                        id: string;
+                        emailVerified: boolean | null;
+                        image: string | null;
+                        handle: string | null;
+                        createdAt: string;
+                        updatedAt: string;
+                    } | null | undefined;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $post: {
+            input: {
+                json: {
+                    handle: string;
+                    title?: string | undefined;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/webhook": {
+        $post: {
+            input: {
+                json: {
+                    guid: string;
+                    publishedAt: string;
+                    description?: string | null | undefined;
+                    title?: string | null | undefined;
+                    content?: string | null | undefined;
+                    author?: string | null | undefined;
+                    url?: string | null | undefined;
+                    language?: string | null | undefined;
+                    media?: {
+                        type: "photo" | "video";
+                        url: string;
+                        width?: number | undefined;
+                        height?: number | undefined;
+                        preview_image_url?: string | undefined;
+                        blurhash?: string | undefined;
+                    }[] | null | undefined;
+                    categories?: string[] | null | undefined;
+                    attachments?: {
+                        url: string;
+                        title?: string | undefined;
+                        duration_in_seconds?: number | undefined;
+                        mime_type?: string | undefined;
+                        size_in_bytes?: number | undefined;
+                    }[] | null | undefined;
+                    extra?: {
+                        links?: {
+                            type: string;
+                            url: string;
+                            content_html?: string | undefined;
+                        }[] | null | undefined;
+                    } | null | undefined;
+                    authorUrl?: string | null | undefined;
+                    authorAvatar?: string | null | undefined;
+                    read?: boolean | null | undefined;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/email": {
+        $post: {
+            input: {
+                json: {
+                    date: string;
+                    from: {
+                        name?: string | undefined;
+                        address?: string | undefined;
+                    };
+                    to: {
+                        address: string;
+                    };
+                    messageId: string;
+                    subject?: string | undefined;
+                    html?: string | undefined;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $put: {
+            input: {
+                json: {
+                    title: string;
+                    handle: string;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/list": {
         $get: {
             input: {};
             output: {
                 code: 0;
-                data?: {
-                    userId: string;
-                    rules?: {
-                        name: string;
-                        result: {
-                            summary?: boolean | undefined;
-                            disabled?: boolean | undefined;
-                            translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
-                            readability?: boolean | undefined;
-                            sourceContent?: boolean | undefined;
-                            silence?: boolean | undefined;
-                            block?: boolean | undefined;
-                            newEntryNotification?: boolean | undefined;
-                            rewriteRules?: {
-                                from: string;
-                                to: string;
-                            }[] | undefined;
-                            blockRules?: {
-                                value: string | number;
-                                field: "title" | "all" | "content" | "author" | "url" | "order";
-                                operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-                            }[] | undefined;
-                            webhooks?: string[] | undefined;
-                        };
-                        condition: {
-                            value: string;
-                            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-                            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-                        }[] | {
-                            value: string;
-                            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-                            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-                        }[][];
-                    }[] | null | undefined;
-                } | undefined;
+                data: {
+                    type: "inbox";
+                    id: string;
+                    secret: string;
+                    description?: string | null | undefined;
+                    title?: string | null | undefined;
+                    image?: string | null | undefined;
+                    ownerUserId?: string | null | undefined;
+                    owner?: {
+                        name: string | null;
+                        id: string;
+                        emailVerified: boolean | null;
+                        image: string | null;
+                        handle: string | null;
+                        createdAt: string;
+                        updatedAt: string;
+                    } | null | undefined;
+                }[];
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
-        $put: {
+    };
+}, "/inboxes"> | hono_types.MergeSchemaPath<{
+    "/": {
+        $post: {
             input: {
                 json: {
-                    rules?: {
-                        name: string;
-                        result: {
-                            summary?: boolean | undefined;
-                            disabled?: boolean | undefined;
-                            translation?: "en" | "ja" | "zh-CN" | "zh-TW" | undefined;
-                            readability?: boolean | undefined;
-                            sourceContent?: boolean | undefined;
-                            silence?: boolean | undefined;
-                            block?: boolean | undefined;
-                            newEntryNotification?: boolean | undefined;
-                            rewriteRules?: {
-                                from: string;
-                                to: string;
-                            }[] | undefined;
-                            blockRules?: {
-                                value: string | number;
-                                field: "title" | "all" | "content" | "author" | "url" | "order";
-                                operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-                            }[] | undefined;
-                            webhooks?: string[] | undefined;
-                        };
-                        condition: {
-                            value: string;
-                            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-                            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-                        }[] | {
-                            value: string;
-                            field: "title" | "view" | "site_url" | "feed_url" | "category" | "entry_title" | "entry_content" | "entry_url" | "entry_author" | "entry_media_length";
-                            operator: "contains" | "not_contains" | "eq" | "not_eq" | "gt" | "lt" | "regex";
-                        }[][];
-                    }[] | null | undefined;
+                    token: string;
+                    channel: "desktop" | "mobile";
                 };
             };
             output: {
                 code: 0;
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
 } & {
-    "/achievement": {
+    "/test": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/messaging"> | hono_types.MergeSchemaPath<{
+    "/configs": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    MAX_SUBSCRIPTIONS: number;
+                    MAX_LISTS: number;
+                    MAX_ACTIONS: number;
+                    MAX_WEBHOOKS_PER_ACTION: number;
+                    MAX_INBOXES: number;
+                    IMPORTING_TITLE: string;
+                    DAILY_POWER_PERCENTAGES: number[];
+                    LEVEL_PERCENTAGES: number[];
+                    DAILY_CLAIM_AMOUNT: {
+                        trial: number;
+                        normal: number;
+                    };
+                    TAX_POINT: string;
+                    INVITATION_INTERVAL_DAYS: number;
+                    INVITATION_PRICE: number;
+                    DAILY_POWER_SUPPLY: number;
+                    IS_RSS3_TESTNET: boolean;
+                    PRODUCT_HUNT_VOTE_URL: string;
+                    ANNOUNCEMENT: string;
+                    MAX_TRIAL_USER_FEED_SUBSCRIPTION: number;
+                    MAX_TRIAL_USER_LIST_SUBSCRIPTION: number;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/status"> | hono_types.MergeSchemaPath<{
+    "/": {
         $get: {
             input: {
                 query: {
-                    type?: string | string[] | undefined;
+                    feedId: string;
                 };
             };
             output: {
-                code: number;
+                code: 0;
                 data: {
-                    type: "received" | "checking" | "completed" | "incomplete" | "audit";
+                    level: number;
+                    monthlyBoostCost: number;
+                    boostCount: number;
+                    remainingBoostsToLevelUp: number;
+                    lastValidBoost: {
+                        hash: string | null;
+                        expiresAt: string;
+                    } | null;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/boosters": {
+        $get: {
+            input: {
+                query: {
+                    feedId: string;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    name: string | null;
                     id: string;
-                    userId: string;
-                    actionId: number;
-                    progress: number;
-                    progressMax: number;
-                    done: boolean;
-                    doneAt: string | null;
-                    tx: string | null;
-                    power: string;
+                    emailVerified: boolean | null;
+                    image: string | null;
+                    handle: string | null;
+                    createdAt: string;
+                    updatedAt: string;
+                    twoFactorEnabled: boolean | null;
                 }[];
-                done: number;
-                total: number;
             };
-            outputFormat: "json" | "text";
-            status: 200;
-        };
-        $put: {
-            input: {
-                json: {
-                    actionId: number;
-                };
-            };
-            output: {
-                code: number;
-                data: {
-                    actionId: number;
-                    result: boolean;
-                };
-            };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
-    "/achievement/check": {
+} & {
+    "/": {
         $post: {
             input: {
                 json: {
-                    actionId: number;
+                    amount: string;
+                    feedId: string;
                 };
             };
             output: {
-                code: number;
+                code: 0;
                 data: {
-                    actionId: number;
-                    result: boolean;
+                    expiresAt: string;
+                    transactionHash: string;
                 };
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
-    "/achievement/audit": {
+}, "boosts"> | hono_types.MergeSchemaPath<{
+    "/postgresql": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: number;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/redis": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: number;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/bullmq": {
+        $get: {
+            input: {
+                query: {
+                    name: "follow-queue" | "admin-wallet-queue";
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    completed: number;
+                    wait: number;
+                    failed: number;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/probes"> | hono_types.MergeSchemaPath<{
+    "/": {
         $post: {
             input: {
                 json: {
-                    actionId: number;
-                    payload?: any;
+                    baseUrl: string;
+                    id?: string | undefined;
+                    accessKey?: string | undefined;
                 };
             };
             output: {
-                code: number;
+                code: 0;
             };
-            outputFormat: "json" | "text";
+            outputFormat: "json";
             status: 200;
         };
     };
-}, "/">;
+} & {
+    "/list": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    description: string | null;
+                    id: string;
+                    ownerUserId: string;
+                    owner: {
+                        name: string | null;
+                        id: string;
+                        image: string | null;
+                        handle: string | null;
+                    } | null;
+                    price: number;
+                    userLimit: number | null;
+                    userCount: number;
+                }[];
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $delete: {
+            input: {
+                json: {
+                    id: string;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/use": {
+        $post: {
+            input: {
+                json: {
+                    id: string | null;
+                    durationInMonths?: number | undefined;
+                };
+            };
+            output: {
+                code: 0;
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/": {
+        $get: {
+            input: {
+                query: {
+                    id: string;
+                };
+            };
+            output: {
+                code: 0;
+                data: {
+                    purchase: {
+                        hash: string | null;
+                        expiresAt: string;
+                    } | null;
+                    instance: {
+                        description: string | null;
+                        id: string;
+                        ownerUserId: string;
+                        price: number;
+                        userLimit: number | null;
+                        baseUrl?: string | null | undefined;
+                        accessKey?: string | null | undefined;
+                    };
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+} & {
+    "/status": {
+        $get: {
+            input: {};
+            output: {
+                code: 0;
+                data: {
+                    purchase: {
+                        hash: string | null;
+                        expiresAt: string;
+                    } | null;
+                    usage?: {
+                        id: string;
+                        userId: string;
+                        rsshubId: string;
+                    } | undefined;
+                };
+            };
+            outputFormat: "json";
+            status: 200;
+        };
+    };
+}, "/rsshub">, "/">;
 type AppType = typeof _routes;
 
-export { type ActionsModel, type AirdropActivity, type AppType, type AttachmentsModel, CommonEntryFields, type ConditionItem, type DetailModel, type EntriesModel, type EntryReadHistoriesModel, type ExtraModel, type FeedModel, type MediaModel, type MessagingData, MessagingType, type SettingsModel, accounts, achievements, achievementsOpenAPISchema, actions, actionsItemOpenAPISchema, actionsOpenAPISchema, actionsRelations, activityEnum, airdrops, airdropsOpenAPISchema, attachmentsZodSchema, boosts, collections, collectionsOpenAPISchema, collectionsRelations, detailModelSchema, entries, entriesOpenAPISchema, entriesRelations, entryReadHistories, entryReadHistoriesOpenAPISchema, entryReadHistoriesRelations, extraZodSchema, feedPowerTokens, feedPowerTokensOpenAPISchema, feedPowerTokensRelations, feeds, feedsOpenAPISchema, feedsRelations, inboxHandleSchema, inboxes, inboxesEntries, inboxesEntriesInsertOpenAPISchema, type inboxesEntriesModel, inboxesEntriesOpenAPISchema, inboxesEntriesRelations, inboxesOpenAPISchema, inboxesRelations, invitations, invitationsOpenAPISchema, invitationsRelations, languageSchema, levels, levelsOpenAPISchema, levelsRelations, lists, listsOpenAPISchema, listsRelations, listsSubscriptions, listsSubscriptionsOpenAPISchema, listsSubscriptionsRelations, listsTimeline, listsTimelineOpenAPISchema, listsTimelineRelations, lower, mediaZodSchema, messaging, messagingOpenAPISchema, messagingRelations, sessions, settings, subscriptions, subscriptionsOpenAPISchema, subscriptionsRelations, timeline, timelineOpenAPISchema, timelineRelations, transactionType, transactions, transactionsOpenAPISchema, transactionsRelations, users, usersOpenApiSchema, usersRelations, verificationTokens, wallets, walletsOpenAPISchema, walletsRelations };
+export { type ActionsModel, type AirdropActivity, type AppType, type AttachmentsModel, type AuthSession, type AuthUser, CommonEntryFields, type ConditionItem, type DetailModel, type EntriesModel, type EntryReadHistoriesModel, type ExtraModel, type FeedModel, type MediaModel, type MessagingData, MessagingType, type SettingsModel, type UrlReadsModel, account, achievements, achievementsOpenAPISchema, actions, actionsItemOpenAPISchema, actionsOpenAPISchema, actionsRelations, activityEnum, airdrops, airdropsOpenAPISchema, attachmentsZodSchema, authPlugins, boosts, collections, collectionsOpenAPISchema, collectionsRelations, detailModelSchema, entries, entriesOpenAPISchema, entriesRelations, entryReadHistories, entryReadHistoriesOpenAPISchema, entryReadHistoriesRelations, extraZodSchema, feedPowerTokens, feedPowerTokensOpenAPISchema, feedPowerTokensRelations, feeds, feedsOpenAPISchema, feedsRelations, inboxHandleSchema, inboxes, inboxesEntries, inboxesEntriesInsertOpenAPISchema, type inboxesEntriesModel, inboxesEntriesOpenAPISchema, inboxesEntriesRelations, inboxesOpenAPISchema, inboxesRelations, invitations, invitationsOpenAPISchema, invitationsRelations, languageSchema, levels, levelsOpenAPISchema, levelsRelations, lists, listsOpenAPISchema, listsRelations, listsSubscriptions, listsSubscriptionsOpenAPISchema, listsSubscriptionsRelations, listsTimeline, listsTimelineOpenAPISchema, listsTimelineRelations, lower, mediaZodSchema, messaging, messagingOpenAPISchema, messagingRelations, rsshub, rsshubOpenAPISchema, rsshubPurchase, rsshubUsage, rsshubUsageOpenAPISchema, rsshubUsageRelations, session, settings, subscriptions, subscriptionsOpenAPISchema, subscriptionsRelations, timeline, timelineOpenAPISchema, timelineRelations, transactionType, transactions, transactionsOpenAPISchema, transactionsRelations, twoFactor, urlReads, urlReadsOpenAPISchema, user, users, usersOpenApiSchema, usersRelations, verification, wallets, walletsOpenAPISchema, walletsRelations };

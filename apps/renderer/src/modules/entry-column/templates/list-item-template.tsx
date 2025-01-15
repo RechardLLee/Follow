@@ -1,6 +1,7 @@
-import { isMobile } from "@follow/components/hooks/useMobile.js"
+import { useMobile } from "@follow/components/hooks/useMobile.js"
 import { EllipsisHorizontalTextWithTooltip } from "@follow/components/ui/typography/index.js"
-import { cn, isSafari } from "@follow/utils/utils"
+import { clsx, cn, isSafari } from "@follow/utils/utils"
+import { useMemo } from "react"
 
 import { AudioPlayer, useAudioPlayerAtomSelector } from "~/atoms/player"
 import { useRealInWideMode, useUISettingKey } from "~/atoms/settings/ui"
@@ -16,7 +17,6 @@ import { useEntry } from "~/store/entry/hooks"
 import { getPreferredTitle, useFeedById } from "~/store/feed"
 import { useInboxById } from "~/store/inbox"
 
-import { ReactVirtuosoItemPlaceholder } from "../../../components/ui/placeholder"
 import { StarIcon } from "../star-icon"
 import type { UniversalItemProps } from "../types"
 
@@ -30,6 +30,7 @@ export function ListItem({
   withDetails?: boolean
   withAudio?: boolean
 }) {
+  const isMobile = useMobile()
   const entry = useEntry(entryId) || entryPreview
 
   const asRead = useAsRead(entry)
@@ -55,13 +56,53 @@ export function ListItem({
   const thumbnailRatio = useUISettingKey("thumbnailRatio")
   const rid = `list-item-${entryId}`
 
+  const lineClamp = useMemo(() => {
+    const envIsSafari = isSafari()
+    let lineClampTitle = settingWideMode ? 1 : 2
+    const lineClampDescription = settingWideMode ? 1 : 2
+
+    if (translation?.title) {
+      lineClampTitle += 1
+    }
+
+    // for tailwind
+    // line-clamp-[1] line-clamp-[2] line-clamp-[3] line-clamp-[4] line-clamp-[5] line-clamp-[6] line-clamp-[7] line-clamp-[8]
+
+    // FIXME: Safari bug, not support line-clamp cross elements
+    return {
+      global: !envIsSafari ? `line-clamp-[${lineClampTitle + lineClampDescription}]` : "",
+      title: envIsSafari ? `line-clamp-[${lineClampTitle}]` : "",
+      description: envIsSafari ? `line-clamp-[${lineClampDescription}]` : "",
+    }
+  }, [settingWideMode])
+
   // NOTE: prevent 0 height element, react virtuoso will not stop render any more
-  if (!entry || !(feed || inbox)) return <ReactVirtuosoItemPlaceholder />
+  if (!entry || !(feed || inbox)) return null
 
   const displayTime = inInCollection ? entry.collections?.createdAt : entry.entries.publishedAt
-  const envIsSafari = isSafari()
 
   const related = feed || inbox
+
+  const hasAudio = entry.entries?.attachments?.[0].url
+  const hasMedia = entry.entries?.media?.[0]?.url
+
+  const marginWidth = 8 * (isMobile ? 1.125 : 1)
+  // calculate the max width to have a correct truncation
+  // FIXME: this is not easy to maintain, need to refactor
+  const feedIconWidth = 20 + marginWidth
+  const audioCoverWidth = settingWideMode ? 65 : 80 + marginWidth
+  const mediaWidth = (settingWideMode ? 48 : 80) * (isMobile ? 1.125 : 1) + marginWidth
+
+  let savedWidth = 0
+  if (!withAudio) {
+    savedWidth += feedIconWidth
+  }
+  if (withAudio && hasAudio) {
+    savedWidth += audioCoverWidth
+  }
+  if (withDetails && hasMedia) {
+    savedWidth += mediaWidth
+  }
 
   return (
     <div
@@ -74,12 +115,10 @@ export function ListItem({
     >
       {!withAudio && <FeedIcon feed={related} fallback entry={entry.entries} />}
       <div
-        className={cn(
-          "-mt-0.5 flex-1 text-sm leading-tight",
-
-          // FIXME: Safari bug, not support line-clamp cross elements
-          !envIsSafari && (settingWideMode ? "line-clamp-2" : "line-clamp-4"),
-        )}
+        className={cn("-mt-0.5 flex-1 text-sm leading-tight", lineClamp.global)}
+        style={{
+          maxWidth: `calc(100% - ${savedWidth}px)`,
+        }}
       >
         <div
           className={cn(
@@ -107,16 +146,13 @@ export function ListItem({
         >
           {entry.entries.title ? (
             <EntryTranslation
-              useOverlay
-              side="top"
-              className={envIsSafari ? "line-clamp-2 break-all" : undefined}
+              className={cn("break-all", lineClamp.title)}
               source={entry.entries.title}
               target={translation?.title}
             />
           ) : (
             <EntryTranslation
-              useOverlay
-              side="top"
+              className={cn("break-all", lineClamp.description)}
               source={entry.entries.description}
               target={translation?.description}
             />
@@ -133,9 +169,7 @@ export function ListItem({
             )}
           >
             <EntryTranslation
-              useOverlay
-              side="top"
-              className={envIsSafari ? "line-clamp-2 break-all" : undefined}
+              className={cn("break-all", lineClamp.description)}
               source={entry.entries.description}
               target={translation?.description}
             />
@@ -143,22 +177,32 @@ export function ListItem({
         )}
       </div>
 
-      {withAudio && entry.entries?.attachments?.[0].url && (
+      {withAudio && !!hasAudio && (
         <AudioCover
           entryId={entryId}
-          src={entry.entries?.attachments?.[0].url}
+          src={entry.entries!.attachments![0].url}
           durationInSeconds={Number.parseInt(
-            String(entry.entries?.attachments?.[0].duration_in_seconds ?? 0),
+            String(entry.entries!.attachments![0].duration_in_seconds ?? 0),
             10,
           )}
           feedIcon={
             <FeedIcon
-              fallback={false}
+              fallback={true}
+              fallbackElement={
+                <div
+                  className={clsx(
+                    "bg-theme-placeholder-image",
+                    settingWideMode ? "size-[65px]" : "size-[80px]",
+                    "rounded",
+                  )}
+                />
+              }
               feed={feed || inbox}
               entry={entry.entries}
               size={settingWideMode ? 65 : 80}
               className="m-0 rounded"
               useMedia
+              noMargin
             />
           }
         />
@@ -201,6 +245,7 @@ function AudioCover({
   durationInSeconds?: number
   feedIcon: React.ReactNode
 }) {
+  const isMobile = useMobile()
   const playStatus = useAudioPlayerAtomSelector((playerValue) =>
     playerValue.src === src && playerValue.show ? playerValue.status : false,
   )
@@ -208,7 +253,7 @@ function AudioCover({
   const estimatedMins = durationInSeconds ? Math.floor(durationInSeconds / 60) : undefined
 
   const handleClickPlay = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isMobile()) e.stopPropagation()
+    if (isMobile) e.stopPropagation()
     if (!playStatus) {
       // switch this to play
       AudioPlayer.mount({
@@ -231,6 +276,7 @@ function AudioCover({
         className={cn(
           "center absolute inset-0 w-full transition-all duration-200 ease-in-out group-hover:-translate-y-2 group-hover:opacity-100",
           playStatus ? "opacity-100" : "opacity-0",
+          isMobile && "-translate-y-2 opacity-100",
         )}
         onClick={handleClickPlay}
       >
@@ -249,9 +295,19 @@ function AudioCover({
       </div>
 
       {!!estimatedMins && (
-        <div className="absolute bottom-0 w-full overflow-hidden rounded-b-sm text-center ">
-          <div className="absolute left-0 top-0 size-full bg-white/50 opacity-0 duration-200 group-hover:opacity-100 dark:bg-neutral-900/70" />
-          <div className="text-[13px] opacity-0 backdrop-blur-none duration-200 group-hover:opacity-100 group-hover:backdrop-blur-sm">
+        <div className="absolute bottom-0 w-full overflow-hidden rounded-b-sm text-center">
+          <div
+            className={cn(
+              "absolute left-0 top-0 size-full bg-white/50 opacity-0 duration-200 group-hover:opacity-100 dark:bg-neutral-900/70",
+              isMobile && "opacity-100",
+            )}
+          />
+          <div
+            className={cn(
+              "text-[13px] opacity-0 backdrop-blur-none duration-200 group-hover:opacity-100 group-hover:backdrop-blur-sm",
+              isMobile && "opacity-100 backdrop-blur-sm",
+            )}
+          >
             {formatEstimatedMins(estimatedMins)}
           </div>
         </div>

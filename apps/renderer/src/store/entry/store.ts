@@ -11,6 +11,7 @@ import { omitObjectUndefinedValue } from "@follow/utils/utils"
 import { isNil, merge, omit } from "es-toolkit/compat"
 import { produce } from "immer"
 
+import { clearAllFeedUnreadDirty, clearFeedUnreadDirty, setFeedUnreadDirty } from "~/atoms/feed"
 import { runTransactionInScope } from "~/database"
 import { apiClient } from "~/lib/api-fetch"
 import { getEntriesParams } from "~/lib/utils"
@@ -123,45 +124,66 @@ class EntryActions {
     pageParam?: string
     isArchived?: boolean
   }) {
-    const data = inboxId
-      ? await apiClient.entries.inbox
-          .$post({
-            json: {
-              publishedAfter: pageParam,
-              limit,
-              inboxId: `${inboxId}`,
-              read,
-            },
-          })
-          .then((res) => {
-            return {
-              ...res,
-              data: res.data?.map(({ feeds, ...d }) => {
-                return {
-                  ...d,
-                  inboxes: feeds,
-                }
-              }),
-            }
-          })
-      : await apiClient.entries.$post({
+    if (inboxId) {
+      const data = await apiClient.entries.inbox
+        .$post({
           json: {
             publishedAfter: pageParam,
-            read,
             limit,
-            isArchived,
-            // withContent: true,
-            ...getEntriesParams({
-              feedId,
-              inboxId,
-              listId,
-              view,
-            }),
+            inboxId: `${inboxId}`,
+            read,
           },
         })
+        .then((res) => {
+          return {
+            ...res,
+            data: res.data?.map(({ feeds, ...d }) => {
+              return {
+                ...d,
+                inboxes: feeds,
+              }
+            }),
+          }
+        })
 
+      if (data.data) {
+        this.upsertMany(structuredClone(data.data), { isArchived })
+      }
+      return data
+    }
+
+    const params = getEntriesParams({
+      feedId,
+      inboxId,
+      listId,
+      view,
+    })
+    const data = await apiClient.entries.$post({
+      json: {
+        publishedAfter: pageParam,
+        read,
+        limit,
+        isArchived,
+        ...params,
+      },
+    })
+
+    // Mark feed unread dirty, so re-fetch the unread data when view feed unread entires in the next time
+    if (read === false) {
+      if (typeof params.view === "number" && !params.feedId) {
+        clearAllFeedUnreadDirty()
+      }
+      if (params.feedId) {
+        clearFeedUnreadDirty(params.feedId as string)
+      }
+      if (params.feedIdList) {
+        params.feedIdList.forEach((feedId) => {
+          clearFeedUnreadDirty(feedId)
+        })
+      }
+    }
     if (data.data) {
-      this.upsertMany(data.data, { isArchived })
+      this.upsertMany(structuredClone(data.data), { isArchived })
     }
     return data
   }
@@ -431,7 +453,7 @@ class EntryActions {
 
     const tx = createTransaction<unknown, { prevUnread: number }>({})
 
-    tx.optimistic(async (_, ctx) => {
+    tx.optimistic((_, ctx) => {
       const prevUnread = feedUnreadActions.incrementByFeedId(feedId, read ? -1 : 1)
       ctx.prevUnread = prevUnread
 
@@ -456,13 +478,13 @@ class EntryActions {
       }
     })
 
-    tx.persist(async () => {
+    tx.persist(() => {
       EntryService.bulkStoreReadStatus({
         [entryId]: read,
       })
     })
 
-    tx.rollback(async (_, ctx) => {
+    tx.rollback((_, ctx) => {
       feedUnreadActions.updateByFeedId(feedId, ctx.prevUnread)
       this.patch(entryId, {
         read: !read,
@@ -470,12 +492,14 @@ class EntryActions {
     })
 
     await tx.run()
+
+    setFeedUnreadDirty(feedId)
   }
 
   async markStar(entryId: string, star: boolean, view?: FeedViewType) {
     const tx = createTransaction<unknown, { prevIsStar: boolean }>({})
 
-    tx.optimistic(async (_, ctx) => {
+    tx.optimistic((_, ctx) => {
       ctx.prevIsStar = !!get().flatMapEntries[entryId]?.collections?.createdAt
       this.patch(entryId, {
         collections: star
@@ -508,7 +532,7 @@ class EntryActions {
       }
     })
 
-    tx.rollback(async (_, ctx) => {
+    tx.rollback((_, ctx) => {
       set((state) =>
         produce(state, (state) => {
           ctx.prevIsStar ? state.starIds.add(entryId) : state.starIds.delete(entryId)
@@ -555,7 +579,7 @@ class EntryActions {
       deletedIndex: -1,
     })
 
-    tx.optimistic(async (entry, ctx) => {
+    tx.optimistic((entry, ctx) => {
       const { inboxId } = entry
       const fullInboxId = `inbox-${inboxId}`
 
@@ -594,7 +618,7 @@ class EntryActions {
       await EntryService.deleteEntries([entryId])
     })
 
-    tx.rollback(async (entry, ctx) => {
+    tx.rollback((entry, ctx) => {
       set((state) => ({
         ...state,
         entries: {

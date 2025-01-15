@@ -5,10 +5,11 @@ import { views } from "@follow/constants"
 import { stopPropagation } from "@follow/utils/dom"
 import { cn } from "@follow/utils/utils"
 import * as HoverCard from "@radix-ui/react-hover-card"
+import { useQuery } from "@tanstack/react-query"
 import { AnimatePresence, m } from "framer-motion"
 import { memo, useCallback, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Link } from "react-router-dom"
+import { Link } from "react-router"
 import { useOnClickOutside } from "usehooks-ts"
 
 import { useGeneralSettingSelector } from "~/atoms/settings/general"
@@ -23,7 +24,7 @@ import {
   useCategoryOpenStateByView,
   useSubscriptionByView,
 } from "~/store/subscription"
-import { useFeedUnreadStore } from "~/store/unread"
+import { feedUnreadActions, useFeedUnreadStore } from "~/store/unread"
 
 import { getFeedListSort, setFeedListSortBy, setFeedListSortOrder, useFeedListSort } from "./atom"
 import { feedColumnStyles } from "./styles"
@@ -111,6 +112,15 @@ export const ListHeader = ({ view }: { view: number }) => {
   const expansion = Object.values(categoryOpenStateData).every((value) => value === true)
   useUpdateUnreadCount()
 
+  useQuery({
+    queryKey: ["fetchUnreadByView", view],
+    queryFn: () => feedUnreadActions.fetchUnreadByView(view),
+    // 10 minute
+    refetchInterval: 1000 * 60 * 10,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  })
+
   const totalUnread = useFeedUnreadStore(
     useCallback(
       (state) => {
@@ -167,16 +177,16 @@ export const ListHeader = ({ view }: { view: number }) => {
 }
 
 const SORT_LIST = [
-  { icon: "i-mgc-sort-ascending-cute-re", by: "count", order: "asc" },
-  { icon: "i-mgc-sort-descending-cute-re", by: "count", order: "desc" },
+  { icon: tw`i-mgc-numbers-90-sort-ascending-cute-re`, by: "count", order: "asc" },
+  { icon: tw`i-mgc-numbers-90-sort-descending-cute-re`, by: "count", order: "desc" },
 
   {
-    icon: "i-mgc-az-sort-descending-letters-cute-re",
+    icon: tw`i-mgc-az-sort-descending-letters-cute-re`,
     by: "alphabetical",
     order: "asc",
   },
   {
-    icon: "i-mgc-az-sort-ascending-letters-cute-re",
+    icon: tw`i-mgc-az-sort-ascending-letters-cute-re`,
     by: "alphabetical",
     order: "desc",
   },
@@ -207,8 +217,8 @@ const SortButton = () => {
         <IconOpacityTransition
           icon2={
             order === "asc"
-              ? tw`i-mgc-az-sort-descending-letters-cute-re`
-              : tw`i-mgc-az-sort-ascending-letters-cute-re`
+              ? tw`i-mgc-numbers-90-sort-ascending-cute-re`
+              : tw`i-mgc-numbers-90-sort-descending-cute-re`
           }
           icon1={
             order === "asc" ? tw`i-mgc-sort-ascending-cute-re` : tw`i-mgc-sort-descending-cute-re`

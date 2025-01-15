@@ -35,8 +35,9 @@ export const SubscriptionItems = ({
   userId: string
   itemStyle: ItemVariant
 }) => {
-  const userInfo = useUserById(userId)!
+  const userInfo = useUserById(userId)
   const subscriptions = useUserSubscriptionsQuery(userId)
+  if (!userInfo) return null
   return subscriptions.isLoading ? (
     <LoadingWithIcon
       size="large"
@@ -132,7 +133,6 @@ const SubscriptionItem: FC<{
       isList: false,
       defaultValues: {
         view: defaultView.toString(),
-        category: subscription.category,
       },
     })
   })

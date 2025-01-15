@@ -7,7 +7,7 @@ import { nextFrame } from "@follow/utils/dom"
 import { from } from "dnum"
 import type { FC } from "react"
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router"
 
 import { useCurrentModal } from "~/components/ui/modal/stacked/hooks"
 import { useI18n } from "~/hooks/common"
@@ -31,7 +31,7 @@ const Loading = () => (
 )
 
 export const TipModalContent: FC<{
-  userId?: string
+  userId?: string | null
   feedId: string
   entryId: string
 }> = (props) => {
@@ -43,7 +43,7 @@ export const TipModalContent: FC<{
   return <TipModalContent_ {...props} />
 }
 const TipModalContent_: FC<{
-  userId?: string
+  userId?: string | null
   feedId: string
   entryId: string
 }> = ({ userId, feedId, entryId }) => {

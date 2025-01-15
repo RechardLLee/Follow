@@ -12,14 +12,16 @@ export const COMMAND_ID = {
     share: "entry:share",
     read: "entry:read",
     unread: "entry:unread",
+    toggleAISummary: "entry:toggle-ai-summary",
+    toggleAITranslation: "entry:toggle-ai-translation",
   },
   integration: {
     saveToEagle: "integration:save-to-eagle",
     saveToReadwise: "integration:save-to-readwise",
     saveToInstapaper: "integration:save-to-instapaper",
-    saveToOmnivore: "integration:save-to-omnivore",
     saveToObsidian: "integration:save-to-obsidian",
     saveToOutline: "integration:save-to-outline",
+    saveToReadeck: "integration:save-to-readeck",
   },
   list: {
     edit: "list:edit",
@@ -29,9 +31,10 @@ export const COMMAND_ID = {
     copyUrl: "list:copy-url",
     copyId: "list:copy-id",
   },
-  theme: {
-    toAuto: "follow:change-color-mode-to-auto",
-    toDark: "follow:change-color-mode-to-dark",
-    toLight: "follow:change-color-mode-to-light",
+  settings: {
+    changeThemeToAuto: "follow:change-color-mode-to-auto",
+    changeThemeToDark: "follow:change-color-mode-to-dark",
+    changeThemeToLight: "follow:change-color-mode-to-light",
+    customizeToolbar: "follow:customize-toolbar",
   },
 } as const

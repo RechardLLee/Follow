@@ -1,3 +1,4 @@
+import { EllipsisHorizontalTextWithTooltip } from "@follow/components/ui/typography/EllipsisWithTooltip.js"
 import type { FeedOrListRespModel } from "@follow/models/types"
 import { cn } from "@follow/utils/utils"
 
@@ -9,19 +10,26 @@ import { getPreferredTitle } from "~/store/feed/store"
 export const FeedTitle = ({
   feed,
   className,
+  titleClassName,
   title,
+  style,
 }: {
   feed: FeedOrListRespModel | null
   className?: string
+  titleClassName?: string
   title?: string | null
+  style?: React.CSSProperties
 }) => {
   const hideExtraBadge = useUISettingKey("hideExtraBadge")
 
   if (!feed) return null
 
   return (
-    <div className={cn("flex items-center truncate", className)}>
-      <div className="truncate">{getPreferredTitle(feed) || title}</div>
+    <div className={cn("flex select-none items-center truncate", className)} style={style}>
+      <EllipsisHorizontalTextWithTooltip className={cn("truncate", titleClassName)}>
+        {getPreferredTitle(feed) || title}
+        {/* {title?.repeat(222)} */}
+      </EllipsisHorizontalTextWithTooltip>
       {!hideExtraBadge && (
         <>
           <FeedCertification feed={feed} />

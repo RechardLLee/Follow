@@ -5,9 +5,11 @@ import type { z } from "zod"
 declare const _apiClient: ReturnType<typeof hc<AppType>>
 
 export type UserModel = Omit<
-  Omit<Omit<typeof users.$inferSelect, "emailVerified">, "email">,
-  "createdAt"
->
+  typeof users.$inferSelect,
+  "createdAt" | "updatedAt" | "email" | "emailVerified" | "twoFactorEnabled"
+> & {
+  email?: string
+}
 
 export type ExtractBizResponse<T extends (...args: any[]) => any> = Exclude<
   Awaited<ReturnType<T>>,
@@ -108,7 +110,7 @@ export type MediaModel = Exclude<
   undefined
 >["entries"]["media"]
 
-export type ActionsInput = {
+export type ActionModel = {
   name: string
   condition: {
     field?: ActionFeedField
@@ -135,10 +137,21 @@ export type ActionsInput = {
     }[]
     webhooks?: string[]
   }
-}[]
+}
+
+export type ActionsInput = ActionModel[]
 
 export const TransactionTypes = ["mint", "purchase", "tip", "withdraw", "airdrop"] as const
 
 export type WalletModel = ExtractBizResponse<typeof _apiClient.wallets.$get>["data"][number]
 
 export type ServerConfigs = ExtractBizResponse<typeof _apiClient.status.configs.$get>["data"]
+
+export type RSSHubModel = Omit<
+  ExtractBizResponse<typeof _apiClient.rsshub.list.$get>["data"][number],
+  "userCount"
+> & {
+  baseUrl?: string | null
+  accessKey?: string | null
+  userCount?: number
+}

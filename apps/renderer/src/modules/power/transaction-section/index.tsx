@@ -1,3 +1,4 @@
+import { LoadingCircle } from "@follow/components/ui/loading/index.js"
 import { Tabs, TabsList, TabsTrigger } from "@follow/components/ui/tabs/index.jsx"
 import { TransactionTypes } from "@follow/models/types"
 import { useState } from "react"
@@ -23,7 +24,7 @@ export const TransactionsSection: Component = ({ className }) => {
 
   const transactions = useWalletTransactions({
     fromOrToUserId: user?.id,
-    type: type === "all" ? undefined : type,
+    type: type === "all" ? undefined : (type as (typeof TransactionTypes)[number]),
   })
 
   const serverConfigs = useServerConfigs()
@@ -39,7 +40,7 @@ export const TransactionsSection: Component = ({ className }) => {
         })}
       </p>
       <Tabs value={type} onValueChange={(val) => setType(val)}>
-        <TabsList className="relative -ml-2 border-b-transparent">
+        <TabsList className="relative border-b-transparent">
           {tabs.map((tab) => (
             <TabsTrigger key={tab} value={tab} className="py-0">
               {t(`wallet.transactions.types.${tab}`)}
@@ -57,9 +58,14 @@ export const TransactionsSection: Component = ({ className }) => {
           {t("wallet.transactions.more")}
         </a>
       )}
-      {!transactions.data?.length && (
-        <div className="my-2 w-full text-sm text-zinc-400">
-          {t("wallet.transactions.noTransactions")}
+
+      {(transactions.isFetching || !transactions.data?.length) && (
+        <div className="my-2 flex w-full justify-center text-sm text-zinc-400">
+          {transactions.isFetching ? (
+            <LoadingCircle size="medium" />
+          ) : (
+            t("wallet.transactions.noTransactions")
+          )}
         </div>
       )}
     </div>

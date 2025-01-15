@@ -22,6 +22,8 @@ type BaseProps = {
   inline?: boolean
   fitContent?: boolean
 }
+
+const isImageLoadedSet = new Set<string>()
 export type MediaProps = BaseProps &
   (
     | (ImgHTMLAttributes<HTMLImageElement> & {
@@ -103,7 +105,12 @@ const MediaImpl: FC<MediaProps> = ({
     [currentState, previewImageUrl, proxy?.width, proxy?.height],
   )
 
-  const [mediaLoadState, setMediaLoadState] = useState<"loading" | "loaded">("loading")
+  const [mediaLoadState, setMediaLoadState] = useState<"loading" | "loaded">(() => {
+    if (imgSrc) {
+      return isImageLoadedSet.has(imgSrc) ? "loaded" : "loading"
+    }
+    return "loading"
+  })
 
   const errorHandle: React.ReactEventHandler<HTMLImageElement> = useEventCallback(() => {
     switch (currentState) {
@@ -135,6 +142,7 @@ const MediaImpl: FC<MediaProps> = ({
   const isError = currentState === "error"
   const previewMedia = usePreviewMedia()
   const handleClick = useEventCallback((e: React.MouseEvent) => {
+    e.preventDefault()
     if (popper && src) {
       const width = Number.parseInt(props.width as string)
       const height = Number.parseInt(props.height as string)
@@ -157,6 +165,10 @@ const MediaImpl: FC<MediaProps> = ({
   const handleOnLoad: React.ReactEventHandler<HTMLImageElement> = useEventCallback((e) => {
     setMediaLoadState("loaded")
     rest.onLoad?.(e as any)
+
+    if (imgSrc) {
+      isImageLoadedSet.add(imgSrc)
+    }
     if ("cacheDimensions" in props && props.cacheDimensions && src) {
       saveImageDimensionsToDb(src, {
         src,
@@ -181,7 +193,7 @@ const MediaImpl: FC<MediaProps> = ({
             onError={errorHandle}
             className={cn(
               "size-full object-contain",
-              inline && "size-auto",
+              inline && "inline size-auto align-sub",
               popper && "cursor-zoom-in",
               "duration-200",
               mediaLoadState === "loaded" ? "opacity-100" : "opacity-0",
@@ -245,7 +257,11 @@ const MediaImpl: FC<MediaProps> = ({
       )
     } else {
       return (
-        <div className={cn("relative rounded", className)} style={props.style}>
+        <div
+          className={cn("relative overflow-hidden rounded", className)}
+          data-state={mediaLoadState}
+          style={props.style}
+        >
           <span
             className={cn(
               "relative inline-block max-w-full bg-theme-placeholder-image",
@@ -258,7 +274,12 @@ const MediaImpl: FC<MediaProps> = ({
             }}
           >
             {props.blurhash && (
-              <span className="absolute inset-0 overflow-hidden rounded">
+              <span
+                className={cn(
+                  "absolute inset-0 overflow-hidden rounded",
+                  mediaLoadState === "loaded" && "animate-out fade-out-0 fill-mode-forwards",
+                )}
+              >
                 <BlurhashCanvas hash={props.blurhash} className="size-full" />
               </span>
             )}
@@ -279,10 +300,15 @@ const MediaImpl: FC<MediaProps> = ({
           width={Number.parseInt(props.width as string)}
           height={Number.parseInt(props.height as string)}
           containerWidth={containerWidth}
-          noScale={inline}
           fitContent={fitContent}
         >
-          <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded">
+          <div
+            className={cn(
+              "absolute inset-0 flex items-center justify-center overflow-hidden rounded",
+              mediaLoadState === "loaded" && "animate-out fade-out-0 fill-mode-forwards",
+            )}
+            data-blurhash={blurhash}
+          >
             {blurhash ? (
               <Blurhash hash={blurhash} width="100%" height="100%" />
             ) : (
@@ -333,7 +359,6 @@ const AspectRatio = ({
   containerWidth,
   children,
   style,
-  noScale,
   fitContent,
   ...props
 }: {
@@ -343,18 +368,13 @@ const AspectRatio = ({
   children: React.ReactNode
   style?: React.CSSProperties
   /**
-   * Keep the content size for inline image usage
-   */
-  noScale?: boolean
-  /**
    * If `fit` is true, the content width may be increased to fit the container width
    */
   fitContent?: boolean
   [key: string]: any
 }) => {
-  const scaleFactor = noScale
-    ? 1
-    : containerWidth && width
+  const scaleFactor =
+    containerWidth && width
       ? fitContent
         ? containerWidth / width
         : Math.min(1, containerWidth / width)

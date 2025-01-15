@@ -6,8 +6,9 @@ import { UrlBuilder } from "@follow/utils/url-builder"
 import clsx from "clsx"
 import type { FC } from "react"
 import { useTranslation } from "react-i18next"
-import { Link } from "react-router-dom"
+import { Link } from "react-router"
 
+import rsshubLogoUrl from "~/assets/rsshub-icon.png?url"
 import { useUserRole, useWhoami } from "~/atoms/user"
 import { useSignOut } from "~/hooks/biz/useSignOut"
 import { useWallet } from "~/queries/wallet"
@@ -95,12 +96,23 @@ export const ProfileButton: FC<ProfileButtonProps> = () => {
             />
 
             <Divider className="mx-auto h-px w-[50px] !bg-border/80" />
+
+            <Item
+              label={t("user_button.actions")}
+              link="/action"
+              icon={<i className="i-mgc-magic-2-cute-re" />}
+            />
             <Item
               label={t("user_button.preferences")}
               onClick={() => {
                 settingModalPresent()
               }}
               icon={<i className="i-mgc-settings-7-cute-re" />}
+            />
+            <Item
+              label={t("words.rsshub")}
+              link="/rsshub"
+              icon={<img src={rsshubLogoUrl} className="size-3 grayscale" />}
             />
             <Item
               label={t("user_button.log_out")}
@@ -116,26 +128,39 @@ export const ProfileButton: FC<ProfileButtonProps> = () => {
   )
 }
 
-const Item: FC<{ icon: React.ReactNode; label: string; onClick: () => void }> = ({
+const Item: FC<{ icon: React.ReactNode; label: string; onClick?: () => void; link?: string }> = ({
   icon,
   label,
   onClick,
+  link,
 }) => {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={clsx(
-        "relative flex w-full select-none items-center rounded-sm px-4 py-1.5 outline-none transition-colors focus:bg-theme-item-hover",
-        "text-base font-medium",
-        "focus-within:!outline-transparent",
-      )}
-    >
+  const containerClassName = clsx(
+    "relative flex w-full select-none items-center rounded-sm px-4 py-1.5 outline-none transition-colors focus:bg-theme-item-hover",
+    "text-base font-medium",
+    "focus-within:!outline-transparent",
+  )
+
+  const children = (
+    <>
       <span className="mr-1.5 inline-flex size-4 items-center justify-center">{icon}</span>
 
       {label}
       {/* Justify Fill */}
       <span className="ml-1.5 size-4" />
+    </>
+  )
+
+  if (link) {
+    return (
+      <Link to={link} className={containerClassName}>
+        {children}
+      </Link>
+    )
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={containerClassName}>
+      {children}
     </button>
   )
 }

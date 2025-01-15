@@ -1,24 +1,17 @@
 import { Logo } from "@follow/components/icons/logo.js"
 import { ActionButton } from "@follow/components/ui/button/index.js"
-import { RootPortal } from "@follow/components/ui/portal/index.js"
 import { views } from "@follow/constants"
-import { IN_ELECTRON } from "@follow/shared/constants"
 import { cn } from "@follow/utils/utils"
 import useEmblaCarousel from "embla-carousel-react"
 import type { FC } from "react"
 import { useEffect, useLayoutEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Link } from "react-router-dom"
+import { Link } from "react-router"
 
 import { useSetSidebarActiveView, useSidebarActiveView } from "~/atoms/sidebar"
-import { useLoginModalShow, useWhoami } from "~/atoms/user"
-import { PlainModal } from "~/components/ui/modal/stacked/custom-modal"
-import { DeclarativeModal } from "~/components/ui/modal/stacked/declarative-modal"
 import { getRouteParams } from "~/hooks/biz/useRouteParams"
-import { LoginModalContent } from "~/modules/auth/LoginModalContent"
 
 import { FeedList } from "../../feed-column/list"
-import { FooterInfo } from "./components/FooterInfo"
 import { MobileFloatBar } from "./float-bar.mobile"
 
 export function FeedColumnMobile({ asWidget }: { asWidget?: boolean }) {
@@ -34,15 +27,12 @@ export function FeedColumnMobile({ asWidget }: { asWidget?: boolean }) {
 
   const [feedListScrollRef, setFeedListScrollRef] = useState<HTMLDivElement | null>()
 
-  const isAuthFail = useLoginModalShow()
-  const user = useWhoami()
-
   const { t } = useTranslation()
 
   return (
     <div
       className={cn(
-        "relative flex flex-col space-y-3 bg-background",
+        "relative flex flex-col space-y-3 bg-background pb-11",
         asWidget ? "grow" : "h-screen",
       )}
     >
@@ -59,7 +49,7 @@ export function FeedColumnMobile({ asWidget }: { asWidget?: boolean }) {
           </Link>
         </div>
       </div>
-      <div className={"relative flex size-full h-0 grow"}>
+      <div className="relative flex size-full h-0 grow pb-safe-offset-2">
         <SwipeWrapper active={active}>
           {views.map((item, index) => (
             <section key={item.name} className="size-full flex-none shrink-0 snap-center">
@@ -72,26 +62,8 @@ export function FeedColumnMobile({ asWidget }: { asWidget?: boolean }) {
           ))}
         </SwipeWrapper>
       </div>
-
-      {isAuthFail && !user && (
-        <RootPortal>
-          <DeclarativeModal
-            id="login"
-            CustomModalComponent={PlainModal}
-            open
-            overlay
-            title="Login"
-            canClose={false}
-            clickOutsideToDismiss={false}
-          >
-            <LoginModalContent canClose={false} runtime={IN_ELECTRON ? "app" : "browser"} />
-          </DeclarativeModal>
-        </RootPortal>
-      )}
-
-      <FooterInfo />
       <MobileFloatBar
-        className={asWidget ? "!bottom-0" : undefined}
+        className={asWidget ? "!bottom-0 pb-safe-offset-2" : undefined}
         scrollContainer={feedListScrollRef}
       />
     </div>

@@ -189,6 +189,8 @@ export const ListCreationModalContent = ({ id }: { id?: string }) => {
                   <Input
                     {...field}
                     type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     min={0}
                     onChange={(value) => field.onChange(value.target.valueAsNumber)}
                   />
@@ -214,9 +216,11 @@ export const ListFeedsModalContent = ({ id }: { id: string }) => {
   const { t } = useTranslation("settings")
 
   const [feedSearchFor, setFeedSearchFor] = useState("")
+  const selectedFeedIdRef = useRef<string | null>()
   const addMutation = useAddFeedToFeedList({
     onSuccess: () => {
       setFeedSearchFor("")
+      selectedFeedIdRef.current = null
     },
   })
 
@@ -230,7 +234,6 @@ export const ListFeedsModalContent = ({ id }: { id: string }) => {
       }))
   }, [allFeeds, list?.feedIds])
 
-  const selectedFeedIdRef = useRef<string | null>()
   if (!list) return null
   return (
     <>
@@ -302,7 +305,7 @@ const RowRender = ({ feedId, listId }: { feedId: string; listId: string }) => {
           href={UrlBuilder.shareFeed(feed.id)}
           className="flex items-center gap-2 font-semibold"
         >
-          {feed.siteUrl && <FeedIcon className="mr-0" siteUrl={feed.siteUrl} />}
+          {feed.siteUrl && <FeedIcon noMargin siteUrl={feed.siteUrl} />}
           <span className="inline-block max-w-[200px] truncate">{feed.title}</span>
         </a>
       </TableCell>
@@ -317,5 +320,58 @@ const RowRender = ({ feedId, listId }: { feedId: string; listId: string }) => {
         </Button>
       </TableCell>
     </TableRow>
+  )
+}
+const categoryFormSchema = z.object({
+  categoryName: z.string().min(1),
+})
+export const CategoryCreationModalContent = ({
+  onSubmit,
+}: {
+  onSubmit: (category: string) => void
+}) => {
+  const { dismiss } = useCurrentModal()
+  const { t } = useTranslation()
+
+  const form = useForm<z.infer<typeof categoryFormSchema>>({
+    resolver: zodResolver(categoryFormSchema),
+    defaultValues: {
+      categoryName: "",
+    },
+  })
+
+  const handleSubmit = form.handleSubmit(({ categoryName }) => {
+    onSubmit(categoryName)
+    dismiss()
+  })
+
+  return (
+    <Form {...form}>
+      <form onSubmit={handleSubmit} className="space-y-4 lg:w-[450px]">
+        <FormField
+          control={form.control}
+          name="categoryName"
+          render={({ field }) => (
+            <FormItem>
+              <div>
+                <FormLabel>
+                  {t("sidebar.feed_column.context_menu.new_category_modal.category_name")}
+                  <sup className="ml-1 align-sub text-red-500">*</sup>
+                </FormLabel>
+              </div>
+              <FormControl>
+                <Input autoFocus {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="flex justify-end">
+          <Button type="submit">
+            {t("sidebar.feed_column.context_menu.new_category_modal.create")}
+          </Button>
+        </div>
+      </form>
+    </Form>
   )
 }

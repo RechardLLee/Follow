@@ -1,15 +1,33 @@
-import type { Session } from "@auth/core/types"
-import type { getSession as getSessionReact } from "@hono/auth-js/react"
-import { authConfigManager } from "@hono/auth-js/react"
+import { getAccountInfo, getSession } from "@follow/shared/auth"
+import type { AuthSession } from "@follow/shared/hono"
 import type { FetchError } from "ofetch"
-import { ofetch } from "ofetch"
 
 import { useAuthQuery } from "~/hooks/common"
 import { defineQuery } from "~/lib/defineQuery"
 
-type GetSessionParams = Parameters<typeof getSessionReact>[0]
 export const auth = {
   getSession: () => defineQuery(["auth", "session"], () => getSession()),
+  getAccounts: () => defineQuery(["auth", "accounts"], () => getAccountInfo()),
+}
+
+export const useAccounts = () => {
+  return useAuthQuery(auth.getAccounts())
+}
+
+export const useSocialAccounts = () => {
+  const accounts = useAccounts()
+  return {
+    ...accounts,
+    data: accounts.data?.data?.filter((account) => account.provider !== "credential"),
+  }
+}
+
+export const useHasPassword = () => {
+  const accounts = useAccounts()
+  return {
+    ...accounts,
+    data: !!accounts.data?.data?.find((account) => account.provider === "credential"),
+  }
 }
 
 export const useSession = (options?: { enabled?: boolean }) => {
@@ -34,47 +52,14 @@ export const useSession = (options?: { enabled?: boolean }) => {
   const fetchError = error as FetchError
 
   return {
-    session: data,
+    session: data?.data as AuthSession,
     ...rest,
     status: isLoading
       ? "loading"
-      : data
+      : data?.data
         ? "authenticated"
-        : fetchError?.statusCode === 401
-          ? "unauthenticated"
-          : "error",
+        : fetchError
+          ? "error"
+          : "unauthenticated",
   }
-}
-
-/**
- * Fetch session data, copy and patch code from @hono/auth-js/react
- */
-async function fetchData<T = any>(
-  path: string,
-
-  req: any = {},
-): Promise<T | null> {
-  const config = authConfigManager.getConfig()
-  const url = `${config.baseUrl}${config.basePath}/${path}`
-
-  const options: RequestInit = {
-    headers: {
-      "Content-Type": "application/json",
-      ...(req?.headers?.cookie ? { cookie: req.headers.cookie } : {}),
-    },
-    credentials: config.credentials,
-  }
-
-  if (req?.body) {
-    options.body = JSON.stringify(req.body)
-    options.method = "POST"
-  }
-
-  const data = await ofetch(url, options)
-
-  return data as T
-}
-
-function getSession(params?: GetSessionParams) {
-  return fetchData<Session>("session", params)
 }

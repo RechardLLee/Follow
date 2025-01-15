@@ -1,3 +1,4 @@
+import { MdiMeditation } from "@follow/components/icons/Meditation.js"
 import { ActionButton } from "@follow/components/ui/button/index.js"
 import { RootPortal } from "@follow/components/ui/portal/index.js"
 import { EllipsisHorizontalTextWithTooltip } from "@follow/components/ui/typography/EllipsisWithTooltip.js"
@@ -9,8 +10,10 @@ import { repository } from "@pkg"
 import type { FC } from "react"
 import { forwardRef, memo, useCallback, useLayoutEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router"
 
+import rsshubLogoUrl from "~/assets/rsshub-icon.png?url"
+import { useIsZenMode, useSetZenMode } from "~/atoms/settings/ui"
 import { useUserRole } from "~/atoms/user"
 import {
   DropdownMenu,
@@ -35,6 +38,8 @@ import { LoginButton } from "./LoginButton"
 import { PowerButton } from "./ProfileButton.shared"
 import { UserAvatar } from "./UserAvatar"
 
+const rsshubLogo = new URL(rsshubLogoUrl, import.meta.url).href
+
 export type ProfileButtonProps = LoginProps & {
   animatedAvatar?: boolean
 }
@@ -57,6 +62,8 @@ export const ProfileButton: FC<ProfileButtonProps> = memo((props) => {
   const { isLoading: isLoadingWallet } = wallet
   const myWallet = wallet.data?.[0]
   const presentActivationModal = useActivationModal()
+  const zenModeSetting = useIsZenMode()
+  const setZenMode = useSetZenMode()
 
   if (status !== "authenticated") {
     return <LoginButton {...props} />
@@ -140,6 +147,37 @@ export const ProfileButton: FC<ProfileButtonProps> = memo((props) => {
 
           <DropdownMenuSeparator />
 
+          {!zenModeSetting && (
+            <DropdownMenuItem
+              className="pl-3"
+              onClick={() => {
+                setZenMode(true)
+              }}
+              icon={<MdiMeditation className="size-4" />}
+            >
+              {t("user_button.zen_mode")}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            className="pl-3"
+            onClick={() => {
+              navigate("/action")
+            }}
+            icon={<i className="i-mgc-magic-2-cute-re" />}
+          >
+            {t("words.actions")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="pl-3"
+            onClick={() => {
+              navigate("/rsshub")
+            }}
+            icon={<img src={rsshubLogo} className="size-3 grayscale" />}
+          >
+            {t("words.rsshub")}
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             className="pl-3"
             onClick={() => {

@@ -7,12 +7,14 @@ const createDefaultSettings = (): GeneralSettings => ({
   // App
   appLaunchOnStartup: false,
   language: "en",
+  translationLanguage: "zh-CN",
+
   // mobile app
   startupScreen: "timeline",
   // Data control
   dataPersist: true,
   sendAnonymousData: true,
-  reduceRefetch: true,
+  showQuickTimeline: true,
 
   autoGroup: true,
 
@@ -23,8 +25,9 @@ const createDefaultSettings = (): GeneralSettings => ({
   hoverMarkUnread: true,
   renderMarkUnread: false,
   // UX
-
   groupByDate: true,
+  autoExpandLongSocialMedia: false,
+
   // Secure
   jumpOutLinkWarn: true,
   // TTS

@@ -13,6 +13,7 @@ export interface PresentSheetProps {
   open?: boolean
   onOpenChange?: (value: boolean) => void
   title?: ReactNode
+  hideHeader?: boolean
   zIndex?: number
   dismissible?: boolean
   defaultOpen?: boolean
@@ -25,7 +26,7 @@ export interface PresentSheetProps {
 }
 
 export type SheetRef = {
-  dismiss: () => void
+  dismiss: () => Promise<void>
 }
 const MODAL_STACK_Z_INDEX = 1001
 export const PresentSheet = forwardRef<SheetRef, PropsWithChildren<PresentSheetProps>>(
@@ -35,6 +36,7 @@ export const PresentSheet = forwardRef<SheetRef, PropsWithChildren<PresentSheetP
       children,
       zIndex = MODAL_STACK_Z_INDEX,
       title,
+      hideHeader,
       dismissible = true,
       defaultOpen,
       triggerAsChild,
@@ -48,7 +50,12 @@ export const PresentSheet = forwardRef<SheetRef, PropsWithChildren<PresentSheetP
 
     useImperativeHandle(ref, () => ({
       dismiss: () => {
-        setIsOpen(false)
+        return new Promise<void>((resolve) => {
+          setIsOpen(false)
+          setTimeout(() => {
+            resolve()
+          }, 500)
+        })
       },
     }))
 
@@ -95,7 +102,7 @@ export const PresentSheet = forwardRef<SheetRef, PropsWithChildren<PresentSheetP
     useImperativeHandle(contentRef, () => contentInnerRef.current!)
 
     return (
-      <Drawer.Root nested dismissible={dismissible} {...nextRootProps}>
+      <Drawer.Root dismissible={dismissible} repositionInputs={false} {...nextRootProps}>
         {!!children && <Drawer.Trigger asChild={triggerAsChild}>{children}</Drawer.Trigger>}
         <Drawer.Portal>
           <Drawer.Content
@@ -103,6 +110,7 @@ export const PresentSheet = forwardRef<SheetRef, PropsWithChildren<PresentSheetP
             style={{
               zIndex: contentZIndex,
             }}
+            aria-describedby={undefined}
             className={cn(
               "fixed inset-x-0 bottom-0 flex max-h-[calc(100svh-3rem)] flex-col rounded-t-[10px] border-t bg-theme-modal-background-opaque pt-4",
               modalClassName,
@@ -118,7 +126,12 @@ export const PresentSheet = forwardRef<SheetRef, PropsWithChildren<PresentSheetP
             )}
 
             {title ? (
-              <Drawer.Title className="-mt-4 mb-4 flex justify-center px-4 text-lg font-medium">
+              <Drawer.Title
+                className={cn(
+                  "-mt-4 mb-4 flex justify-center px-4 text-lg font-medium",
+                  hideHeader && "sr-only",
+                )}
+              >
                 {title}
               </Drawer.Title>
             ) : (

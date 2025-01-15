@@ -1,4 +1,5 @@
 import { getStorageNS } from "@follow/utils/ns"
+import { parseSafeUrl } from "@follow/utils/utils"
 import { noop } from "foxact/noop"
 import { atomWithStorage, createJSONStorage } from "jotai/utils"
 import type { SyncStorage } from "jotai/vanilla/utils/atomWithStorage"
@@ -80,8 +81,10 @@ export const AudioPlayer = {
       show: true,
       listId: routeParams.listId,
     })
+    const currentUrl = parseSafeUrl(this.audio.src)?.toString() ?? this.audio.src
+    const newUrl = parseSafeUrl(v.src)?.toString() ?? v.src
 
-    if (this.audio.src !== v.src) {
+    if (currentUrl !== newUrl) {
       this.audio.src = v.src
       this.audio.currentTime = v.currentTime ?? curV.currentTime ?? 0
     }

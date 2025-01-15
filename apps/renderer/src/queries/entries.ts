@@ -1,4 +1,4 @@
-import { useGeneralSettingKey } from "~/atoms/settings/general"
+import { useFeedUnreadIsDirty } from "~/atoms/feed"
 import { useAuthInfiniteQuery, useAuthQuery } from "~/hooks/common"
 import { apiClient } from "~/lib/api-fetch"
 import { defineQuery } from "~/lib/defineQuery"
@@ -101,8 +101,8 @@ export const entries = {
         }
         return apiClient.entries["check-new"].$get({
           query: {
-            insertedAfter: `${query.insertedAfter}`,
-            view: `${query.view}`,
+            insertedAfter: query.insertedAfter,
+            view: query.view,
             feedId: query.feedId,
             read: typeof query.read === "boolean" ? JSON.stringify(query.read) : undefined,
             feedIdList: query.feedIdList,
@@ -125,7 +125,6 @@ export const entries = {
     ),
 }
 
-const maxStaleTime = 6 * 60 * (60 * 1000) // 6 hours
 const defaultStaleTime = 10 * (60 * 1000) // 10 minutes
 
 export const useEntries = ({
@@ -143,7 +142,9 @@ export const useEntries = ({
   read?: boolean
   isArchived?: boolean
 }) => {
-  const reduceRefetch = useGeneralSettingKey("reduceRefetch")
+  const fetchUnread = read === false
+  const feedUnreadDirty = useFeedUnreadIsDirty((feedId as string) || "")
+
   return useAuthInfiniteQuery(
     entries.entries({ feedId, inboxId, listId, view, read, isArchived }),
     {
@@ -155,8 +156,13 @@ export const useEntries = ({
       initialPageParam: undefined,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
+      // DON'T refetch when the router is pop to previous page
+      refetchOnMount: fetchUnread && feedUnreadDirty && !history.isPop ? "always" : false,
 
-      staleTime: reduceRefetch ? maxStaleTime : defaultStaleTime,
+      staleTime:
+        // Force refetch unread entries when feed is dirty
+        // HACK: disable refetch when the router is pop to previous page
+        history.isPop ? Infinity : fetchUnread && feedUnreadDirty ? 0 : defaultStaleTime,
     },
   )
 }

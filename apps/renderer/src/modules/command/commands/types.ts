@@ -7,7 +7,7 @@ import type { COMMAND_ID } from "./id"
 
 export type TipCommand = Command<{
   id: typeof COMMAND_ID.entry.tip
-  fn: (data: { userId?: string; feedId?: string; entryId?: string }) => void
+  fn: (data: { userId?: string | null; feedId?: string; entryId?: string }) => void
 }>
 
 export type StarCommand = Command<{
@@ -63,6 +63,16 @@ export type UnReadCommand = Command<{
   fn: ({ entryId }) => void
 }>
 
+export type ToggleAISummaryCommand = Command<{
+  id: typeof COMMAND_ID.entry.toggleAISummary
+  fn: () => void
+}>
+
+export type ToggleAITranslationCommand = Command<{
+  id: typeof COMMAND_ID.entry.toggleAITranslation
+  fn: () => void
+}>
+
 export type EntryCommand =
   | TipCommand
   | StarCommand
@@ -76,6 +86,17 @@ export type EntryCommand =
   | ShareCommand
   | ReadCommand
   | UnReadCommand
+  | ToggleAISummaryCommand
+  | ToggleAITranslationCommand
+
+// Settings commands
+
+export type CustomizeToolbarCommand = Command<{
+  id: typeof COMMAND_ID.settings.customizeToolbar
+  fn: () => void
+}>
+
+export type SettingsCommand = CustomizeToolbarCommand
 
 // Integration commands
 
@@ -94,11 +115,6 @@ export type SaveToInstapaperCommand = Command<{
   fn: (payload: { entryId: string }) => void
 }>
 
-export type SaveToOmnivoreCommand = Command<{
-  id: typeof COMMAND_ID.integration.saveToOmnivore
-  fn: (payload: { entryId: string }) => void
-}>
-
 export type SaveToObsidianCommand = Command<{
   id: typeof COMMAND_ID.integration.saveToObsidian
   fn: (payload: { entryId: string }) => void
@@ -109,12 +125,17 @@ export type SaveToOutlineCommand = Command<{
   fn: (payload: { entryId: string }) => void
 }>
 
+export type SaveToReadeckCommand = Command<{
+  id: typeof COMMAND_ID.integration.saveToReadeck
+  fn: (payload: { entryId: string }) => void
+}>
+
 export type IntegrationCommand =
   | SaveToEagleCommand
   | SaveToReadwiseCommand
   | SaveToInstapaperCommand
-  | SaveToOmnivoreCommand
   | SaveToObsidianCommand
   | SaveToOutlineCommand
+  | SaveToReadeckCommand
 
-export type BasicCommand = EntryCommand | IntegrationCommand
+export type BasicCommand = EntryCommand | SettingsCommand | IntegrationCommand

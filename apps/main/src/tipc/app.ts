@@ -1,22 +1,23 @@
 import fs from "node:fs"
 import fsp from "node:fs/promises"
 import path from "node:path"
+import { fileURLToPath } from "node:url"
 
 import { getRendererHandlers } from "@egoist/tipc/main"
 import { callWindowExpose } from "@follow/shared/bridge"
-import type { BrowserWindow } from "electron"
-import { app, clipboard, dialog, screen, shell } from "electron"
+import { app, BrowserWindow, clipboard, dialog, shell } from "electron"
 
 import { registerMenuAndContextMenu } from "~/init"
 import { clearAllData, getCacheSize } from "~/lib/cleaner"
 import { store, StoreKey } from "~/lib/store"
 import { registerAppTray } from "~/lib/tray"
-import { logger } from "~/logger"
+import { logger, revealLogFile } from "~/logger"
+import { cleanupOldRender, loadDynamicRenderEntry } from "~/updater/hot-updater"
 
-import { isWindows11 } from "../env"
+import { isDev } from "../env"
 import { downloadFile } from "../lib/download"
 import { i18n } from "../lib/i18n"
-import { cleanAuthSessionToken, cleanUser } from "../lib/user"
+import { cleanBetterAuthSessionCookie, cleanUser } from "../lib/user"
 import type { RendererHandlers } from "../renderer-handlers"
 import { quitAndInstall } from "../updater"
 import { getMainWindow } from "../window"
@@ -142,31 +143,13 @@ export const appRoute = {
         }
       }
     }),
-  getWindowIsMaximized: t.procedure.input<void>().action(async ({ context }) => {
-    const window: BrowserWindow | null = (context.sender as Sender).getOwnerBrowserWindow()
 
-    if (isWindows11 && window) {
-      const size = screen.getDisplayMatching(window.getBounds()).workAreaSize
-
-      const windowSize = window.getSize()
-      const windowPosition = window.getPosition()
-      const isMaximized =
-        windowSize[0] === size.width &&
-        windowSize[1] === size.height &&
-        windowPosition[0] === 0 &&
-        windowPosition[1] === 0
-
-      return !!isMaximized
-    }
-
-    return window?.isMaximized()
-  }),
   quitAndInstall: t.procedure.action(async () => {
     quitAndInstall()
   }),
 
-  cleanAuthSessionToken: t.procedure.action(async () => {
-    cleanAuthSessionToken()
+  cleanBetterAuthSessionCookie: t.procedure.action(async () => {
+    cleanBetterAuthSessionCookie()
     cleanUser()
   }),
   /// clipboard
@@ -272,6 +255,33 @@ ${content}
       }
     }),
 
+  getAppVersion: t.procedure.action(async () => {
+    return app.getVersion()
+  }),
+  rendererUpdateReload: t.procedure.action(async () => {
+    const __dirname = fileURLToPath(new URL(".", import.meta.url))
+    const allWindows = BrowserWindow.getAllWindows()
+    const dynamicRenderEntry = loadDynamicRenderEntry()
+
+    const appLoadEntry = dynamicRenderEntry || path.resolve(__dirname, "../../renderer/index.html")
+    logger.info("appLoadEntry", appLoadEntry)
+    const mainWindow = getMainWindow()
+
+    for (const window of allWindows) {
+      if (window === mainWindow) {
+        if (isDev) {
+          logger.verbose("[rendererUpdateReload]: skip reload in dev")
+          break
+        }
+        window.loadFile(appLoadEntry)
+      } else window.destroy()
+    }
+
+    setTimeout(() => {
+      cleanupOldRender()
+    }, 1000)
+  }),
+
   getCacheSize: t.procedure.action(async () => {
     return getCacheSize()
   }),
@@ -312,6 +322,10 @@ ${content}
     } else {
       store.set(StoreKey.CacheSizeLimit, input)
     }
+  }),
+
+  revealLogFile: t.procedure.action(async () => {
+    return revealLogFile()
   }),
 }
 

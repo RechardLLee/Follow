@@ -1,10 +1,10 @@
 import type { User } from "@auth/core/types"
+import { isMobile, useMobile } from "@follow/components/hooks/useMobile.js"
 import { PhUsersBold } from "@follow/components/icons/users.jsx"
 import { Avatar, AvatarFallback, AvatarImage } from "@follow/components/ui/avatar/index.jsx"
 import { ActionButton, Button } from "@follow/components/ui/button/index.js"
 import { LoadingWithIcon } from "@follow/components/ui/loading/index.jsx"
 import { ScrollArea } from "@follow/components/ui/scroll-area/index.js"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@follow/components/ui/tooltip/index.jsx"
 import { EllipsisHorizontalTextWithTooltip } from "@follow/components/ui/typography/index.js"
 import type { FeedModel, Models } from "@follow/models"
 import { stopPropagation } from "@follow/utils/dom"
@@ -22,38 +22,41 @@ import { FeedIcon } from "~/modules/feed/feed-icon"
 
 import { usePresentUserProfileModal } from "../profile/hooks"
 
-export const Trend = ({ className }: { className?: string }) => {
+interface TrendingProps {
+  language: string
+}
+export const TrendingButton = ({ language, className }: TrendingProps & { className?: string }) => {
   const { present } = useModalStack()
   const { t } = useTranslation()
   return (
-    <Tooltip>
-      <TooltipContent>{t("words.trending")}</TooltipContent>
-      <TooltipTrigger asChild>
-        <ActionButton
-          onClick={() => {
-            present({
-              title: "Trending",
-              content: TrendContent,
-              CustomModalComponent: DrawerModalLayout,
-            })
-          }}
-          className={cn(
-            "size-6 text-accent duration-200 hover:shadow-none",
-            "absolute bottom-1 right-3",
-            className,
-          )}
-        >
-          <i className="i-mgc-trending-up-cute-re" />
-        </ActionButton>
-      </TooltipTrigger>
-    </Tooltip>
+    <Button
+      variant={"outline"}
+      onClick={() => {
+        present({
+          title: (
+            <div className="flex items-center gap-2">
+              <i className="i-mingcute-trending-up-line text-2xl" />
+              <span>{t("words.trending")}</span>
+            </div>
+          ),
+          content: () => <TrendContent language={language} />,
+          CustomModalComponent: !isMobile() ? DrawerModalLayout : undefined,
+        })
+      }}
+      buttonClassName={cn("px-2", className)}
+    >
+      <i className="i-mgc-trending-up-cute-re mr-1" />
+      {t("words.trending")}
+    </Button>
   )
 }
-const TrendContent = () => {
+const TrendContent: FC<TrendingProps> = ({ language }) => {
+  const isMobile = useMobile()
+
   const { data } = useQuery({
-    queryKey: ["trending"],
+    queryKey: ["trending", language],
     queryFn: () => {
-      return getTrendingAggregates()
+      return getTrendingAggregates({ language })
     },
   })
 
@@ -61,7 +64,7 @@ const TrendContent = () => {
   const { dismiss } = useCurrentModal()
   if (!data)
     return (
-      <div className="center absolute inset-0">
+      <div className={isMobile ? "mx-auto" : "center absolute inset-0"}>
         <LoadingWithIcon
           icon={<i className="i-mingcute-trending-up-line text-3xl" />}
           size="large"
@@ -70,10 +73,12 @@ const TrendContent = () => {
     )
   return (
     <div className="flex size-full grow flex-col gap-4">
-      <div className="-mt-4 flex w-full items-center justify-center gap-2 text-2xl">
-        <i className="i-mingcute-trending-up-line text-3xl" />
-        <span className="font-bold">{t("words.trending")}</span>
-      </div>
+      {!isMobile && (
+        <div className="-mt-4 flex w-full items-center justify-center gap-2 text-2xl">
+          <i className="i-mingcute-trending-up-line text-3xl" />
+          <span className="font-bold">{t("words.trending")}</span>
+        </div>
+      )}
       <ActionButton
         className="absolute right-4 top-4"
         onClick={dismiss}
@@ -82,7 +87,7 @@ const TrendContent = () => {
         <i className="i-mgc-close-cute-re" />
       </ActionButton>
       <ScrollArea.ScrollArea
-        rootClassName="flex h-0 w-[calc(100%+8px)] grow flex-col overflow-visible"
+        rootClassName="flex h-0 w-[calc(100%+8px)] min-h-[50vh] grow flex-col overflow-visible"
         viewportClassName="pb-4 [&>div]:!block"
         scrollbarClassName="-mr-6"
       >
@@ -250,11 +255,10 @@ const TrendingFeeds = ({ data }: { data: FeedModel[] }) => {
               <a
                 target="_blank"
                 href={UrlBuilder.shareFeed(feed.id)}
-                className="flex grow items-center gap-2 py-1"
+                className="flex grow items-center gap-1 py-1"
               >
-                <div>
-                  <FeedIcon feed={feed} size={24} className="rounded" />
-                </div>
+                <FeedIcon feed={feed} size={24} className="rounded" />
+
                 <div className="flex w-full min-w-0 grow items-center">
                   <div className={"truncate"}>{feed.title}</div>
                 </div>
