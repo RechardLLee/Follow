@@ -1,12 +1,8 @@
+import { useMemo } from "react"
 import { TouchableOpacity } from "react-native"
-import type { ContextMenuAction } from "react-native-context-menu-view"
-import ContextMenu from "react-native-context-menu-view"
+import * as DropdownMenu from "zeego/dropdown-menu"
 
-import { AZSortAscendingLettersCuteReIcon } from "@/src/icons/AZ_sort_ascending_letters_cute_re"
-import { AZSortDescendingLettersCuteReIcon } from "@/src/icons/AZ_sort_descending_letters_cute_re"
-import { Numbers90SortAscendingCuteReIcon } from "@/src/icons/numbers_90_sort_ascending_cute_re"
-import { Numbers90SortDescendingCuteReIcon } from "@/src/icons/numbers_90_sort_descending_cute_re"
-import { accentColor } from "@/src/theme/colors"
+import { ListExpansionCuteReIcon } from "@/src/icons/list_expansion_cute_re"
 
 import {
   setFeedListSortMethod,
@@ -15,65 +11,98 @@ import {
   useFeedListSortOrder,
 } from "./atoms"
 
-const map = {
-  alphabet: {
-    asc: AZSortAscendingLettersCuteReIcon,
-    desc: AZSortDescendingLettersCuteReIcon,
-  },
-  count: {
-    desc: Numbers90SortDescendingCuteReIcon,
-    asc: Numbers90SortAscendingCuteReIcon,
-  },
-}
-
 export const SortActionButton = () => {
   const sortMethod = useFeedListSortMethod()
   const sortOrder = useFeedListSortOrder()
 
-  const orderActions: ContextMenuAction[] = [
-    { title: "Ascending", selected: sortOrder === "asc" },
-    { title: "Descending", selected: sortOrder === "desc" },
-  ]
+  const actions = useMemo(() => {
+    const alphabetOrderActions = [
+      {
+        title: "Ascending",
+        selected: sortMethod === "alphabet" && sortOrder === "asc",
+        onSelect: () => {
+          setFeedListSortMethod("alphabet")
+          setFeedListSortOrder("asc")
+        },
+      },
+      {
+        title: "Descending",
+        selected: sortMethod === "alphabet" && sortOrder === "desc",
+        onSelect: () => {
+          setFeedListSortMethod("alphabet")
+          setFeedListSortOrder("desc")
+        },
+      },
+    ]
 
-  const actions: ContextMenuAction[] = [
-    { title: "Alphabet", actions: orderActions, selected: sortMethod === "alphabet" },
-    { title: "Unread Count", actions: orderActions, selected: sortMethod === "count" },
-  ]
+    const countOrderActions = [
+      {
+        title: "Ascending",
+        selected: sortMethod === "count" && sortOrder === "asc",
+        onSelect: () => {
+          setFeedListSortMethod("count")
+          setFeedListSortOrder("asc")
+        },
+      },
+      {
+        title: "Descending",
+        selected: sortMethod === "count" && sortOrder === "desc",
+        onSelect: () => {
+          setFeedListSortMethod("count")
+          setFeedListSortOrder("desc")
+        },
+      },
+    ]
 
-  const Icon = map[sortMethod][sortOrder]
+    return [
+      {
+        title: "Sort by Alphabet",
+        actions: alphabetOrderActions,
+        selected: sortMethod === "alphabet",
+      },
+      {
+        title: "Sort by Unread Count",
+        actions: countOrderActions,
+        selected: sortMethod === "count",
+      },
+    ]
+  }, [sortMethod, sortOrder])
+
   return (
-    <ContextMenu
-      dropdownMenuMode
-      actions={actions}
-      onPress={(e) => {
-        const [firstArgs, secondary] = e.nativeEvent.indexPath
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <TouchableOpacity className="size-5 rounded-full">
+          <ListExpansionCuteReIcon width={20} height={20} />
+        </TouchableOpacity>
+      </DropdownMenu.Trigger>
 
-        switch (firstArgs) {
-          case 0: {
-            setFeedListSortMethod("alphabet")
-            break
-          }
-          case 1: {
-            setFeedListSortMethod("count")
-            break
-          }
-        }
+      <DropdownMenu.Content>
+        {actions.map((action) => {
+          const subActions = action.actions
+          return (
+            <DropdownMenu.Sub key={`Sub/${action.title}`}>
+              <DropdownMenu.SubTrigger key={`SubTrigger/${action.title}`}>
+                <DropdownMenu.ItemTitle>{action.title}</DropdownMenu.ItemTitle>
+              </DropdownMenu.SubTrigger>
 
-        switch (secondary) {
-          case 0: {
-            setFeedListSortOrder("asc")
-            break
-          }
-          case 1: {
-            setFeedListSortOrder("desc")
-            break
-          }
-        }
-      }}
-    >
-      <TouchableOpacity className="size-6 rounded-full">
-        <Icon color={accentColor} />
-      </TouchableOpacity>
-    </ContextMenu>
+              <DropdownMenu.SubContent>
+                {subActions.map((subAction) => {
+                  const isSelected = subAction.selected
+                  return (
+                    <DropdownMenu.CheckboxItem
+                      key={`SubContent/${action.title}/${subAction.title}`}
+                      value={isSelected}
+                      onSelect={subAction.onSelect}
+                    >
+                      <DropdownMenu.ItemTitle>{subAction.title}</DropdownMenu.ItemTitle>
+                    </DropdownMenu.CheckboxItem>
+                  )
+                })}
+              </DropdownMenu.SubContent>
+            </DropdownMenu.Sub>
+          )
+        })}
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
   )
 }

@@ -4,8 +4,9 @@ import type { SubscriptionModel } from "./store"
 import { useSubscriptionStore } from "./store"
 
 const get = useSubscriptionStore.getState
-export const getSubscription = (id: string): SubscriptionModel | null => {
-  return get().data[id] || null
+export const getSubscription = (id?: string): SubscriptionModel | undefined => {
+  if (!id) return
+  return get().data[id]
 }
 
 export const getSubscriptionByView = (view: FeedViewType): string[] => {
@@ -13,6 +14,11 @@ export const getSubscriptionByView = (view: FeedViewType): string[] => {
   return Array.from(state.feedIdByView[view])
     .concat(Array.from(state.inboxIdByView[view]))
     .concat(Array.from(state.listIdByView[view]))
+}
+
+export const getFeedSubscriptionByView = (view: FeedViewType): string[] => {
+  const state = get()
+  return Array.from(state.feedIdByView[view])
 }
 
 export const getSubscriptionByCategory = (category: string): string[] => {

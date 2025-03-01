@@ -13,7 +13,6 @@ import { Input } from "@follow/components/ui/input/index.js"
 import { Radio } from "@follow/components/ui/radio-group/index.js"
 import { RadioGroup } from "@follow/components/ui/radio-group/RadioGroup.jsx"
 import { ResponsiveSelect } from "@follow/components/ui/select/responsive.js"
-import type { FeedViewType } from "@follow/constants"
 import { getBackgroundGradient } from "@follow/utils/color"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation } from "@tanstack/react-query"
@@ -25,10 +24,10 @@ import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { z } from "zod"
 
-import { getSidebarActiveView } from "~/atoms/sidebar"
 import { Media } from "~/components/ui/media"
 import { useModalStack } from "~/components/ui/modal/stacked/hooks"
 import { useFollow } from "~/hooks/biz/useFollow"
+import { getRouteParams } from "~/hooks/biz/useRouteParams"
 import { apiClient } from "~/lib/api-fetch"
 
 import { FollowSummary } from "../feed/feed-summary"
@@ -100,7 +99,7 @@ export function DiscoverForm({ type = "search" }: { type?: string }) {
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     if (info[type]!.showModal) {
-      const defaultView = getSidebarActiveView() as FeedViewType
+      const defaultView = getRouteParams().view
       present({
         title: t("feed_form.add_feed"),
         content: () => (
@@ -262,8 +261,7 @@ export function DiscoverForm({ type = "search" }: { type?: string }) {
       {mutation.isSuccess && (
         <div className="mt-8 w-full max-w-lg">
           <div className="mb-4 text-zinc-500">
-            Found {mutation.data?.length || 0} feed
-            {mutation.data?.length > 1 && "s"}
+            {t("discover.search.results", { count: mutation.data?.length || 0 })}
           </div>
           <div className="space-y-6 text-sm">
             {discoverSearchData?.map((item) => (
@@ -287,6 +285,7 @@ const SearchCard: FC<{
   onUnSubscribed?: (item: DiscoverSearchData[number]) => void
 }> = memo(({ item, onSuccess }) => {
   const follow = useFollow()
+  const { t } = useTranslation("external")
 
   return (
     <Card data-feed-id={item.feed?.id || item.list?.id} className="select-text">
@@ -329,13 +328,14 @@ const SearchCard: FC<{
           <CardFooter>
             <Button
               variant={item.isSubscribed ? "outline" : undefined}
+              disabled={item.isSubscribed}
               onClick={() => {
                 follow({
                   isList: !!item.list?.id,
                   id: item.list?.id,
                   url: item.feed?.url,
                   defaultValues: {
-                    view: getSidebarActiveView().toString(),
+                    view: getRouteParams().view.toString(),
                   },
                   onSuccess() {
                     onSuccess(item)
@@ -343,13 +343,13 @@ const SearchCard: FC<{
                 })
               }}
             >
-              {item.isSubscribed ? "Followed" : "Follow"}
+              {item.isSubscribed ? t("feed.actions.followed") : t("feed.actions.follow")}
             </Button>
             <div className="ml-6 text-zinc-500">
               <span className="font-medium text-zinc-800 dark:text-zinc-200">
                 {item.subscriptionCount ?? 0}
               </span>{" "}
-              Followers
+              {t("feed.follower", { count: item.subscriptionCount })}
             </div>
           </CardFooter>
         </>

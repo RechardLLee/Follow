@@ -57,6 +57,41 @@
       "when": 1737108493439,
       "tag": "0007_curvy_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1739265018895,
+      "tag": "0008_last_the_santerians",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1739350142864,
+      "tag": "0009_lucky_power_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1739350709266,
+      "tag": "0010_legal_ben_grimm",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1740623123535,
+      "tag": "0011_mysterious_stark_industries",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1740629979168,
+      "tag": "0012_magenta_thing",
+      "breakpoints": true
     }
   ]
 }

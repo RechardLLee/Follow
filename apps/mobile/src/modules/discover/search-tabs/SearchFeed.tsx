@@ -1,4 +1,5 @@
 import { FeedViewType } from "@follow/constants"
+import { buildSafeHeaders } from "@follow/utils/src/headers"
 import { useQuery } from "@tanstack/react-query"
 import { Image } from "expo-image"
 import { router } from "expo-router"
@@ -10,7 +11,7 @@ import { ScrollView } from "react-native-gesture-handler"
 import Animated, { FadeInUp } from "react-native-reanimated"
 
 import { FeedIcon } from "@/src/components/ui/icon/feed-icon"
-import { ItemPressable } from "@/src/components/ui/pressable/item-pressable"
+import { ItemPressable } from "@/src/components/ui/pressable/ItemPressable"
 import { apiClient } from "@/src/lib/api-fetch"
 import { useSubscriptionByFeedId } from "@/src/store/subscription/hooks"
 
@@ -47,7 +48,6 @@ export const SearchFeed = () => {
       refreshing={isLoading}
       onRefresh={refetch}
       keyExtractor={keyExtractor}
-      contentContainerClassName={"-mt-4"}
       renderScrollComponent={RenderScrollComponent}
       data={data?.data}
       renderItem={renderItem}
@@ -68,7 +68,7 @@ const SearchFeedItem: FC<ListRenderItemInfo<SearchResultItem>> = ({ item }) => {
   return (
     <Animated.View entering={FadeInUp}>
       <ItemPressable
-        className="py-6"
+        className="py-4"
         onPress={() => {
           if (item.feed?.id) {
             router.push(`/follow?id=${item.feed.id}`)
@@ -161,10 +161,10 @@ const PreviewItem = ({ entry }: { entry: NonNullable<SearchResultItem["entries"]
       {!!firstMedia && (
         <View className="bg-gray-6 ml-auto size-[52px] shrink-0 overflow-hidden rounded-lg">
           <Image
-            source={firstMedia.url}
+            source={{ uri: firstMedia.url, headers: buildSafeHeaders({ url: firstMedia.url }) }}
             className="size-full rounded-lg"
             contentFit="cover"
-            transition={300}
+            transition={500}
             placeholder={{
               blurHash: firstMedia.blurhash,
             }}

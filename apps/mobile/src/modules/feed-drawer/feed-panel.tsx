@@ -1,10 +1,10 @@
 import { cn } from "@follow/utils"
-import { BottomTabBarHeightContext } from "@react-navigation/bottom-tabs"
 import { HeaderHeightContext } from "@react-navigation/elements"
 import { router } from "expo-router"
 import type { FC } from "react"
 import { createContext, memo, useContext, useState } from "react"
 import {
+  ActivityIndicator,
   Animated,
   Easing,
   ScrollView,
@@ -15,11 +15,12 @@ import {
   View,
 } from "react-native"
 import { useSharedValue } from "react-native-reanimated"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { BottomTabBarHeightContext } from "@/src/components/layouts/tabbar/contexts/BottomTabBarHeightContext"
 import { AccordionItem } from "@/src/components/ui/accordion/AccordionItem"
 import { FeedIcon } from "@/src/components/ui/icon/feed-icon"
-import { LoadingIndicator } from "@/src/components/ui/loading"
-import { ItemPressable } from "@/src/components/ui/pressable/item-pressable"
+import { ItemPressable } from "@/src/components/ui/pressable/ItemPressable"
 import { MingcuteRightLine } from "@/src/icons/mingcute_right_line"
 import { useFeed, usePrefetchFeed } from "@/src/store/feed/hooks"
 import { useList } from "@/src/store/list/hooks"
@@ -33,12 +34,14 @@ import {
 import { useCurrentView, useFeedListSortMethod, useFeedListSortOrder } from "../subscription/atoms"
 import { ViewPageCurrentViewProvider } from "../subscription/ctx"
 import { SubscriptionList } from "../subscription/SubscriptionLists"
-import { useSelectedCollection } from "./atoms"
+import { closeDrawer, selectFeed, useSelectedCollection } from "./atoms"
 import { ListHeaderComponent, ViewHeaderComponent } from "./header"
 
 export const FeedPanel = () => {
   const selectedCollection = useSelectedCollection()
   const [headerHeight, setHeaderHeight] = useState(0)
+
+  const insets = useSafeAreaInsets()
 
   if (selectedCollection.type === "view") {
     return (
@@ -51,7 +54,7 @@ export const FeedPanel = () => {
         />
 
         <HeaderHeightContext.Provider value={headerHeight}>
-          <BottomTabBarHeightContext.Provider value={0}>
+          <BottomTabBarHeightContext.Provider value={insets.bottom}>
             <ViewPageCurrentViewProvider
               key={selectedCollection.viewId}
               value={selectedCollection.viewId}
@@ -132,6 +135,7 @@ const GroupedContext = createContext<string | null>(null)
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity)
 
 const CategoryGrouped = memo(
+  // eslint-disable-next-line @eslint-react/no-unstable-context-value
   ({ category, subscriptionIds }: { category: string; subscriptionIds: string[] }) => {
     const unreadCounts = useUnreadCounts(subscriptionIds)
     const isExpanded = useSharedValue(false)
@@ -150,7 +154,12 @@ const CategoryGrouped = memo(
       >
         <ItemPressable
           onPress={() => {
-            // TODO navigate to category
+            selectFeed({
+              type: "category",
+              categoryName: category,
+            })
+            closeDrawer()
+            router.push(`/feeds/${category}`)
           }}
           className="h-12 flex-row items-center px-3"
         >
@@ -207,7 +216,7 @@ const SubscriptionItem = memo(({ id, className }: { id: string; className?: stri
   if (isLoading) {
     return (
       <View className="mt-24 flex-1 flex-row items-start justify-center">
-        <LoadingIndicator size={36} />
+        <ActivityIndicator />
       </View>
     )
   }
@@ -223,12 +232,11 @@ const SubscriptionItem = memo(({ id, className }: { id: string; className?: stri
           className,
         )}
         onPress={() => {
-          router.push({
-            pathname: `/feeds/[feedId]`,
-            params: {
-              feedId: id,
-            },
+          selectFeed({
+            type: "feed",
+            feedId: id,
           })
+          closeDrawer()
         }}
       >
         <View className="dark:border-tertiary-system-background mr-3 size-5 items-center justify-center overflow-hidden rounded-full border border-transparent dark:bg-[#222]">

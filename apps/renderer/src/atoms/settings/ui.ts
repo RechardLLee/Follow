@@ -30,6 +30,9 @@ export const createDefaultSettings = (): UISettings => ({
   // Font
   uiFontFamily: "SN Pro",
   readerFontFamily: "inherit",
+  contentFontSize: 16,
+  dateFormat: "default",
+  contentLineHeight: 1.75,
   // Content
   readerRenderInlineStyle: false,
   codeHighlightThemeLight: "github-light",
@@ -40,7 +43,6 @@ export const createDefaultSettings = (): UISettings => ({
 
   // View
   pictureViewMasonry: true,
-  pictureViewFilterNoImage: false,
   wideMode: false,
 
   // Action Order

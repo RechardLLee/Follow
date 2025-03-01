@@ -1,4 +1,5 @@
 import { views } from "@follow/constants"
+import { isBizId } from "@follow/utils/utils"
 import { useMutation } from "@tanstack/react-query"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
@@ -12,13 +13,7 @@ import { useFolderFeedsByFeedId } from "~/store/subscription"
 import { feedUnreadActions } from "~/store/unread"
 
 const anyString = [] as string[]
-export const useEntriesByView = ({
-  onReset,
-  isArchived,
-}: {
-  onReset?: () => void
-  isArchived?: boolean
-}) => {
+export const useEntriesByView = ({ onReset }: { onReset?: () => void }) => {
   const { feedId, isAllFeeds, view, isCollection, inboxId, listId } = useRouteParams()
 
   const unreadOnly = useGeneralSettingKey("unreadOnly")
@@ -28,14 +23,21 @@ export const useEntriesByView = ({
     view,
   })
 
-  const entriesOptions = {
-    feedId: folderIds?.join(",") || feedId,
-    inboxId,
-    listId,
-    view,
-    ...(unreadOnly === true && { read: false }),
-    isArchived,
-  }
+  const entriesOptions = useMemo(() => {
+    const params = {
+      feedId: folderIds?.join(",") || feedId,
+      inboxId,
+      listId,
+      view,
+      ...(unreadOnly === true && { read: false }),
+    }
+
+    if (feedId && listId && isBizId(feedId)) {
+      delete params.listId
+    }
+
+    return params
+  }, [feedId, folderIds, inboxId, listId, unreadOnly, view])
   const query = useEntries(entriesOptions)
 
   const [fetchedTime, setFetchedTime] = useState<number>()
@@ -78,10 +80,13 @@ export const useEntriesByView = ({
 
   useFetchEntryContentByStream(remoteEntryIds)
 
-  const currentEntries = useEntryIdsByFeedIdOrView(isAllFeeds ? view : folderIds || feedId!, {
-    unread: unreadOnly,
-    view,
-  })
+  const currentEntries = useEntryIdsByFeedIdOrView(
+    listId || inboxId || (isAllFeeds ? view : folderIds || feedId!),
+    {
+      unread: unreadOnly,
+      view,
+    },
+  )
 
   // If remote data is not available, we use the local data, get the local data length
   // FIXME: remote first, then local store data
@@ -99,15 +104,12 @@ export const useEntriesByView = ({
   const isFetchingFirstPage = query.isFetching && !query.isFetchingNextPage
 
   useEffect(() => {
-    if (isArchived) {
-      return
-    }
     if (!isFetchingFirstPage) {
       prevEntryIdsRef.current = entryIds
 
       onReset?.()
     }
-  }, [isFetchingFirstPage, isArchived])
+  }, [isFetchingFirstPage])
 
   const entryIdsAsDeps = entryIds.toString()
 
@@ -127,12 +129,8 @@ export const useEntriesByView = ({
 
   const sortEntries = useMemo(
     () =>
-      isCollection
-        ? sortEntriesIdByStarAt(entryIds)
-        : listId
-          ? sortEntriesIdByEntryInsertedAt(entryIds)
-          : sortEntriesIdByEntryPublishedAt(entryIds),
-    [entryIds, isCollection, listId],
+      isCollection ? sortEntriesIdByStarAt(entryIds) : sortEntriesIdByEntryPublishedAt(entryIds),
+    [entryIds, isCollection],
   )
 
   const groupByDate = useGeneralSettingKey("groupByDate")
@@ -200,17 +198,6 @@ function sortEntriesIdByStarAt(entries: string[]) {
     if (!aStar || !bStar) return 0
     return bStar.localeCompare(aStar)
   })
-}
-
-function sortEntriesIdByEntryInsertedAt(entries: string[]) {
-  const entriesId2Map = entryActions.getFlattenMapEntries()
-  return entries
-    .slice()
-    .sort(
-      (a, b) =>
-        entriesId2Map[b]?.entries.insertedAt.localeCompare(entriesId2Map[a]?.entries.insertedAt!) ||
-        0,
-    )
 }
 
 const useFetchEntryContentByStream = (remoteEntryIds?: string[]) => {

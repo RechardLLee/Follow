@@ -12,5 +12,6 @@ export const ROUTE_ENTRY_PENDING = "pending"
 export const ROUTE_FEED_IN_FOLDER = "folder-"
 export const ROUTE_FEED_IN_LIST = "list-"
 export const ROUTE_FEED_IN_INBOX = "inbox-"
+export const ROUTE_TIMELINE_OF_VIEW = "view-"
 
 export const INBOX_PREFIX_ID = "inbox-"

@@ -8,12 +8,11 @@ import { m, useAnimationControls } from "framer-motion"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useAudioPlayerAtomSelector } from "~/atoms/player"
-import { useUISettingKey } from "~/atoms/settings/ui"
-import { useSidebarActiveView } from "~/atoms/sidebar"
+import { useNavigateEntry } from "~/hooks/biz/useNavigateEntry"
+import { useRouteParamsSelector } from "~/hooks/biz/useRouteParams"
 import { useEntry } from "~/store/entry"
 import { useFeedById } from "~/store/feed"
 import { feedIconSelector } from "~/store/feed/selector"
-import { useUnreadByView } from "~/store/unread/hooks"
 
 import { ProfileButton } from "../../user/ProfileButton"
 import { PodcastButton } from "./components/PodcastButton"
@@ -98,9 +97,9 @@ export const MobileFloatBar = ({
 }
 
 const ViewTabs = ({ onViewChange }: { onViewChange?: (view: number) => void }) => {
-  const [active, setActive] = useSidebarActiveView()
-  const unreadByView = useUnreadByView()
-  const showCount = useUISettingKey("sidebarShowUnreadCount")
+  const view = useRouteParamsSelector((s) => s.view)
+  const navigate = useNavigateEntry()
+
   return (
     <div
       className="flex w-full shrink items-center justify-between gap-4 overflow-x-auto overflow-y-hidden text-xl text-theme-vibrancyFg"
@@ -110,23 +109,15 @@ const ViewTabs = ({ onViewChange }: { onViewChange?: (view: number) => void }) =
         <MotionButtonBase
           className={clsx(
             "center flex transition-colors duration-200",
-            active === item.view && item.className,
+            view === item.view && item.className,
           )}
           key={item.name}
           onClick={() => {
-            setActive(item.view)
+            navigate({ view: item.view })
             onViewChange?.(item.view)
           }}
         >
-          <div className="relative flex flex-col items-center">
-            {item.icon}
-
-            {showCount && (
-              <span className="mt-px text-[8px] leading-none">
-                {unreadByView[item.view]! > 99 ? "99+" : unreadByView[item.view] || "0"}
-              </span>
-            )}
-          </div>
+          <div className="relative flex flex-col items-center">{item.icon}</div>
         </MotionButtonBase>
       ))}
     </div>

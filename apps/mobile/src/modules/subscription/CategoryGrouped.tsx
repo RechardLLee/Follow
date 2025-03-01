@@ -1,14 +1,16 @@
+import { router } from "expo-router"
 import { memo, useState } from "react"
 import { Text, TouchableOpacity } from "react-native"
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated"
 
-import { ItemPressable } from "@/src/components/ui/pressable/item-pressable"
-import { MingcuteRightLine } from "@/src/icons/mingcute_right_line"
+import { ItemPressable } from "@/src/components/ui/pressable/ItemPressable"
+import { RightCuteFiIcon } from "@/src/icons/right_cute_fi"
+import { closeDrawer, selectFeed, useSelectedFeed } from "@/src/modules/screen/atoms"
 import { useUnreadCounts } from "@/src/store/unread/hooks"
 import { useColor } from "@/src/theme/colors"
 
 import { SubscriptionFeedCategoryContextMenu } from "../context-menu/feeds"
-import { GroupedContext, useViewPageCurrentView } from "./ctx"
+import { GroupedContext } from "./ctx"
 import { ItemSeparator } from "./ItemSeparator"
 import { UnGroupedList } from "./UnGroupedList"
 
@@ -21,6 +23,7 @@ import { UnGroupedList } from "./UnGroupedList"
 //   })
 // }
 export const CategoryGrouped = memo(
+  // eslint-disable-next-line @eslint-react/no-unstable-context-value
   ({ category, subscriptionIds }: { category: string; subscriptionIds: string[] }) => {
     const unreadCounts = useUnreadCounts(subscriptionIds)
     const [expanded, setExpanded] = useState(false)
@@ -30,9 +33,14 @@ export const CategoryGrouped = memo(
         transform: [{ rotate: `${rotateSharedValue.value}deg` }],
       }
     }, [rotateSharedValue])
-    const view = useViewPageCurrentView()
 
-    const tertiaryLabelColor = useColor("tertiaryLabel")
+    const secondaryLabelColor = useColor("label")
+    const selectedFeed = useSelectedFeed()
+    if (selectedFeed?.type !== "view") {
+      return null
+    }
+    const view = selectedFeed.viewId
+
     return (
       <>
         <SubscriptionFeedCategoryContextMenu
@@ -42,7 +50,12 @@ export const CategoryGrouped = memo(
         >
           <ItemPressable
             onPress={() => {
-              // TODO navigate to category
+              selectFeed({
+                type: "category",
+                categoryName: category,
+              })
+              closeDrawer()
+              router.push(`/feeds/${category}`)
             }}
             className="h-12 flex-row items-center px-3"
           >
@@ -54,11 +67,11 @@ export const CategoryGrouped = memo(
               }}
               className="size-5 flex-row items-center justify-center"
             >
-              <Animated.View style={rotateStyle}>
-                <MingcuteRightLine color={tertiaryLabelColor} height={18} width={18} />
+              <Animated.View style={rotateStyle} className="ml-2">
+                <RightCuteFiIcon color={secondaryLabelColor} height={14} width={14} />
               </Animated.View>
             </TouchableOpacity>
-            <Text className="text-text ml-3">{category}</Text>
+            <Text className="text-text ml-4 font-medium">{category}</Text>
             {!!unreadCounts && (
               <Text className="text-secondary-label ml-auto text-xs">{unreadCounts}</Text>
             )}

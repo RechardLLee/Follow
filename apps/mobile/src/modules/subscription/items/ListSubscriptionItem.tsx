@@ -3,7 +3,8 @@ import { Image, Text, View } from "react-native"
 import Animated, { FadeOutUp } from "react-native-reanimated"
 
 import { FallbackIcon } from "@/src/components/ui/icon/fallback-icon"
-import { ItemPressable } from "@/src/components/ui/pressable/item-pressable"
+import { ItemPressable } from "@/src/components/ui/pressable/ItemPressable"
+import { closeDrawer, selectTimeline } from "@/src/modules/screen/atoms"
 import { useList } from "@/src/store/list/hooks"
 import { useUnreadCount } from "@/src/store/unread/hooks"
 
@@ -16,7 +17,16 @@ export const ListSubscriptionItem = memo(({ id }: { id: string; className?: stri
   return (
     <Animated.View exiting={FadeOutUp}>
       <SubscriptionListItemContextMenu id={id}>
-        <ItemPressable className="h-12 flex-row items-center px-3">
+        <ItemPressable
+          className="h-12 flex-row items-center px-3"
+          onPress={() => {
+            selectTimeline({
+              type: "list",
+              listId: id,
+            })
+            closeDrawer()
+          }}
+        >
           <View className="overflow-hidden rounded">
             {!!list.image && (
               <Image source={{ uri: list.image, width: 24, height: 24 }} resizeMode="cover" />

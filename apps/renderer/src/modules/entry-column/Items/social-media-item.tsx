@@ -3,6 +3,7 @@ import { useMobile } from "@follow/components/hooks/useMobile.js"
 import { AutoResizeHeight } from "@follow/components/ui/auto-resize-height/index.js"
 import { Skeleton } from "@follow/components/ui/skeleton/index.jsx"
 import type { MediaModel } from "@follow/shared/hono"
+import { getImageProxyUrl } from "@follow/utils/img-proxy"
 import { LRUCache } from "@follow/utils/lru-cache"
 import { cn } from "@follow/utils/utils"
 import { atom } from "jotai"
@@ -16,7 +17,6 @@ import { Media } from "~/components/ui/media"
 import { usePreviewMedia } from "~/components/ui/media/hooks"
 import { useAsRead } from "~/hooks/biz/useAsRead"
 import { useSortedEntryActions } from "~/hooks/biz/useEntryActions"
-import { getImageProxyUrl } from "~/lib/img-proxy"
 import { jotaiStore } from "~/lib/jotai"
 import { parseSocialMedia } from "~/lib/parsers"
 import { COMMAND_ID } from "~/modules/command/commands/id"
@@ -135,10 +135,7 @@ const ActionBar = ({ entryId }: { entryId: string }) => {
     <div className="flex items-center gap-1">
       {entryActions
         .filter(
-          (item) =>
-            item.id !== COMMAND_ID.entry.read &&
-            item.id !== COMMAND_ID.entry.unread &&
-            item.id !== COMMAND_ID.entry.openInBrowser,
+          (item) => item.id !== COMMAND_ID.entry.read && item.id !== COMMAND_ID.entry.openInBrowser,
         )
         .map((item) => (
           <CommandActionButton commandId={item.id} onClick={item.onClick} key={item.id} />

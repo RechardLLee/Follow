@@ -1,26 +1,26 @@
 import { FeedViewType } from "@follow/constants"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { StackActions } from "@react-navigation/native"
-import { router, Stack, useLocalSearchParams, useNavigation } from "expo-router"
+import { router, Stack, useNavigation } from "expo-router"
 import { useState } from "react"
 import { Controller, useForm } from "react-hook-form"
-import { ScrollView, Text, View } from "react-native"
+import { ActivityIndicator, ScrollView, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { z } from "zod"
 
 import {
   ModalHeaderCloseButton,
-  ModalHeaderShubmitButton,
+  ModalHeaderSubmitButton,
 } from "@/src/components/common/ModalSharedComponents"
 import { FormProvider } from "@/src/components/ui/form/FormProvider"
 import { FormLabel } from "@/src/components/ui/form/Label"
 import { FormSwitch } from "@/src/components/ui/form/Switch"
 import { TextField } from "@/src/components/ui/form/TextField"
+import { GroupedInsetListCard } from "@/src/components/ui/grouped/GroupedList"
 import { FeedIcon } from "@/src/components/ui/icon/feed-icon"
-import { LoadingIndicator } from "@/src/components/ui/loading"
 import { useIsRouteOnlyOne } from "@/src/hooks/useIsRouteOnlyOne"
 import { FeedViewSelector } from "@/src/modules/feed/view-selector"
-import { useFeed, usePrefetchFeed } from "@/src/store/feed/hooks"
+import { useFeed, usePrefetchFeed, usePrefetchFeedByUrl } from "@/src/store/feed/hooks"
 import { useSubscriptionByFeedId } from "@/src/store/subscription/hooks"
 import { subscriptionSyncService } from "@/src/store/subscription/store"
 import type { SubscriptionForm } from "@/src/store/subscription/types"
@@ -40,15 +40,36 @@ export function FollowFeed(props: { id: string }) {
   if (isLoading) {
     return (
       <View className="mt-24 flex-1 flex-row items-start justify-center">
-        <LoadingIndicator size={36} />
+        <ActivityIndicator />
       </View>
     )
   }
 
-  return <FollowImpl />
+  return <FollowImpl feedId={id} />
 }
-function FollowImpl() {
-  const { id } = useLocalSearchParams()
+
+export function FollowUrl(props: { url: string }) {
+  const { url } = props
+
+  const { isLoading, data, error } = usePrefetchFeedByUrl(url)
+
+  if (isLoading) {
+    return (
+      <View className="mt-24 flex-1 flex-row items-start justify-center">
+        <ActivityIndicator />
+      </View>
+    )
+  }
+
+  if (!data) {
+    return <Text className="text-label">{error?.message}</Text>
+  }
+
+  return <FollowImpl feedId={data.id} />
+}
+
+function FollowImpl(props: { feedId: string }) {
+  const { feedId: id } = props
 
   const feed = useFeed(id as string)!
   const isSubscribed = useSubscriptionByFeedId(feed?.id || "")
@@ -92,12 +113,13 @@ function FollowImpl() {
   const { isValid, isDirty } = form.formState
 
   if (!feed?.id) {
-    return <Text className="text-text">Feed ({id}) not found</Text>
+    return <Text className="text-label">Feed ({id}) not found</Text>
   }
 
   return (
     <ScrollView
-      contentContainerClassName="px-2 pt-4 gap-y-4"
+      className="bg-system-grouped-background"
+      contentContainerClassName="pt-4 gap-y-4"
       contentContainerStyle={{ paddingBottom: insets.bottom }}
     >
       <Stack.Screen
@@ -106,7 +128,7 @@ function FollowImpl() {
           headerLeft: ModalHeaderCloseButton,
           gestureEnabled: !isDirty,
           headerRight: () => (
-            <ModalHeaderShubmitButton
+            <ModalHeaderSubmitButton
               isValid={isValid}
               onPress={form.handleSubmit(submit)}
               isLoading={isLoading}
@@ -116,7 +138,7 @@ function FollowImpl() {
       />
 
       {/* Group 1 */}
-      <View className="bg-secondary-system-grouped-background rounded-lg p-4">
+      <GroupedInsetListCard className="px-5 py-4">
         <View className="flex flex-row gap-4">
           <View className="size-[50px] overflow-hidden rounded-lg">
             <FeedIcon feed={feed} size={50} />
@@ -126,9 +148,9 @@ function FollowImpl() {
             <Text className="text-secondary-label text-sm">{feed?.description}</Text>
           </View>
         </View>
-      </View>
+      </GroupedInsetListCard>
       {/* Group 2 */}
-      <View className="bg-secondary-system-grouped-background gap-y-4 rounded-lg p-4">
+      <GroupedInsetListCard className="gap-y-4 p-4">
         <FormProvider form={form}>
           <View>
             <Controller
@@ -168,6 +190,7 @@ function FollowImpl() {
               control={form.control}
               render={({ field: { onChange, value } }) => (
                 <FormSwitch
+                  size="sm"
                   value={value}
                   label="Private"
                   description="Private feeds are only visible to you."
@@ -189,7 +212,7 @@ function FollowImpl() {
             />
           </View>
         </FormProvider>
-      </View>
+      </GroupedInsetListCard>
     </ScrollView>
   )
 }

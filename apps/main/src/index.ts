@@ -2,10 +2,9 @@ import { electronApp, optimizer } from "@electron-toolkit/utils"
 import { callWindowExpose } from "@follow/shared/bridge"
 import { APP_PROTOCOL } from "@follow/shared/constants"
 import { env } from "@follow/shared/env"
-import { imageRefererMatches, selfRefererMatches } from "@follow/shared/image"
+import { buildSafeHeaders } from "@follow/utils/headers"
 import { parse } from "cookie-es"
 import { app, BrowserWindow, session } from "electron"
-import type { Cookie } from "electron/main"
 import squirrelStartup from "electron-squirrel-startup"
 
 import { DEVICE_ID } from "./constants/system"
@@ -60,6 +59,13 @@ function bootstrap() {
     }
   })
 
+  app.on("activate", () => {
+    // On macOS it's common to re-create a window in the app when the
+    // dock icon is clicked and there are no other windows open.
+    mainWindow = getMainWindowOrCreate()
+    mainWindow.show()
+  })
+
   // This method will be called when Electron has finished
   // initialization and is ready to create browser windows.
   // Some APIs can only be used after this event occurs.
@@ -77,7 +83,7 @@ function bootstrap() {
     mainWindow = createMainWindow()
 
     // restore cookies
-    const cookies = store.get("cookies") as Cookie[]
+    const cookies = store.get("cookies")
     if (cookies) {
       Promise.all(
         cookies.map((cookie) => {
@@ -103,25 +109,10 @@ function bootstrap() {
     registerAppTray()
 
     session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
-      // remove Electron, Follow from user agent
-      let userAgent = details.requestHeaders["User-Agent"]
-      if (userAgent) {
-        userAgent = userAgent.replace(/\s?Electron\/[\d.]+/, "")
-        userAgent = userAgent.replace(/\s?Follow\/[\d.a-zA-Z-]+/, "")
-      }
-      details.requestHeaders["User-Agent"] = userAgent!
-
-      // set referer and origin
-      if (selfRefererMatches.some((item) => details.url.startsWith(item))) {
-        details.requestHeaders["Referer"] = "https://app.follow.is"
-        details.requestHeaders["Origin"] = "https://app.follow.is"
-      } else {
-        const refererMatch = imageRefererMatches.find((item) => item.url.test(details.url))
-        const referer = refererMatch?.referer
-        if (referer) {
-          details.requestHeaders["Referer"] = referer
-        }
-      }
+      details.requestHeaders = buildSafeHeaders({
+        url: details.url,
+        headers: details.requestHeaders,
+      })
 
       callback({ cancel: false, requestHeaders: details.requestHeaders })
     })
@@ -130,7 +121,9 @@ function bootstrap() {
     session.defaultSession.webRequest.onHeadersReceived(
       {
         urls: [
+          `${apiURL}/better-auth/sign-in/email`,
           `${apiURL}/better-auth/sign-in/email?*`,
+          `${apiURL}/better-auth/two-factor/verify-totp`,
           `${apiURL}/better-auth/two-factor/verify-totp?*`,
         ],
       },
@@ -158,13 +151,6 @@ function bootstrap() {
         callback({ cancel: false, responseHeaders })
       },
     )
-
-    app.on("activate", () => {
-      // On macOS it's common to re-create a window in the app when the
-      // dock icon is clicked and there are no other windows open.
-      mainWindow = getMainWindowOrCreate()
-      mainWindow.show()
-    })
 
     app.on("open-url", (_, url) => {
       if (mainWindow && !mainWindow.isDestroyed()) {

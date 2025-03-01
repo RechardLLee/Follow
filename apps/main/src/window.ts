@@ -41,11 +41,14 @@ export function createWindow(
     show: false,
     resizable: configs?.resizable ?? true,
     autoHideMenuBar: true,
+    alwaysOnTop: false,
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.mjs"),
       sandbox: false,
       webviewTag: true,
       webSecurity: !isDev,
+      nodeIntegration: true,
+      contextIsolation: false,
     },
   }
 
@@ -222,12 +225,7 @@ export function createWindow(
 }
 export const windowStateStoreKey = "windowState"
 export const createMainWindow = () => {
-  const windowState = store.get(windowStateStoreKey) as {
-    height: number
-    width: number
-    x: number
-    y: number
-  } | null
+  const windowState = store.get(windowStateStoreKey)
   const primaryDisplay = screen.getPrimaryDisplay()
   const { workArea } = primaryDisplay
 

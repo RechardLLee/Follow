@@ -1,15 +1,22 @@
-import type { FeedViewType } from "@follow/constants"
+import { FeedViewType } from "@follow/constants"
 import { sortByAlphabet } from "@follow/utils"
 import { useQuery } from "@tanstack/react-query"
 import { useCallback } from "react"
 
+import { views } from "@/src/constants/views"
+
 import { getFeed } from "../feed/getter"
 import { getList } from "../list/getters"
 import { getUnreadCount } from "../unread/getter"
-import { getSubscription, getSubscriptionByCategory, getSubscriptionByView } from "./getter"
+import {
+  getFeedSubscriptionByView,
+  getSubscription,
+  getSubscriptionByCategory,
+  getSubscriptionByView,
+} from "./getter"
 import { subscriptionSyncService, useSubscriptionStore } from "./store"
 
-export const usePrefetchSubscription = (view: FeedViewType) => {
+export const usePrefetchSubscription = (view?: FeedViewType) => {
   return useQuery({
     queryKey: ["subscription", view],
     queryFn: () => subscriptionSyncService.fetch(view),
@@ -40,6 +47,10 @@ const sortUngroupedSubscriptionByAlphabet = (
 
 export const useSubscriptionByView = (view: FeedViewType) => {
   return useSubscriptionStore(useCallback(() => getSubscriptionByView(view), [view]))
+}
+
+export const useFeedSubscriptionByView = (view: FeedViewType) => {
+  return useSubscriptionStore(useCallback(() => getFeedSubscriptionByView(view), [view]))
 }
 
 export const useGroupedSubscription = (view: FeedViewType) => {
@@ -138,6 +149,19 @@ export const useSortedUngroupedSubscription = (
   )
 }
 
+export const useSortedFeedSubscriptionByAlphabet = (ids: string[]) => {
+  return useSubscriptionStore(
+    useCallback(() => {
+      return ids.sort((a, b) => {
+        const leftFeed = getFeed(a)
+        const rightFeed = getFeed(b)
+        if (!leftFeed || !rightFeed) return 0
+        return sortByAlphabet(leftFeed.title!, rightFeed.title!)
+      })
+    }, [ids]),
+  )
+}
+
 export const useSubscription = (id: string) => {
   return useSubscriptionStore((state) => {
     return state.data[id]
@@ -188,11 +212,11 @@ export const useInboxSubscription = (view: FeedViewType) => {
   )
 }
 
-export const useListSubscriptionCategory = (view: FeedViewType) => {
+export const useSubscriptionCategory = (view?: FeedViewType) => {
   return useSubscriptionStore(
     useCallback(
       (state) => {
-        return Array.from(state.categories[view])
+        return view === undefined ? [] : Array.from(state.categories[view])
       },
       [view],
     ),
@@ -204,3 +228,21 @@ export const useSubscriptionByFeedId = (feedId: string) =>
 
 export const useSubscriptionByListId = (listId: string) =>
   useSubscriptionStore(useCallback((state) => state.data[listId] || null, [listId]))
+
+export const useViewWithSubscription = () =>
+  useSubscriptionStore(
+    useCallback((state) => {
+      return views.filter((view) => {
+        if (
+          view.view === FeedViewType.Articles ||
+          view.view === FeedViewType.SocialMedia ||
+          view.view === FeedViewType.Pictures ||
+          view.view === FeedViewType.Videos
+        ) {
+          return true
+        } else {
+          return state.feedIdByView[view.view].size > 0
+        }
+      })
+    }, []),
+  )

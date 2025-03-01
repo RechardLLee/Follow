@@ -67,3 +67,5 @@ export const views: ViewDefinition[] = [
     view: FeedViewType.Notifications,
   },
 ]
+
+export const viewList = views.map((view) => view.view)

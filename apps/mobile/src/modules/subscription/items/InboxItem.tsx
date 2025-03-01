@@ -3,8 +3,9 @@ import { memo } from "react"
 import { Text, View } from "react-native"
 import Animated, { FadeOutUp } from "react-native-reanimated"
 
-import { ItemPressable } from "@/src/components/ui/pressable/item-pressable"
+import { ItemPressable } from "@/src/components/ui/pressable/ItemPressable"
 import { InboxCuteFiIcon } from "@/src/icons/inbox_cute_fi"
+import { closeDrawer, selectTimeline } from "@/src/modules/screen/atoms"
 import { useSubscription } from "@/src/store/subscription/hooks"
 import { getInboxStoreId } from "@/src/store/subscription/utils"
 import { useUnreadCount } from "@/src/store/unread/hooks"
@@ -16,7 +17,13 @@ export const InboxItem = memo(({ id }: { id: string }) => {
   if (!subscription) return null
   return (
     <Animated.View exiting={FadeOutUp}>
-      <ItemPressable className="h-12 flex-row items-center px-3">
+      <ItemPressable
+        className="h-12 flex-row items-center px-3"
+        onPress={() => {
+          selectTimeline({ type: "inbox", inboxId: id })
+          closeDrawer()
+        }}
+      >
         <View className="ml-0.5 overflow-hidden rounded">
           <InboxCuteFiIcon
             height={20}

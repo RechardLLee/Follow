@@ -71,11 +71,10 @@ export const useInboxByIdSelector = <T>(
 
 export const useFeedHeaderTitle = () => {
   const { t } = useTranslation()
-  const { feedId: currentFeedId, view, listId, inboxId } = useRouteParams()
+  const { feedId: currentFeedId, view, listId: currentListId } = useRouteParams()
 
-  const listTitle = useListByIdSelector(listId, getPreferredTitle)
-  const inboxTitle = useInboxByIdSelector(inboxId, getPreferredTitle)
   const feedTitle = useFeedByIdSelector(currentFeedId, getPreferredTitle)
+  const listTitle = useListByIdSelector(currentListId, getPreferredTitle)
 
   switch (currentFeedId) {
     case ROUTE_FEED_PENDING: {
@@ -88,7 +87,7 @@ export const useFeedHeaderTitle = () => {
       if (currentFeedId?.startsWith(ROUTE_FEED_IN_FOLDER)) {
         return currentFeedId.replace(ROUTE_FEED_IN_FOLDER, "")
       }
-      return feedTitle || listTitle || inboxTitle
+      return feedTitle || listTitle
     }
   }
 }

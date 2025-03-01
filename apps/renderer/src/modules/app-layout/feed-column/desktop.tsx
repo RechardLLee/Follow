@@ -20,11 +20,11 @@ import { Outlet } from "react-router"
 import { setMainContainerElement, setRootContainerElement } from "~/atoms/dom"
 import { getIsZenMode, getUISettings, setUISetting, useUISettingKey } from "~/atoms/settings/ui"
 import {
-  getFeedColumnTempShow,
-  setFeedColumnShow,
-  setFeedColumnTempShow,
-  useFeedColumnShow,
-  useFeedColumnTempShow,
+  getTimelineColumnTempShow,
+  setTimelineColumnShow,
+  setTimelineColumnTempShow,
+  useTimelineColumnShow,
+  useTimelineColumnTempShow,
 } from "~/atoms/sidebar"
 import { useLoginModalShow, useWhoami } from "~/atoms/user"
 import { AppErrorBoundary } from "~/components/common/AppErrorBoundary"
@@ -32,6 +32,7 @@ import { ErrorComponentType } from "~/components/errors/enum"
 import { PlainModal } from "~/components/ui/modal/stacked/custom-modal"
 import { DeclarativeModal } from "~/components/ui/modal/stacked/declarative-modal"
 import { HotKeyScopeMap, isDev } from "~/constants"
+import { ROOT_CONTAINER_ID } from "~/constants/dom"
 import { shortcuts } from "~/constants/shortcuts"
 import { useDailyTask } from "~/hooks/biz/useDailyTask"
 import { useBatchUpdateSubscription } from "~/hooks/biz/useSubscriptionActions"
@@ -40,13 +41,13 @@ import { EnvironmentIndicator } from "~/modules/app/EnvironmentIndicator"
 import { NetworkStatusIndicator } from "~/modules/app/NetworkStatusIndicator"
 import { LoginModalContent } from "~/modules/auth/LoginModalContent"
 import { DebugRegistry } from "~/modules/debug/registry"
-import { FeedColumn } from "~/modules/feed-column"
-import { getSelectedFeedIds, resetSelectedFeedIds } from "~/modules/feed-column/atom"
 import { useShortcutsModal } from "~/modules/modal/shortcuts"
 import { CmdF } from "~/modules/panel/cmdf"
 import { SearchCmdK } from "~/modules/panel/cmdk"
 import { CmdNTrigger } from "~/modules/panel/cmdn"
 import { CornerPlayer } from "~/modules/player/corner-player"
+import { FeedColumn } from "~/modules/timeline-column"
+import { getSelectedFeedIds, resetSelectedFeedIds } from "~/modules/timeline-column/atom"
 import { UpdateNotice } from "~/modules/update-notice/UpdateNotice"
 import { AppNotificationContainer } from "~/modules/upgrade/lazy/index"
 import { AppLayoutGridContainerProvider } from "~/providers/app-grid-layout-container-provider"
@@ -176,6 +177,7 @@ const RootContainer = forwardRef<HTMLDivElement, PropsWithChildren>(({ children 
       }
       className="relative z-0 flex h-screen overflow-hidden print:h-auto print:overflow-auto"
       onContextMenu={preventDefault}
+      id={ROOT_CONTAINER_ID}
     >
       {children}
     </div>
@@ -200,12 +202,12 @@ const FeedResponsiveResizerContainer = ({
     },
   })
 
-  const feedColumnShow = useFeedColumnShow()
-  const feedColumnTempShow = useFeedColumnTempShow()
+  const feedColumnShow = useTimelineColumnShow()
+  const feedColumnTempShow = useTimelineColumnTempShow()
 
   useEffect(() => {
     if (feedColumnShow) {
-      setFeedColumnTempShow(false)
+      setTimelineColumnTempShow(false)
       return
     }
     const handler = debounce(
@@ -214,16 +216,16 @@ const FeedResponsiveResizerContainer = ({
         const mouseY = e.clientY
 
         const uiSettings = getUISettings()
-        const feedColumnTempShow = getFeedColumnTempShow()
+        const feedColumnTempShow = getTimelineColumnTempShow()
         const isInEntryContentWideMode = uiSettings.wideMode || getIsZenMode()
         const feedWidth = uiSettings.feedColWidth
         if (mouseY < 200 && isInEntryContentWideMode && mouseX < feedWidth) return
         const threshold = feedColumnTempShow ? uiSettings.feedColWidth : 100
 
         if (mouseX < threshold) {
-          setFeedColumnTempShow(true)
+          setTimelineColumnTempShow(true)
         } else {
-          setFeedColumnTempShow(false)
+          setTimelineColumnTempShow(false)
         }
       },
       36,
@@ -241,7 +243,7 @@ const FeedResponsiveResizerContainer = ({
   useHotkeys(
     shortcuts.layout.toggleSidebar.key,
     () => {
-      setFeedColumnShow(!feedColumnShow)
+      setTimelineColumnShow(!feedColumnShow)
     },
     {
       scopes: HotKeyScopeMap.Home,
@@ -302,7 +304,7 @@ const FeedResponsiveResizerContainer = ({
           cursor={separatorCursor}
           {...separatorProps}
           onDoubleClick={() => {
-            setFeedColumnShow(false)
+            setTimelineColumnShow(false)
           }}
           tooltip={
             !isDragging && (

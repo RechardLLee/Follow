@@ -10,7 +10,7 @@ import { KbdCombined } from "../kbd/Kbd"
 import { Tooltip, TooltipContent, TooltipPortal, TooltipTrigger } from "../tooltip"
 
 export interface ActionButtonProps {
-  icon?: React.ReactNode | React.FC<ComponentType>
+  icon?: React.ReactNode | ((props: { isActive?: boolean; className: string }) => React.ReactNode)
   tooltip?: React.ReactNode
   tooltipSide?: "top" | "bottom"
   active?: boolean
@@ -19,7 +19,7 @@ export interface ActionButtonProps {
   shortcut?: string
   disableTriggerShortcut?: boolean
   enableHoverableContent?: boolean
-  size?: "sm" | "base"
+  size?: "sm" | "base" | "lg"
 
   /**
    * @description only trigger shortcut when focus with in `<Focusable />`
@@ -30,6 +30,7 @@ export interface ActionButtonProps {
 
 const actionButtonStyleVariant = {
   size: {
+    lg: tw`text-xl size-10`,
     base: tw`text-xl size-8`,
     sm: tw`text-sm size-6`,
   },
@@ -74,7 +75,7 @@ export const ActionButton = React.forwardRef<
         onFocusCapture={stopPropagation}
         className={cn(
           "no-drag-region pointer-events-auto inline-flex items-center justify-center",
-          active && "bg-zinc-500/15 hover:bg-zinc-500/20",
+          active && typeof icon !== "function" && "bg-zinc-500/15 hover:bg-zinc-500/20",
           "rounded-md duration-200 hover:bg-theme-button-hover data-[state=open]:bg-theme-button-hover",
           "disabled:cursor-not-allowed disabled:opacity-50",
           clickableDisabled && "cursor-not-allowed opacity-50",
@@ -103,6 +104,8 @@ export const ActionButton = React.forwardRef<
         ) : typeof icon === "function" ? (
           React.createElement(icon, {
             className: "size-4 grayscale text-current",
+
+            isActive: active,
           })
         ) : (
           icon

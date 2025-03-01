@@ -1,9 +1,12 @@
 import type {
+  collectionsTable,
   entriesTable,
   feedsTable,
+  imagesTable,
   inboxesTable,
   listsTable,
   subscriptionsTable,
+  summariesTable,
   unreadTable,
   usersTable,
 } from "."
@@ -21,6 +24,12 @@ export type UnreadSchema = typeof unreadTable.$inferSelect
 export type UserSchema = typeof usersTable.$inferSelect
 
 export type EntrySchema = typeof entriesTable.$inferSelect
+
+export type CollectionSchema = typeof collectionsTable.$inferSelect
+
+export type SummarySchema = typeof summariesTable.$inferSelect
+
+export type ImageSchema = typeof imagesTable.$inferInsert
 
 export type MediaModel = {
   url: string
@@ -46,3 +55,5 @@ export type ExtraModel = {
     content_html?: string
   }[]
 }
+
+export { ImageColorsResult } from "react-native-image-colors"

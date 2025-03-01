@@ -1,24 +1,16 @@
 import "@expo/metro-runtime"
 
 import { registerRootComponent } from "expo"
+import { Image } from "expo-image"
 import { App } from "expo-router/build/qualified-entry"
-import { RootSiblingParent } from "react-native-root-siblings"
+import { cssInterop } from "nativewind"
+import { enableFreeze } from "react-native-screens"
 
-// import { renderRootComponent } from "expo"
 import { initializeApp } from "./initialize"
 
-initializeApp().then(() => {
-  // This file should only import and register the root. No components or exports
-  // should be added here.
-  // renderRootComponent(App)
-})
+enableFreeze(true)
+cssInterop(Image, { className: "style" })
 
-const MApp = () => {
-  return (
-    <RootSiblingParent>
-      <App />
-    </RootSiblingParent>
-  )
-}
+initializeApp()
 
-registerRootComponent(MApp)
+registerRootComponent(App)

@@ -2,11 +2,18 @@ export const transformVideoUrl = ({
   url,
   mini = false,
   isIframe = false,
+  attachments,
 }: {
   url: string
   mini?: boolean
   isIframe?: boolean
-}) => {
+  attachments?:
+    | {
+        url: string
+        mime_type?: string
+      }[]
+    | null
+}): string | null => {
   if (url?.match(/\/\/www.bilibili.com\/video\/BV\w+/)) {
     const player = isIframe
       ? "https://player.bilibili.com/player.html"
@@ -29,6 +36,10 @@ export const transformVideoUrl = ({
         mute: mini ? "1" : "0",
       },
     ).toString()}`
+  }
+
+  if (attachments) {
+    return attachments.find((attachment) => attachment.mime_type === "text/html")?.url ?? null
   }
   return null
 }

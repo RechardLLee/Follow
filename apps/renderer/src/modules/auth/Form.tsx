@@ -23,10 +23,10 @@ import { TOTPForm } from "../profile/two-factor"
 
 const formSchema = z.object({
   email: z.string().email(),
-  password: z.string().max(128),
+  password: z.string().min(8).max(128),
 })
 
-export function LoginWithPassword({ runtime }: { runtime?: LoginRuntime }) {
+export function LoginWithPassword({ runtime }: { runtime: LoginRuntime }) {
   const { t } = useTranslation("app")
   const { t: tSettings } = useTranslation("settings")
   const form = useForm<z.infer<typeof formSchema>>({
@@ -36,13 +36,12 @@ export function LoginWithPassword({ runtime }: { runtime?: LoginRuntime }) {
       password: "",
     },
   })
-  const { isValid } = form.formState
 
   const { present } = useModalStack()
   const { dismiss } = useCurrentModal()
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    const res = await loginHandler("credential", runtime ?? "browser", {
+    const res = await loginHandler("credential", runtime, {
       email: values.email,
       password: values.password,
     })
@@ -96,7 +95,18 @@ export function LoginWithPassword({ runtime }: { runtime?: LoginRuntime }) {
           name="password"
           render={({ field }) => (
             <FormItem className="mt-4">
-              <FormLabel>{t("login.password")}</FormLabel>
+              <FormLabel className="flex items-center justify-between">
+                <span>{t("login.password")}</span>
+                <a
+                  href={`${env.VITE_WEB_URL}/forget-password`}
+                  target="_blank"
+                  rel="noreferrer"
+                  tabIndex={-1}
+                  className="block py-1 text-xs text-accent hover:underline"
+                >
+                  {t("login.forget_password.note")}
+                </a>
+              </FormLabel>
               <FormControl>
                 <Input type="password" {...field} />
               </FormControl>
@@ -104,36 +114,29 @@ export function LoginWithPassword({ runtime }: { runtime?: LoginRuntime }) {
             </FormItem>
           )}
         />
-        <a
-          href={`${env.VITE_WEB_URL}/forget-password`}
-          target="_blank"
-          rel="noreferrer"
-          className="block py-1 text-xs text-accent hover:underline"
-        >
-          {t("login.forget_password.note")}
-        </a>
-        <Button
-          type="submit"
-          buttonClassName="text-base !mt-3 w-full"
-          disabled={!isValid}
-          isLoading={form.formState.isSubmitting}
-        >
-          {t("login.continueWith", { provider: t("words.email") })}
-        </Button>
-        <Button
-          buttonClassName="!mt-3 text-base"
-          className="w-full"
-          variant="outline"
-          onClick={() => {
-            dismiss()
-            present({
-              content: RegisterForm,
-              title: t("register.label", { app_name: APP_NAME }),
-            })
-          }}
-        >
-          {t("login.signUp")}
-        </Button>
+        <div className="flex flex-col space-y-3">
+          <Button
+            type="submit"
+            isLoading={form.formState.isSubmitting}
+            disabled={!form.formState.isValid}
+            size="lg"
+          >
+            {t("login.continueWith", { provider: t("words.email") })}
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => {
+              dismiss()
+              present({
+                content: RegisterForm,
+                title: t("register.label", { app_name: APP_NAME }),
+              })
+            }}
+          >
+            {t("login.signUp")}
+          </Button>
+        </div>
       </form>
     </Form>
   )
@@ -224,7 +227,7 @@ function RegisterForm() {
               </FormItem>
             )}
           />
-          <Button disabled={!isValid} type="submit" className="w-full">
+          <Button disabled={!isValid} type="submit" className="w-full" size="lg">
             {t("register.submit")}
           </Button>
         </form>

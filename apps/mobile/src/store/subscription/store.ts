@@ -3,7 +3,7 @@ import { FeedViewType } from "@follow/constants"
 import type { SubscriptionSchema } from "@/src/database/schemas/types"
 import { apiClient } from "@/src/lib/api-fetch"
 import { honoMorph } from "@/src/morph/hono"
-import { storeDbMorph } from "@/src/morph/store-db"
+import { buildSubscriptionDbId, storeDbMorph } from "@/src/morph/store-db"
 import { SubscriptionService } from "@/src/services/subscription"
 
 import { feedActions } from "../feed/store"
@@ -91,9 +91,19 @@ class SubscriptionActions {
       }
     })
   }
-  async upsertMany(subscriptions: SubscriptionModel[]) {
+  async upsertMany(
+    subscriptions: SubscriptionModel[],
+    options: { resetBeforeUpsert?: boolean | FeedViewType } = {},
+  ) {
     const tx = createTransaction()
     tx.store(() => {
+      if (options.resetBeforeUpsert !== undefined) {
+        if (typeof options.resetBeforeUpsert === "boolean") {
+          this.reset()
+        } else {
+          this.resetByView(options.resetBeforeUpsert)
+        }
+      }
       this.upsertManyInSession(subscriptions)
     })
 
@@ -115,21 +125,33 @@ class SubscriptionActions {
       draft.subscriptionIdSet = new Set()
     })
   }
+
+  reset() {
+    immerSet((draft) => {
+      Object.assign(draft, defaultState)
+    })
+  }
 }
 
 class SubscriptionSyncService {
-  async fetch(view: FeedViewType) {
+  async fetch(view?: FeedViewType) {
     const res = await apiClient.subscriptions.$get({
       query: {
         view: view !== undefined ? String(view) : undefined,
       },
     })
 
-    subscriptionActions.resetByView(view)
-
     const { subscriptions, feeds, lists, inboxes } = honoMorph.toSubscription(res.data)
+
+    await SubscriptionService.deleteNotExists(
+      subscriptions.map((s) => buildSubscriptionDbId(s)),
+      view,
+    )
+
     feedActions.upsertMany(feeds)
-    subscriptionActions.upsertMany(subscriptions)
+    subscriptionActions.upsertMany(subscriptions, {
+      resetBeforeUpsert: typeof view === "number" ? view : true,
+    })
     listActions.upsertMany(lists)
 
     inboxActions.upsertMany(inboxes)
@@ -250,7 +272,7 @@ class SubscriptionSyncService {
     })
 
     tx.persist(() => {
-      return SubscriptionService.delete(storeDbMorph.toSubscriptionSchema(subscription))
+      return SubscriptionService.delete(buildSubscriptionDbId(subscription))
     })
 
     tx.request(async () => {

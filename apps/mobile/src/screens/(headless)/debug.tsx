@@ -1,4 +1,5 @@
 import { sleep } from "@follow/utils"
+import { requireNativeModule } from "expo"
 import * as Clipboard from "expo-clipboard"
 import * as FileSystem from "expo-file-system"
 import { Sitemap } from "expo-router/build/views/Sitemap"
@@ -8,6 +9,7 @@ import * as React from "react"
 import { useRef, useState } from "react"
 import {
   Alert,
+  findNodeHandle,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { getDbPath } from "@/src/database"
 import { cookieKey, getCookie, sessionTokenKey, signOut } from "@/src/lib/auth"
 import { loading } from "@/src/lib/loading"
+import { quickLookImage } from "@/src/lib/native"
 import { toast } from "@/src/lib/toast"
 
 interface MenuSection {
@@ -33,7 +36,6 @@ interface MenuItem {
   onPress: () => Promise<void> | void
   textClassName?: string
 }
-
 export default function DebugPanel() {
   const insets = useSafeAreaInsets()
 
@@ -100,11 +102,37 @@ export default function DebugPanel() {
         {
           title: "Toast",
           onPress: () => {
-            toast.show({
-              message: "Hello, world!".repeat(10),
-              type: "success",
-              variant: "center-replace",
-            })
+            toast.error("Hello, world!".repeat(10))
+          },
+        },
+        {
+          title: "Quick Look Image",
+          onPress: () => {
+            quickLookImage([
+              "https://picsum.photos/200/300",
+              "https://picsum.photos/200/300?grayscale",
+              "https://picsum.photos/200/300?blur",
+            ])
+          },
+        },
+
+        {
+          title: "Glow Effect",
+          onPress: () => {
+            requireNativeModule("AppleIntelligenceGlowEffect").show()
+          },
+        },
+        {
+          title: "Hide Glow Effect",
+          onPress: () => {
+            requireNativeModule("AppleIntelligenceGlowEffect").hide()
+          },
+        },
+
+        {
+          title: "Testing Native Scroll To Top",
+          onPress: async () => {
+            await requireNativeModule("Helper").scrollToTop(findNodeHandle(ref.current))
           },
         },
       ],
@@ -121,8 +149,10 @@ export default function DebugPanel() {
     },
   ]
 
+  const ref = useRef<ScrollView>(null)
+
   return (
-    <ScrollView className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+    <ScrollView ref={ref} className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
       {menuSections.map((section) => (
         <View key={section.title}>
           <Text className="mt-4 px-8 text-2xl font-medium text-white">{section.title}</Text>

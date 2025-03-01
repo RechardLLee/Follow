@@ -1,0 +1,14 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": [
+      "SharedWebViewModule",
+      "HelperModule",
+      "ToasterModule",
+      "AppleIntelligenceGlowEffectModule"
+    ]
+  },
+  "android": {
+    "modules": []
+  }
+}
