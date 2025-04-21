@@ -2,7 +2,10 @@ import type { FeedViewType } from "@follow/constants"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { useCallback, useEffect } from "react"
 
-import { useFeedSubscriptionByView } from "../subscription/hooks"
+import { setBadgeCountAsyncWithPermission } from "@/src/lib/permission"
+
+import { useListFeedIds } from "../list/hooks"
+import { useSubscriptionByView } from "../subscription/hooks"
 import { unreadSyncService, useUnreadStore } from "./store"
 
 export const usePrefetchUnread = () => {
@@ -22,37 +25,41 @@ export const useAutoMarkAsRead = (entryId: string) => {
   }, [entryId, mutate])
 }
 
+export function useUnreadCountBadge() {
+  const unreadCount = useUnreadCounts()
+  useEffect(() => {
+    setBadgeCountAsyncWithPermission(unreadCount)
+  }, [unreadCount])
+}
+
 export const useUnreadCount = (subscriptionId: string) => {
   return useUnreadStore((state) => state.data[subscriptionId])
 }
 
-export const useUnreadCounts = (subscriptionIds: string[]): number => {
+export const useListUnreadCount = (listId: string) => {
+  const feedIds = useListFeedIds(listId)
+  return useUnreadCounts(feedIds ?? [])
+}
+
+export const useUnreadCounts = (subscriptionIds?: string[]): number => {
   return useUnreadStore(
     useCallback(
       (state) => {
+        if (!subscriptionIds)
+          return Object.values(state.data).reduce((acc, unread) => acc + unread, 0)
+
         let count = 0
         for (const subscriptionId of subscriptionIds) {
           count += state.data[subscriptionId] ?? 0
         }
         return count
       },
-      [subscriptionIds],
+      [subscriptionIds?.toString()],
     ),
   )
 }
 
 export const useUnreadCountByView = (view: FeedViewType) => {
-  const subscriptionIds = useFeedSubscriptionByView(view)
-  return useUnreadStore(
-    useCallback(
-      (state) => {
-        let count = 0
-        for (const subscriptionId of subscriptionIds) {
-          count += state.data[subscriptionId] ?? 0
-        }
-        return count
-      },
-      [subscriptionIds],
-    ),
-  )
+  const subscriptionIds = useSubscriptionByView(view)
+  return useUnreadCounts(subscriptionIds)
 }

@@ -1,4 +1,4 @@
-import type { AppType, languageSchema, users } from "@follow/shared/hono"
+import type { AppType, languageSchema, users } from "@follow/shared"
 import type { hc } from "hono/client"
 import type { z } from "zod"
 
@@ -6,7 +6,13 @@ declare const _apiClient: ReturnType<typeof hc<AppType>>
 
 export type UserModel = Omit<
   typeof users.$inferSelect,
-  "createdAt" | "updatedAt" | "email" | "emailVerified" | "twoFactorEnabled" | "isAnonymous"
+  | "createdAt"
+  | "updatedAt"
+  | "email"
+  | "emailVerified"
+  | "twoFactorEnabled"
+  | "isAnonymous"
+  | "suspended"
 > & {
   email?: string
 }
@@ -119,7 +125,7 @@ export type ActionModel = {
   }[][]
   result: {
     disabled?: boolean
-    translation?: string
+    translation?: boolean | string
     summary?: boolean
     readability?: boolean
     silence?: boolean
@@ -154,4 +160,16 @@ export type RSSHubModel = Omit<
   baseUrl?: string | null
   accessKey?: string | null
   userCount?: number
+}
+
+type Optional<T> = {
+  [K in keyof T]?: T[K]
+}
+
+export type EntryReadHistoriesModel = Optional<
+  ExtractBizResponse<
+    (typeof _apiClient.entries)["read-histories"][":id"]["$get"]
+  >["data"]["entryReadHistories"]
+> & {
+  entryId: string
 }

@@ -1,26 +1,54 @@
 import { expoClient } from "@better-auth/expo/client"
-import { env } from "@follow/shared/src/env"
+import type { authPlugins } from "@follow/shared/src/hono"
 import { useQuery } from "@tanstack/react-query"
-import { twoFactorClient } from "better-auth/client/plugins"
+import { inferAdditionalFields, twoFactorClient } from "better-auth/client/plugins"
 import { createAuthClient } from "better-auth/react"
-import type * as better_call from "better-call"
+import type { BetterAuthClientPlugin } from "better-auth/types"
 import * as SecureStore from "expo-secure-store"
 
+import { isNewUserQueryKey } from "../store/user/constants"
 import { whoamiQueryKey } from "../store/user/hooks"
+import { proxyEnv } from "./proxy-env"
 import { queryClient } from "./query-client"
 
 const storagePrefix = "follow_auth"
 export const cookieKey = `${storagePrefix}_cookie`
 export const sessionTokenKey = "__Secure-better-auth.session_token"
 
+type AuthPlugin = (typeof authPlugins)[number]
+
+const serverPlugins = [
+  {
+    id: "customGetProviders",
+    $InferServerPlugin: {} as Extract<AuthPlugin, { id: "customGetProviders" }>,
+  },
+  {
+    id: "getAccountInfo",
+    $InferServerPlugin: {} as Extract<AuthPlugin, { id: "getAccountInfo" }>,
+  },
+  {
+    id: "oneTimeToken",
+    $InferServerPlugin: {} as Extract<AuthPlugin, { id: "oneTimeToken" }>,
+  },
+  inferAdditionalFields({
+    user: {
+      handle: {
+        type: "string",
+        required: false,
+      },
+    },
+  }),
+] satisfies BetterAuthClientPlugin[]
+
 const authClient = createAuthClient({
-  baseURL: `${env.VITE_API_URL}/better-auth`,
+  baseURL: `${proxyEnv.API_URL}/better-auth`,
   plugins: [
     twoFactorClient(),
     {
       id: "getProviders",
       $InferServerPlugin: {} as (typeof authPlugins)[0],
     },
+    ...serverPlugins,
     expoClient({
       scheme: "follow",
       storagePrefix,
@@ -29,6 +57,7 @@ const authClient = createAuthClient({
           SecureStore.setItem(key, value)
           if (key === cookieKey) {
             queryClient.invalidateQueries({ queryKey: whoamiQueryKey })
+            queryClient.invalidateQueries({ queryKey: isNewUserQueryKey })
           }
         },
         getItem: SecureStore.getItem,
@@ -38,7 +67,24 @@ const authClient = createAuthClient({
 })
 
 // @keep-sorted
-export const { getCookie, getProviders, signIn, signOut, twoFactor, useSession } = authClient
+export const {
+  changeEmail,
+  changePassword,
+  forgetPassword,
+  getAccountInfo,
+  getCookie,
+  getProviders,
+  linkSocial,
+  oneTimeToken,
+  sendVerificationEmail,
+  signIn,
+  signOut,
+  signUp,
+  twoFactor,
+  unlinkAccount,
+  updateUser,
+  useSession,
+} = authClient
 
 export interface AuthProvider {
   name: string
@@ -54,40 +100,8 @@ export const useAuthProviders = () => {
   })
 }
 
-// eslint-disable-next-line unused-imports/no-unused-vars
-declare const authPlugins: {
-  id: "getProviders"
-  endpoints: {
-    getProviders: {
-      <
-        C extends [
-          (
-            | better_call.Context<
-                "/get-providers",
-                {
-                  method: "GET"
-                }
-              >
-            | undefined
-          )?,
-        ],
-      >(
-        ...ctx: C
-      ): Promise<
-        C extends [
-          {
-            asResponse: true
-          },
-        ]
-          ? Response
-          : Record<string, AuthProvider>
-      >
-      path: "/get-providers"
-      options: {
-        method: "GET"
-      }
-      method: better_call.Method | better_call.Method[]
-      headers: Headers
-    }
-  }
-}[]
+export function isAuthCodeValid(authCode: string) {
+  return (
+    authCode.length === 6 && !Array.from(authCode).some((c) => Number.isNaN(Number.parseInt(c)))
+  )
+}

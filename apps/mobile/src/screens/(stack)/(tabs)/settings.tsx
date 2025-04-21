@@ -1,122 +1,52 @@
-import { getDefaultHeaderHeight } from "@react-navigation/elements"
-import { useIsFocused } from "@react-navigation/native"
-import { createNativeStackNavigator } from "@react-navigation/native-stack"
-import { createContext, useCallback, useContext, useEffect, useState } from "react"
-import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView } from "react-native"
-import { findNodeHandle, Text, UIManager } from "react-native"
+import { useContext } from "react"
+import { useTranslation } from "react-i18next"
+import type { ScrollView } from "react-native"
+import { Text, TouchableOpacity, View } from "react-native"
 import type { SharedValue } from "react-native-reanimated"
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated"
+import Animated, { useAnimatedStyle } from "react-native-reanimated"
 import { useSafeAreaFrame, useSafeAreaInsets } from "react-native-safe-area-context"
-import { useEventCallback } from "usehooks-ts"
 
-import { ReAnimatedScrollView } from "@/src/components/common/AnimatedComponents"
 import { BlurEffect } from "@/src/components/common/BlurEffect"
-import { BottomTabBarBackgroundContext } from "@/src/components/layouts/tabbar/contexts/BottomTabBarBackgroundContext"
-import { SetBottomTabBarVisibleContext } from "@/src/components/layouts/tabbar/contexts/BottomTabBarVisibleContext"
-import {
-  useBottomTabBarHeight,
-  useRegisterNavigationScrollView,
-} from "@/src/components/layouts/tabbar/hooks"
-import { SettingRoutes } from "@/src/modules/settings/routes"
+import { useRegisterNavigationScrollView } from "@/src/components/layouts/tabbar/hooks"
+import { getDefaultHeaderHeight } from "@/src/components/layouts/utils"
+import { SafeNavigationScrollView } from "@/src/components/layouts/views/SafeNavigationScrollView"
+import { Settings1CuteFiIcon } from "@/src/icons/settings_1_cute_fi"
+import { Settings1CuteReIcon } from "@/src/icons/settings_1_cute_re"
+import type { TabScreenComponent } from "@/src/lib/navigation/bottom-tab/types"
+import { useNavigation } from "@/src/lib/navigation/hooks"
+import { ScreenItemContext } from "@/src/lib/navigation/ScreenItemContext"
+import { EditProfileScreen } from "@/src/modules/settings/routes/EditProfile"
 import { SettingsList } from "@/src/modules/settings/SettingsList"
 import { UserHeaderBanner } from "@/src/modules/settings/UserHeaderBanner"
+import { useWhoami } from "@/src/store/user/hooks"
 
-const Stack = createNativeStackNavigator()
-const OutIsFocused = createContext(false)
-export default function SettingsX() {
-  const isFocused = useIsFocused()
-
-  const setTabBarVisible = useContext(SetBottomTabBarVisibleContext)
-  return (
-    <OutIsFocused.Provider value={isFocused}>
-      <Stack.Navigator
-        initialRouteName="Settings"
-        screenListeners={{
-          state: ({ data: { state } }) => {
-            if (state.index !== 0) {
-              setTabBarVisible(false)
-            } else {
-              setTabBarVisible(true)
-            }
-          },
-        }}
-      >
-        <Stack.Screen name="Settings" component={Settings} options={{ headerShown: false }} />
-        {SettingRoutes(Stack)}
-      </Stack.Navigator>
-    </OutIsFocused.Provider>
-  )
-}
-
-function Settings() {
+export function Settings() {
   const insets = useSafeAreaInsets()
-  const isFocused = useContext(OutIsFocused)
-  const { opacity } = useContext(BottomTabBarBackgroundContext)
-  const tabBarHeight = useBottomTabBarHeight()
 
-  const calculateOpacity = useCallback(
-    (contentHeight: number, viewportHeight: number, scrollY: number) => {
-      const distanceFromBottom = contentHeight - viewportHeight - scrollY
-      const fadeThreshold = 20
+  const screenContext = useContext(ScreenItemContext)
 
-      if (distanceFromBottom <= fadeThreshold) {
-        const newOpacity = Math.max(0, distanceFromBottom / fadeThreshold)
-        opacity.value = withTiming(newOpacity, { duration: 50 })
-      } else {
-        opacity.value = withTiming(1, { duration: 50 })
-      }
-    },
-    [opacity],
-  )
-  const [contentSize, setContentSize] = useState({ height: 0, width: 0 })
-  const registerNavigationScrollView = useRegisterNavigationScrollView<ScrollView>()
-  useEffect(() => {
-    if (!isFocused) return
-    const scrollView = registerNavigationScrollView.current
+  const whoami = useWhoami()
 
-    if (contentSize.height === 0) return
-
-    if (scrollView) {
-      const node = findNodeHandle(scrollView)
-      if (node) {
-        UIManager.measure(node, (x, y, width, height) => {
-          calculateOpacity(contentSize.height, height, 0)
-        })
-      }
-    }
-  }, [opacity, isFocused, calculateOpacity, contentSize.height, registerNavigationScrollView])
-
-  const animatedScrollY = useSharedValue(0)
-  const handleScroll = useEventCallback(
-    ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { contentOffset, contentSize, layoutMeasurement } = nativeEvent
-      calculateOpacity(contentSize.height, layoutMeasurement.height, contentOffset.y)
-      animatedScrollY.value = contentOffset.y
-    },
-  )
+  const scrollViewRef = useRegisterNavigationScrollView<ScrollView>()
 
   return (
     <>
-      <ReAnimatedScrollView
-        scrollEventThrottle={16}
-        onScroll={handleScroll}
-        ref={registerNavigationScrollView}
-        onContentSizeChange={(w, h) => {
-          setContentSize({ height: h, width: w })
-        }}
+      <SafeNavigationScrollView
+        ref={scrollViewRef}
         style={{ paddingTop: insets.top }}
         className="bg-system-grouped-background flex-1"
-        scrollIndicatorInsets={{ bottom: tabBarHeight - insets.bottom }}
+        contentViewClassName="-mt-24"
       >
-        <UserHeaderBanner scrollY={animatedScrollY} />
+        <UserHeaderBanner scrollY={screenContext.reAnimatedScrollY} userId={whoami?.id} />
 
-        <SettingsList scrollRef={registerNavigationScrollView} />
-      </ReAnimatedScrollView>
-      <SettingHeader scrollY={animatedScrollY} />
+        <SettingsList />
+      </SafeNavigationScrollView>
+      <SettingHeader scrollY={screenContext.reAnimatedScrollY} />
     </>
   )
 }
 const SettingHeader = ({ scrollY }: { scrollY: SharedValue<number> }) => {
+  const { t } = useTranslation()
   const frame = useSafeAreaFrame()
   const insets = useSafeAreaInsets()
   const headerHeight = getDefaultHeaderHeight(frame, false, insets.top)
@@ -128,15 +58,41 @@ const SettingHeader = ({ scrollY }: { scrollY: SharedValue<number> }) => {
     }
   })
 
+  const whoami = useWhoami()
   return (
-    <Animated.View
-      pointerEvents="none"
-      className="border-b-hairline border-opaque-separator absolute inset-x-0 top-0 flex-row items-center px-4 pb-2 pt-safe"
-      style={styles}
+    <View className="pt-safe absolute inset-x-0 top-0" style={{ height: headerHeight }}>
+      <Animated.View
+        pointerEvents="none"
+        className="border-b-hairline border-opaque-separator absolute inset-x-0 top-0 flex-row items-center px-4 pb-2"
+        style={styles}
+      >
+        <BlurEffect />
+        <Text className="text-label flex-1 text-center text-[17px] font-semibold">
+          {t("tabs.settings")}
+        </Text>
+      </Animated.View>
+      {!!whoami?.id && <EditProfileButton />}
+    </View>
+  )
+}
+
+const EditProfileButton = () => {
+  const { t } = useTranslation("common")
+  const navigation = useNavigation()
+  return (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      className="absolute bottom-2 right-4 overflow-hidden rounded-full px-3 py-1.5"
+      onPress={() => navigation.pushControllerView(EditProfileScreen)}
     >
       <BlurEffect />
-
-      <Text className="text-label flex-1 text-center text-[17px] font-semibold">Settings</Text>
-    </Animated.View>
+      <Text className="text-label text-sm font-medium">{t("words.edit")}</Text>
+    </TouchableOpacity>
   )
+}
+
+export const SettingsTabScreen: TabScreenComponent = Settings
+SettingsTabScreen.tabBarIcon = ({ focused, color }) => {
+  const Icon = !focused ? Settings1CuteReIcon : Settings1CuteFiIcon
+  return <Icon color={color} width={24} height={24} />
 }

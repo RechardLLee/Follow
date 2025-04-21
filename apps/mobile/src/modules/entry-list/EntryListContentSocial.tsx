@@ -1,33 +1,43 @@
 import type { ListRenderItemInfo } from "@shopify/flash-list"
 import type { ElementRef } from "react"
-import { forwardRef, useCallback, useMemo } from "react"
+import { forwardRef, useCallback, useImperativeHandle, useMemo } from "react"
 import { View } from "react-native"
+
+import { usePrefetchEntryTranslation } from "@/src/store/translation/hooks"
 
 import { useFetchEntriesControls } from "../screen/atoms"
 import { TimelineSelectorList } from "../screen/TimelineSelectorList"
-import { useOnViewableItemsChanged } from "./hooks"
+import { EntryListFooter } from "./EntryListFooter"
+import { useOnViewableItemsChanged, usePagerListPerformanceHack } from "./hooks"
 import { ItemSeparatorFullWidth } from "./ItemSeparator"
 import { EntrySocialItem } from "./templates/EntrySocialItem"
 
 export const EntryListContentSocial = forwardRef<
   ElementRef<typeof TimelineSelectorList>,
-  { entryIds: string[]; active?: boolean }
->(({ entryIds, active }, ref) => {
-  const { fetchNextPage, isFetching, refetch, isRefetching, isLoading } = useFetchEntriesControls()
+  { entryIds: string[] | null; active?: boolean }
+>(({ entryIds, active }, forwardRef) => {
+  const { fetchNextPage, isFetching, refetch, isRefetching, hasNextPage } =
+    useFetchEntriesControls()
 
+  const { onScroll: hackOnScroll, ref, style: hackStyle } = usePagerListPerformanceHack()
+  useImperativeHandle(forwardRef, () => ref.current!)
+  // eslint-disable-next-line @eslint-react/hooks-extra/no-unnecessary-use-callback
   const renderItem = useCallback(
-    ({ item: id }: ListRenderItemInfo<string>) => <EntrySocialItem key={id} entryId={id} />,
+    ({ item: id }: ListRenderItemInfo<string>) => <EntrySocialItem entryId={id} />,
     [],
   )
 
   const ListFooterComponent = useMemo(
-    () => (isFetching ? <EntryItemSkeleton /> : null),
-    [isFetching],
+    () => (hasNextPage ? <EntryItemSkeleton /> : <EntryListFooter />),
+    [hasNextPage],
   )
 
-  const { onViewableItemsChanged, onScroll } = useOnViewableItemsChanged({
-    disabled: active === false || isLoading,
+  const { onViewableItemsChanged, onScroll, viewableItems } = useOnViewableItemsChanged({
+    disabled: active === false || isFetching,
+    onScroll: hackOnScroll,
   })
+
+  usePrefetchEntryTranslation({ entryIds: active ? viewableItems.map((item) => item.key) : [] })
 
   return (
     <TimelineSelectorList
@@ -45,6 +55,7 @@ export const EntryListContentSocial = forwardRef<
       onScroll={onScroll}
       ItemSeparatorComponent={ItemSeparatorFullWidth}
       ListFooterComponent={ListFooterComponent}
+      style={hackStyle}
     />
   )
 })

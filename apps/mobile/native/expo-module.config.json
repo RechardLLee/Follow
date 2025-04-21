@@ -5,7 +5,15 @@
       "SharedWebViewModule",
       "HelperModule",
       "ToasterModule",
-      "AppleIntelligenceGlowEffectModule"
+      "AppleIntelligenceGlowEffectModule",
+      "FollowNative.GaleriaModule",
+      "GaleriaAccessoryModule",
+      "TabBarModule",
+      "TabScreenModule",
+      "TabBarPortalModule",
+      "EnhancePagerViewModule",
+      "EnhancePageViewModule",
+      "ItemPressableModule"
     ]
   },
   "android": {

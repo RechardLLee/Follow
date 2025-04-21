@@ -1,29 +1,49 @@
+import type { FeedViewType } from "@follow/constants"
 import ImageEditor from "@react-native-community/image-editor"
-import { setImageAsync } from "expo-clipboard"
+import { requireNativeModule } from "expo"
 import * as FileSystem from "expo-file-system"
 import { saveToLibraryAsync } from "expo-media-library"
 import { shareAsync } from "expo-sharing"
 import type { PropsWithChildren } from "react"
-import { Image } from "react-native"
+import { useRef } from "react"
+import { useTranslation } from "react-i18next"
+import type { View } from "react-native"
+import { findNodeHandle, Image, Pressable } from "react-native"
 
+import { isIOS } from "@/src/lib/platform"
 import { toast } from "@/src/lib/toast"
-import { useSelectedView } from "@/src/modules/screen/atoms"
 import { useIsEntryStarred } from "@/src/store/collection/hooks"
 import { collectionSyncService } from "@/src/store/collection/store"
 import { useEntry } from "@/src/store/entry/hooks"
+import { unreadSyncService } from "@/src/store/unread/store"
 
 import { ContextMenu } from "../context-menu"
 
 type ImageContextMenuProps = PropsWithChildren<{
   imageUrl?: string
   entryId?: string
+  view?: FeedViewType
 }>
 
-export const ImageContextMenu = ({ imageUrl, entryId, children }: ImageContextMenuProps) => {
+interface IOSNativeImageActions {
+  saveImageByHandle: (handle: number) => void
+  shareImageByHandle: (handle: number, url: string) => void
+  getBase64FromImageViewByHandle: (handle: number) => Promise<{ base64: string }>
+  copyImageByHandle: (handle: number) => void
+}
+
+const getIOSNativeImageActions = () => {
+  return requireNativeModule<IOSNativeImageActions>("Helper")
+}
+
+export const ImageContextMenu = ({ imageUrl, entryId, children, view }: ImageContextMenuProps) => {
+  const { t } = useTranslation()
   const entry = useEntry(entryId!)
   const feedId = entry?.feedId
-  const view = useSelectedView()
+
   const isEntryStarred = useIsEntryStarred(entryId!)
+
+  const contextMenuTriggerRef = useRef<View>(null)
 
   if (!imageUrl || !entry) {
     return children
@@ -57,58 +77,79 @@ export const ImageContextMenu = ({ imageUrl, entryId, children }: ImageContextMe
       cleanup: () => FileSystem.deleteAsync(filePath),
     }
   }
+
   return (
     <ContextMenu.Root>
-      <ContextMenu.Trigger>{children}</ContextMenu.Trigger>
+      <ContextMenu.Trigger>
+        {/* Must wrap a NOT <View /> Component, because <View />'s handle can found native view in native. May be this is a react native bug */}
+        <Pressable ref={contextMenuTriggerRef}>{children}</Pressable>
+      </ContextMenu.Trigger>
+
       <ContextMenu.Content>
         {entryId && feedId && view !== undefined && (
-          <ContextMenu.Item
-            key="Star"
-            onSelect={() => {
-              if (isEntryStarred) {
-                collectionSyncService.unstarEntry(entryId)
-                toast.info("Unstarred")
-              } else {
-                collectionSyncService.starEntry({
-                  feedId,
-                  entryId,
-                  view,
-                })
-                toast.info("Starred")
-              }
-            }}
-          >
-            <ContextMenu.ItemIcon
-              ios={{
-                name: isEntryStarred ? "star.slash" : "star",
+          <>
+            <ContextMenu.Item
+              key="MarkAsRead"
+              onSelect={() => {
+                entry.read
+                  ? unreadSyncService.markEntryAsUnread(entryId)
+                  : unreadSyncService.markEntryAsRead(entryId)
               }}
-            />
-            <ContextMenu.ItemTitle>{isEntryStarred ? "Unstar" : "Star"}</ContextMenu.ItemTitle>
-          </ContextMenu.Item>
+            >
+              <ContextMenu.ItemTitle>
+                {entry.read ? t("operation.mark_as_unread") : t("operation.mark_as_read")}
+              </ContextMenu.ItemTitle>
+              <ContextMenu.ItemIcon
+                ios={{
+                  name: entry.read ? "circle.fill" : "checkmark.circle",
+                }}
+              />
+            </ContextMenu.Item>
+            <ContextMenu.Item
+              key="Star"
+              onSelect={() => {
+                if (isEntryStarred) {
+                  collectionSyncService.unstarEntry(entryId)
+                  toast.success("Unstarred")
+                } else {
+                  collectionSyncService.starEntry({
+                    feedId,
+                    entryId,
+                    view,
+                  })
+                  toast.success("Starred")
+                }
+              }}
+            >
+              <ContextMenu.ItemIcon
+                ios={{
+                  name: isEntryStarred ? "star.slash" : "star",
+                }}
+              />
+              <ContextMenu.ItemTitle>
+                {isEntryStarred ? t("operation.unstar") : t("operation.star")}
+              </ContextMenu.ItemTitle>
+            </ContextMenu.Item>
+          </>
         )}
 
         <ContextMenu.Item
-          key="Copy"
-          onSelect={async () => {
-            const croppedImage = await getImageData()
-            await setImageAsync(croppedImage.base64)
-          }}
-        >
-          <ContextMenu.ItemIcon
-            ios={{
-              name: "document.on.document",
-            }}
-          />
-          <ContextMenu.ItemTitle>Copy</ContextMenu.ItemTitle>
-        </ContextMenu.Item>
-        <ContextMenu.Item
           key="Save"
           onSelect={async () => {
-            const croppedImage = await getImageData()
-            const { filePath, cleanup } = await createTempFile(croppedImage.base64)
-            await saveToLibraryAsync(filePath)
-            toast.success("Image saved to library")
-            cleanup()
+            if (isIOS) {
+              const handle = findNodeHandle(contextMenuTriggerRef.current)
+
+              if (!handle) {
+                return
+              }
+              getIOSNativeImageActions().saveImageByHandle(handle)
+            } else {
+              const croppedImage = await getImageData()
+              const { filePath, cleanup } = await createTempFile(croppedImage.base64)
+              await saveToLibraryAsync(filePath)
+              toast.success("Image saved to library")
+              cleanup()
+            }
           }}
         >
           <ContextMenu.ItemTitle>Save to Album</ContextMenu.ItemTitle>
@@ -121,13 +162,22 @@ export const ImageContextMenu = ({ imageUrl, entryId, children }: ImageContextMe
         <ContextMenu.Item
           key="Share"
           onSelect={async () => {
-            const croppedImage = await getImageData()
-            const { filePath, cleanup } = await createTempFile(croppedImage.base64)
-            await shareAsync(filePath, {
-              dialogTitle: "Share Image",
-            })
+            if (isIOS) {
+              const handle = findNodeHandle(contextMenuTriggerRef.current)
 
-            cleanup()
+              if (!handle) {
+                return
+              }
+              getIOSNativeImageActions().shareImageByHandle(handle, imageUrl)
+            } else {
+              const croppedImage = await getImageData()
+              const { filePath, cleanup } = await createTempFile(croppedImage.base64)
+              await shareAsync(filePath, {
+                dialogTitle: "Share Image",
+              })
+
+              cleanup()
+            }
           }}
         >
           <ContextMenu.ItemIcon
@@ -135,7 +185,7 @@ export const ImageContextMenu = ({ imageUrl, entryId, children }: ImageContextMe
               name: "square.and.arrow.up",
             }}
           />
-          <ContextMenu.ItemTitle>Share</ContextMenu.ItemTitle>
+          <ContextMenu.ItemTitle>{t("operation.share")}</ContextMenu.ItemTitle>
         </ContextMenu.Item>
       </ContextMenu.Content>
     </ContextMenu.Root>

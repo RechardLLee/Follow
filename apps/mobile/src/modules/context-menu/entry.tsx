@@ -1,33 +1,43 @@
-import { router } from "expo-router"
+import type { FeedViewType } from "@follow/constants"
+import { PortalProvider } from "@gorhom/portal"
 import type { PropsWithChildren } from "react"
 import { useCallback } from "react"
+import { useTranslation } from "react-i18next"
 import { Share, Text, View } from "react-native"
 
 import {
   EntryContentWebView,
-  setWebViewEntry,
+  preloadWebViewEntry,
 } from "@/src/components/native/webview/EntryContentWebView"
 import { ContextMenu } from "@/src/components/ui/context-menu"
-import { PortalHost } from "@/src/components/ui/portal"
-import { openLink } from "@/src/lib/native"
+import { useNavigation } from "@/src/lib/navigation/hooks"
 import { toast } from "@/src/lib/toast"
-import { useSelectedView } from "@/src/modules/screen/atoms"
+import { EntryDetailScreen } from "@/src/screens/(stack)/entries/[entryId]/EntryDetailScreen"
 import { useIsEntryStarred } from "@/src/store/collection/hooks"
 import { collectionSyncService } from "@/src/store/collection/store"
 import { useEntry } from "@/src/store/entry/hooks"
 import { unreadSyncService } from "@/src/store/unread/store"
 
-export const EntryItemContextMenu = ({ id, children }: PropsWithChildren<{ id: string }>) => {
+export const EntryItemContextMenu = ({
+  id,
+  children,
+  view,
+}: PropsWithChildren<{ id: string; view: FeedViewType }>) => {
+  const { t } = useTranslation()
   const entry = useEntry(id)
   const feedId = entry?.feedId
-  const view = useSelectedView()
   const isEntryStarred = useIsEntryStarred(id)
 
+  const navigation = useNavigation()
   const handlePressPreview = useCallback(() => {
-    if (!entry) return
-    setWebViewEntry(entry)
-    router.push(`/entries/${id}`)
-  }, [entry, id])
+    if (entry) {
+      preloadWebViewEntry(entry)
+      navigation.pushControllerView(EntryDetailScreen, {
+        entryId: id,
+        view: view!,
+      })
+    }
+  }, [entry, id, navigation, view])
 
   if (!entry) return null
 
@@ -38,27 +48,31 @@ export const EntryItemContextMenu = ({ id, children }: PropsWithChildren<{ id: s
       <ContextMenu.Content>
         <ContextMenu.Preview size="STRETCH" onPress={handlePressPreview}>
           {() => (
-            <PortalHost>
+            <PortalProvider>
               <View className="bg-system-background flex-1">
                 <Text className="text-label mt-5 p-4 text-2xl font-semibold" numberOfLines={2}>
                   {entry.title?.trim()}
                 </Text>
                 <EntryContentWebView entry={entry} />
               </View>
-            </PortalHost>
+            </PortalProvider>
           )}
         </ContextMenu.Preview>
 
         <ContextMenu.Item
           key="MarkAsRead"
           onSelect={() => {
-            unreadSyncService.markEntryAsRead(id)
+            entry.read
+              ? unreadSyncService.markEntryAsUnread(id)
+              : unreadSyncService.markEntryAsRead(id)
           }}
         >
-          <ContextMenu.ItemTitle>Mark as Read</ContextMenu.ItemTitle>
+          <ContextMenu.ItemTitle>
+            {entry.read ? t("operation.mark_as_unread") : t("operation.mark_as_read")}
+          </ContextMenu.ItemTitle>
           <ContextMenu.ItemIcon
             ios={{
-              name: "checkmark",
+              name: entry.read ? "circle.fill" : "checkmark.circle",
             }}
           />
         </ContextMenu.Item>
@@ -69,14 +83,14 @@ export const EntryItemContextMenu = ({ id, children }: PropsWithChildren<{ id: s
             onSelect={() => {
               if (isEntryStarred) {
                 collectionSyncService.unstarEntry(id)
-                toast.info("Unstarred")
+                toast.success("Unstarred")
               } else {
                 collectionSyncService.starEntry({
                   feedId,
                   entryId: id,
                   view,
                 })
-                toast.info("Starred")
+                toast.success("Starred")
               }
             }}
           >
@@ -85,24 +99,9 @@ export const EntryItemContextMenu = ({ id, children }: PropsWithChildren<{ id: s
                 name: isEntryStarred ? "star.slash" : "star",
               }}
             />
-            <ContextMenu.ItemTitle>{isEntryStarred ? "Unstar" : "Star"}</ContextMenu.ItemTitle>
-          </ContextMenu.Item>
-        )}
-
-        {entry.url && (
-          <ContextMenu.Item
-            key="OpenLink"
-            onSelect={() => {
-              if (!entry.url) return
-              openLink(entry.url)
-            }}
-          >
-            <ContextMenu.ItemIcon
-              ios={{
-                name: "link",
-              }}
-            />
-            <ContextMenu.ItemTitle>Open Link</ContextMenu.ItemTitle>
+            <ContextMenu.ItemTitle>
+              {isEntryStarred ? t("operation.unstar") : t("operation.star")}
+            </ContextMenu.ItemTitle>
           </ContextMenu.Item>
         )}
 
@@ -123,7 +122,7 @@ export const EntryItemContextMenu = ({ id, children }: PropsWithChildren<{ id: s
                 name: "square.and.arrow.up",
               }}
             />
-            <ContextMenu.ItemTitle>Share</ContextMenu.ItemTitle>
+            <ContextMenu.ItemTitle>{t("operation.share")}</ContextMenu.ItemTitle>
           </ContextMenu.Item>
         )}
       </ContextMenu.Content>

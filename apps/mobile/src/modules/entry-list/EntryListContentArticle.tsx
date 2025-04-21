@@ -1,39 +1,50 @@
+import type { FeedViewType } from "@follow/constants"
 import type { ListRenderItemInfo } from "@shopify/flash-list"
 import type { ElementRef } from "react"
-import { forwardRef, useCallback, useMemo } from "react"
+import { forwardRef, useCallback, useImperativeHandle, useMemo } from "react"
 import { View } from "react-native"
 
 import { usePlayingUrl } from "@/src/lib/player"
+import { usePrefetchEntryTranslation } from "@/src/store/translation/hooks"
 
 import { useFetchEntriesControls } from "../screen/atoms"
 import { TimelineSelectorList } from "../screen/TimelineSelectorList"
-import { useOnViewableItemsChanged } from "./hooks"
+import { EntryListFooter } from "./EntryListFooter"
+import { useOnViewableItemsChanged, usePagerListPerformanceHack } from "./hooks"
 import { ItemSeparator } from "./ItemSeparator"
 import { EntryNormalItem } from "./templates/EntryNormalItem"
 
 export const EntryListContentArticle = forwardRef<
   ElementRef<typeof TimelineSelectorList>,
-  { entryIds: string[]; active?: boolean }
->(({ entryIds, active }, ref) => {
+  { entryIds: string[] | null; active?: boolean; view: FeedViewType }
+>(({ entryIds, active, view }, forwardRef) => {
   const playingAudioUrl = usePlayingUrl()
 
-  const { fetchNextPage, isFetching, refetch, isRefetching, isLoading } = useFetchEntriesControls()
+  const { fetchNextPage, isFetching, refetch, isRefetching, hasNextPage } =
+    useFetchEntriesControls()
 
   const renderItem = useCallback(
     ({ item: id, extraData }: ListRenderItemInfo<string>) => (
-      <EntryNormalItem key={id} entryId={id} extraData={extraData} />
+      <EntryNormalItem entryId={id} extraData={extraData} view={view} />
     ),
-    [],
+    [view],
   )
 
   const ListFooterComponent = useMemo(
-    () => (isFetching ? <EntryItemSkeleton /> : null),
-    [isFetching],
+    () => (hasNextPage ? <EntryItemSkeleton /> : <EntryListFooter />),
+    [hasNextPage],
   )
 
-  const { onViewableItemsChanged, onScroll } = useOnViewableItemsChanged({
-    disabled: active === false || isLoading,
+  const { onScroll: hackOnScroll, ref, style: hackStyle } = usePagerListPerformanceHack()
+
+  const { onViewableItemsChanged, onScroll, viewableItems } = useOnViewableItemsChanged({
+    disabled: active === false || isFetching,
+    onScroll: hackOnScroll,
   })
+
+  useImperativeHandle(forwardRef, () => ref.current!)
+
+  usePrefetchEntryTranslation({ entryIds: active ? viewableItems.map((item) => item.key) : [] })
 
   return (
     <TimelineSelectorList
@@ -42,7 +53,7 @@ export const EntryListContentArticle = forwardRef<
       isRefetching={isRefetching}
       data={entryIds}
       extraData={playingAudioUrl}
-      keyExtractor={(id) => id}
+      keyExtractor={defaultKeyExtractor}
       estimatedItemSize={100}
       renderItem={renderItem}
       onEndReached={fetchNextPage}
@@ -50,13 +61,16 @@ export const EntryListContentArticle = forwardRef<
       onViewableItemsChanged={onViewableItemsChanged}
       ItemSeparatorComponent={ItemSeparator}
       ListFooterComponent={ListFooterComponent}
+      style={hackStyle}
     />
   )
 })
 
+const defaultKeyExtractor = (id: string) => id
+
 export function EntryItemSkeleton() {
   return (
-    <View className="bg-secondary-system-grouped-background flex flex-row items-center p-4">
+    <View className="bg-system-background flex flex-row items-center p-4">
       <View className="flex flex-1 flex-col gap-2">
         <View className="flex flex-row gap-2">
           {/* Icon skeleton */}

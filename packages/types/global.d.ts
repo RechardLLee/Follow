@@ -9,7 +9,8 @@ declare global {
       ? { [K in keyof T]: NonUndefined<T[K]> }
       : T
 
-  export const APP_NAME = "Follow"
+  export const APP_NAME = "Folo"
+  type NilValue = null | undefined | false | ""
 }
 
 export {}

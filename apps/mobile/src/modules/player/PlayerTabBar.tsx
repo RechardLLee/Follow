@@ -1,7 +1,6 @@
 import { cn } from "@follow/utils"
-import { Image } from "expo-image"
-import { router, usePathname } from "expo-router"
-import { useEffect } from "react"
+import { useAtomValue } from "jotai"
+import { useContext, useEffect } from "react"
 import { Pressable, Text, View } from "react-native"
 import Animated, {
   interpolate,
@@ -10,21 +9,30 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated"
 
+import { Image } from "@/src/components/ui/image/Image"
+import { BottomTabContext } from "@/src/lib/navigation/bottom-tab/BottomTabContext"
+import { useNavigation } from "@/src/lib/navigation/hooks"
 import { useActiveTrack } from "@/src/lib/player"
+import { PlayerScreen } from "@/src/screens/PlayerScreen"
 import { usePrefetchImageColors } from "@/src/store/image/hooks"
 
 import { PlayPauseButton, SeekButton } from "./control"
 
-const allowedRoutes = new Set(["/", "/subscriptions", "/player"])
+const allowedTabIdentifiers = new Set(["IndexTabScreen", "SubscriptionsTabScreen"])
 
 export function PlayerTabBar({ className }: { className?: string }) {
   const activeTrack = useActiveTrack()
-  const pathname = usePathname()
-  const isVisible = !!activeTrack && allowedRoutes.has(pathname)
+  const tabRootCtx = useContext(BottomTabContext)
+  const tabScreens = useAtomValue(tabRootCtx.tabScreensAtom)
+  const currentIndex = useAtomValue(tabRootCtx.currentIndexAtom)
+  const currentTabProps = tabScreens.find((tabScreen) => tabScreen.tabScreenIndex === currentIndex)
+  const identifier = currentTabProps?.identifier
+
+  const isVisible = !!activeTrack && identifier && allowedTabIdentifiers.has(identifier)
   const isVisibleSV = useSharedValue(isVisible ? 1 : 0)
   useEffect(() => {
     isVisibleSV.value = withTiming(isVisible ? 1 : 0)
-  }, [pathname, isVisible])
+  }, [isVisible, isVisibleSV])
   const animatedStyle = useAnimatedStyle(() => {
     return {
       opacity: isVisibleSV.value,
@@ -34,19 +42,23 @@ export function PlayerTabBar({ className }: { className?: string }) {
   })
 
   usePrefetchImageColors(activeTrack?.artwork)
+  const navigation = useNavigation()
 
   return (
     <Animated.View
       style={animatedStyle}
-      className={cn("border-opaque-separator/70 border-b px-2", className)}
+      className={cn(
+        "border-non-opaque-separator dark:border-opaque-separator/50 border-b-hairline px-2",
+        className,
+      )}
     >
       <Pressable
         onPress={() => {
-          router.push("/player")
+          navigation.presentControllerView(PlayerScreen, void 0, "transparentModal")
         }}
       >
         <View className="flex flex-row items-center gap-4 overflow-hidden rounded-2xl p-2">
-          <Image source={activeTrack?.artwork} className="size-12 rounded-lg" />
+          <Image source={{ uri: activeTrack?.artwork ?? "" }} className="size-12 rounded-lg" />
           <View className="flex-1 overflow-hidden">
             <Text className="text-label text-lg font-semibold" numberOfLines={1}>
               {activeTrack?.title ?? ""}

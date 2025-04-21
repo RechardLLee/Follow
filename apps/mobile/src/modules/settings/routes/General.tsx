@@ -1,9 +1,14 @@
-import { useLocales } from "expo-localization"
+import { ACTION_LANGUAGE_KEYS } from "@follow/shared"
+import i18next from "i18next"
+import { useMemo } from "react"
+import { useTranslation } from "react-i18next"
 import { Text, View } from "react-native"
 
+import type { MobileSupportedLanguages } from "@/src/@types/constants"
+import { currentSupportedLanguages } from "@/src/@types/constants"
 import { setGeneralSetting, useGeneralSettingKey } from "@/src/atoms/settings/general"
 import {
-  NavigationBlurEffectHeader,
+  NavigationBlurEffectHeaderView,
   SafeNavigationScrollView,
 } from "@/src/components/layouts/views/SafeNavigationScrollView"
 import { Select } from "@/src/components/ui/form/Select"
@@ -14,80 +19,142 @@ import {
   GroupedInsetListSectionHeader,
 } from "@/src/components/ui/grouped/GroupedList"
 import { Switch } from "@/src/components/ui/switch/Switch"
-import { LanguageMap } from "@/src/lib/language"
+import { updateDayjsLocale } from "@/src/lib/i18n"
+import type { NavigationControllerView } from "@/src/lib/navigation/types"
 
-export const GeneralScreen = () => {
-  const locales = useLocales()
-  const translationLanguage = useGeneralSettingKey("translationLanguage")
-  const autoGroup = useGeneralSettingKey("autoGroup")
+export function LanguageSelect({ settingKey }: { settingKey: "language" | "actionLanguage" }) {
+  const { t: tLang } = useTranslation("lang")
+  const languageMapWithTranslation = useMemo(() => {
+    const languageKeys =
+      settingKey === "language"
+        ? (currentSupportedLanguages as MobileSupportedLanguages[])
+        : ACTION_LANGUAGE_KEYS.sort(
+            (a, b) => currentSupportedLanguages.indexOf(a) - currentSupportedLanguages.indexOf(b),
+          )
+
+    return languageKeys.map((key) => ({
+      subLabel: settingKey === "language" ? tLang(`langs.${key}`, { lng: key }) : undefined,
+      label: tLang(`langs.${key}`),
+      value: key,
+    }))
+  }, [settingKey, tLang])
+  const language = useGeneralSettingKey(settingKey)
+
+  return (
+    <Select
+      value={language}
+      onValueChange={(value) => {
+        setGeneralSetting(settingKey, value)
+        if (settingKey === "language") {
+          i18next.changeLanguage(value)
+          updateDayjsLocale(value)
+        }
+      }}
+      displayValue={tLang(`langs.${language}` as any)}
+      options={languageMapWithTranslation}
+    />
+  )
+}
+
+function LanguageSetting({ settingKey }: { settingKey: "language" | "actionLanguage" }) {
+  const { t } = useTranslation("settings")
+
+  return (
+    <GroupedInsetListBaseCell>
+      <Text className="text-label">
+        {settingKey === "language" ? t("general.language") : t("general.action_language.label")}
+      </Text>
+
+      <View className="w-[150px]">
+        <LanguageSelect settingKey={settingKey} />
+      </View>
+    </GroupedInsetListBaseCell>
+  )
+}
+
+export const GeneralScreen: NavigationControllerView = () => {
+  const { t } = useTranslation("settings")
+
+  const translation = useGeneralSettingKey("translation")
+  const summary = useGeneralSettingKey("summary")
+  // TODO: support autoGroup
+  // const autoGroup = useGeneralSettingKey("autoGroup")
   const showUnreadOnLaunch = useGeneralSettingKey("unreadOnly")
   // const groupByDate = useGeneralSettingKey("groupByDate")
   const expandLongSocialMedia = useGeneralSettingKey("autoExpandLongSocialMedia")
   const markAsReadWhenScrolling = useGeneralSettingKey("scrollMarkUnread")
   const markAsReadWhenInView = useGeneralSettingKey("renderMarkUnread")
+  const openLinksInExternalApp = useGeneralSettingKey("openLinksInExternalApp")
 
   return (
-    <SafeNavigationScrollView className="bg-system-grouped-background">
-      <NavigationBlurEffectHeader title="General" />
+    <SafeNavigationScrollView
+      className="bg-system-grouped-background"
+      Header={<NavigationBlurEffectHeaderView title={t("titles.general")} />}
+    >
       {/* Language */}
-      <View className="mt-6">
-        <GroupedInsetListSectionHeader label="Language" />
-        <GroupedInsetListCard>
-          <GroupedInsetListBaseCell>
-            <Text className="text-label">Language</Text>
 
-            <Text className="text-label">{(locales[0]?.languageTag, "English")}</Text>
-          </GroupedInsetListBaseCell>
+      <GroupedInsetListSectionHeader label={t("general.language")} marginSize="small" />
+      <GroupedInsetListCard>
+        <LanguageSetting settingKey="language" />
+      </GroupedInsetListCard>
 
-          <GroupedInsetListBaseCell>
-            <Text className="text-label">Translation Language</Text>
-
-            <View className="w-[150px]">
-              <Select
-                value={translationLanguage}
-                onValueChange={(value) => {
-                  setGeneralSetting("translationLanguage", value)
-                }}
-                options={Object.values(LanguageMap)}
-              />
-            </View>
-          </GroupedInsetListBaseCell>
-        </GroupedInsetListCard>
-      </View>
+      {/* Content Behavior */}
+      <GroupedInsetListSectionHeader label={t("general.action.title")} />
+      <GroupedInsetListCard>
+        <GroupedInsetListCell label={t("general.action.summary")}>
+          <Switch
+            size="sm"
+            value={summary}
+            onValueChange={(value) => {
+              setGeneralSetting("summary", value)
+            }}
+          />
+        </GroupedInsetListCell>
+        <GroupedInsetListCell label={t("general.action.translation")}>
+          <Switch
+            size="sm"
+            value={translation}
+            onValueChange={(value) => {
+              setGeneralSetting("translation", value)
+            }}
+          />
+        </GroupedInsetListCell>
+        <LanguageSetting settingKey="actionLanguage" />
+      </GroupedInsetListCard>
 
       {/* Subscriptions */}
-      <View className="mt-8">
-        <GroupedInsetListSectionHeader label="Subscriptions" />
-        <GroupedInsetListCard>
-          <GroupedInsetListCell
-            label="Auto Group"
-            description="Automatically group feeds by site domain."
-          >
-            <Switch
-              size="sm"
-              value={autoGroup}
-              onValueChange={(value) => {
-                setGeneralSetting("autoGroup", value)
-              }}
-            />
-          </GroupedInsetListCell>
-        </GroupedInsetListCard>
 
-        {/* Timeline */}
-        <View className="mt-8">
-          <GroupedInsetListSectionHeader label="Timeline" />
-          <GroupedInsetListCard>
-            <GroupedInsetListCell label="Show unread content on launch">
-              <Switch
-                size="sm"
-                value={showUnreadOnLaunch}
-                onValueChange={(value) => {
-                  setGeneralSetting("unreadOnly", value)
-                }}
-              />
-            </GroupedInsetListCell>
+      {/* <GroupedInsetListSectionHeader label={t("general.subscriptions")} />
+      <GroupedInsetListCard>
+        <GroupedInsetListCell
+          label={t("general.auto_group.label")}
+          description={t("general.auto_group.description")}
+        >
+          <Switch
+            size="sm"
+            value={autoGroup}
+            onValueChange={(value) => {
+              setGeneralSetting("autoGroup", value)
+            }}
+          />
+        </GroupedInsetListCell>
+      </GroupedInsetListCard> */}
 
-            {/* <GroupedInsetListCell label="Group by date" description="Group entries by date.">
+      {/* Timeline */}
+
+      <GroupedInsetListSectionHeader label={t("general.timeline")} />
+      <GroupedInsetListCard>
+        <GroupedInsetListCell label={t("general.show_unread_on_launch.label")}>
+          <Switch
+            size="sm"
+            value={showUnreadOnLaunch}
+            onValueChange={(value) => {
+              setGeneralSetting("unreadOnly", value)
+            }}
+          />
+        </GroupedInsetListCell>
+
+        {/* <GroupedInsetListCell label="Group by date" description="Group entries by date.">
               <Switch
                 size="sm"
                 value={groupByDate}
@@ -97,53 +164,65 @@ export const GeneralScreen = () => {
               />
             </GroupedInsetListCell> */}
 
-            <GroupedInsetListCell
-              label="Expand long social media"
-              description="Automatically expand social media entries containing long text."
-            >
-              <Switch
-                size="sm"
-                value={expandLongSocialMedia}
-                onValueChange={(value) => {
-                  setGeneralSetting("autoExpandLongSocialMedia", value)
-                }}
-              />
-            </GroupedInsetListCell>
-          </GroupedInsetListCard>
-        </View>
+        <GroupedInsetListCell
+          label={t("general.auto_expand_long_social_media.label")}
+          description={t("general.auto_expand_long_social_media.description")}
+        >
+          <Switch
+            size="sm"
+            value={expandLongSocialMedia}
+            onValueChange={(value) => {
+              setGeneralSetting("autoExpandLongSocialMedia", value)
+            }}
+          />
+        </GroupedInsetListCell>
+      </GroupedInsetListCard>
 
-        {/* Unread */}
-        <View className="mt-8">
-          <GroupedInsetListSectionHeader label="Unread" />
-          <GroupedInsetListCard>
-            <GroupedInsetListCell
-              label="Mark as read when scrolling"
-              description="Automatically mark entries as read when scrolled out of the view."
-            >
-              <Switch
-                size="sm"
-                value={markAsReadWhenScrolling}
-                onValueChange={(value) => {
-                  setGeneralSetting("scrollMarkUnread", value)
-                }}
-              />
-            </GroupedInsetListCell>
+      {/* Unread */}
 
-            <GroupedInsetListCell
-              label="Mark as read when in the view"
-              description="Automatically mark single-level entries (e.g. social media posts, pictures, video views) as read when they enter the view."
-            >
-              <Switch
-                size="sm"
-                value={markAsReadWhenInView}
-                onValueChange={(value) => {
-                  setGeneralSetting("renderMarkUnread", value)
-                }}
-              />
-            </GroupedInsetListCell>
-          </GroupedInsetListCard>
-        </View>
-      </View>
+      <GroupedInsetListSectionHeader label={t("general.unread")} />
+      <GroupedInsetListCard>
+        <GroupedInsetListCell
+          label={t("general.mark_as_read.scroll.label")}
+          description={t("general.mark_as_read.scroll.description")}
+        >
+          <Switch
+            size="sm"
+            value={markAsReadWhenScrolling}
+            onValueChange={(value) => {
+              setGeneralSetting("scrollMarkUnread", value)
+            }}
+          />
+        </GroupedInsetListCell>
+
+        <GroupedInsetListCell
+          label={t("general.mark_as_read.render.label")}
+          description={t("general.mark_as_read.render.description")}
+        >
+          <Switch
+            size="sm"
+            value={markAsReadWhenInView}
+            onValueChange={(value) => {
+              setGeneralSetting("renderMarkUnread", value)
+            }}
+          />
+        </GroupedInsetListCell>
+      </GroupedInsetListCard>
+
+      {/* Content Behavior */}
+
+      <GroupedInsetListSectionHeader label={t("general.content")} />
+      <GroupedInsetListCard>
+        <GroupedInsetListCell label={t("general.open_links_in_external_app.label")}>
+          <Switch
+            size="sm"
+            value={openLinksInExternalApp}
+            onValueChange={(value) => {
+              setGeneralSetting("openLinksInExternalApp", value)
+            }}
+          />
+        </GroupedInsetListCell>
+      </GroupedInsetListCard>
     </SafeNavigationScrollView>
   )
 }

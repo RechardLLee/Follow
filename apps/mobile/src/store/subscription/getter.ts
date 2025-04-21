@@ -1,5 +1,6 @@
 import type { FeedViewType } from "@follow/constants"
 
+import { getListFeedIds } from "../list/getters"
 import type { SubscriptionModel } from "./store"
 import { useSubscriptionStore } from "./store"
 
@@ -13,7 +14,7 @@ export const getSubscriptionByView = (view: FeedViewType): string[] => {
   const state = get()
   return Array.from(state.feedIdByView[view])
     .concat(Array.from(state.inboxIdByView[view]))
-    .concat(Array.from(state.listIdByView[view]))
+    .concat(Array.from(state.listIdByView[view]).flatMap((id) => getListFeedIds(id) ?? []))
 }
 
 export const getFeedSubscriptionByView = (view: FeedViewType): string[] => {
@@ -21,12 +22,18 @@ export const getFeedSubscriptionByView = (view: FeedViewType): string[] => {
   return Array.from(state.feedIdByView[view])
 }
 
-export const getSubscriptionByCategory = (category: string): string[] => {
+export const getSubscriptionByCategory = ({
+  category,
+  view,
+}: {
+  category: string
+  view: FeedViewType
+}): string[] => {
   const state = get()
 
   const ids = [] as string[]
   for (const id of Object.keys(state.data)) {
-    if (state.data[id]!.category === category) {
+    if (state.data[id]!.category === category && state.data[id]!.view === view) {
       ids.push(id)
     }
   }

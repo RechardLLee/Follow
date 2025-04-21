@@ -1,5 +1,6 @@
 {
   "copied_link": "連結已複製到剪貼簿",
+  "feed.actions.follow": "跟隨",
   "feed.actions.followed": "已跟隨",
   "feed.copy_feed_url": "複製鏈接",
   "feed.feeds_one": "RSS 摘要",
@@ -27,8 +28,8 @@
   "invitation.codeOptions.1": "尋找任何內部測試使用者邀請您。",
   "invitation.codeOptions.2": "加入我們的 Discord 伺服器，不定期贈送邀請碼。",
   "invitation.codeOptions.3": "關注我們的 X 帳號，不定期贈送邀請碼。",
-  "invitation.earlyAccess": "Follow 目前處於搶先體驗階段，需要邀請碼才能使用。",
-  "invitation.earlyAccessMessage": "😰 抱歉，Follow 目前處於搶先體驗階段，需要邀請碼才能使用。",
+  "invitation.earlyAccess": "Folo 目前處於搶先體驗階段，需要邀請碼才能使用。",
+  "invitation.earlyAccessMessage": "😰 抱歉，Folo 目前處於搶先體驗階段，需要邀請碼才能使用。",
   "invitation.generateButton": "產生新邀請碼",
   "invitation.generateCost": "您可以花費 {{INVITATION_PRICE}} Power 為您的朋友產生邀請碼。",
   "invitation.getCodeMessage": "您可以通過以下方式獲取邀請碼：",

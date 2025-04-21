@@ -2,7 +2,15 @@ import type { FeedViewType } from "@follow/constants"
 import { sql } from "drizzle-orm"
 import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 
-import type { AttachmentsModel, ExtraModel, ImageColorsResult, MediaModel } from "./types"
+import type { SupportedLanguages } from "@/src/lib/language"
+
+import type {
+  ActionSettings,
+  AttachmentsModel,
+  ExtraModel,
+  ImageColorsResult,
+  MediaModel,
+} from "./types"
 
 export const feedsTable = sqliteTable("feeds", {
   id: text("id").primaryKey(),
@@ -45,7 +53,6 @@ export const listsTable = sqliteTable("lists", {
   image: text("image"),
   fee: integer("fee"),
   ownerUserId: text("owner_user_id"),
-  entryIds: text("entry_ids", { mode: "json" }).$type<string[]>(),
 })
 
 export const unreadTable = sqliteTable("unread", {
@@ -55,11 +62,12 @@ export const unreadTable = sqliteTable("unread", {
 
 export const usersTable = sqliteTable("users", {
   id: text("id").primaryKey(),
-  email: text("email").notNull(),
+  email: text("email"),
   handle: text("handle"),
   name: text("name"),
   image: text("image"),
   isMe: integer("is_me").notNull(),
+  emailVerified: integer("email_verified", { mode: "boolean" }),
 })
 
 export const entriesTable = sqliteTable("entries", {
@@ -67,6 +75,7 @@ export const entriesTable = sqliteTable("entries", {
   title: text("title"),
   url: text("url"),
   content: text("content"),
+  readabilityContent: text("source_content"),
   description: text("description"),
   guid: text("guid").notNull(),
   author: text("author"),
@@ -85,6 +94,7 @@ export const entriesTable = sqliteTable("entries", {
   inboxHandle: text("inbox_handle"),
   read: integer("read", { mode: "boolean" }),
   sources: text("sources", { mode: "json" }).$type<string[]>(),
+  settings: text("settings", { mode: "json" }).$type<ActionSettings>(),
 })
 
 export const collectionsTable = sqliteTable("collections", {
@@ -99,12 +109,28 @@ export const summariesTable = sqliteTable(
   {
     entryId: text("entry_id").notNull().primaryKey(),
     summary: text("summary").notNull(),
+    readabilitySummary: text("readability_summary"),
     createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
-    language: text("language").notNull(),
+    language: text("language"),
   },
-  (table) => ({
-    unq: uniqueIndex("unq").on(table.entryId, table.language),
+  (t) => [uniqueIndex("unq").on(t.entryId, t.language)],
+)
+
+export const translationsTable = sqliteTable(
+  "translations",
+  (t) => ({
+    entryId: t.text("entry_id").notNull().primaryKey(),
+    language: t.text("language").$type<SupportedLanguages>().notNull(),
+    title: t.text("title").notNull(),
+    description: t.text("description").notNull(),
+    content: t.text("content").notNull(),
+    readabilityContent: t.text("readability_content"),
+    createdAt: t
+      .text("created_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
   }),
+  (t) => [uniqueIndex("translation-unique-index").on(t.entryId, t.language)],
 )
 
 export const imagesTable = sqliteTable("images", (t) => ({

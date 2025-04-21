@@ -1,3 +1,4 @@
+import { tracker } from "@follow/tracker"
 import * as AppleAuthentication from "expo-apple-authentication"
 import { useColorScheme } from "nativewind"
 import { Platform, TouchableOpacity, View } from "react-native"
@@ -50,7 +51,7 @@ export function SocialLogin() {
             <TouchableOpacity
               key={key}
               hitSlop={20}
-              className="border-opaque-separator border-hairline rounded-full p-2"
+              className="border-opaque-separator border-hairline rounded-full p-3"
               onPress={async () => {
                 if (!data?.[providerInfo.id]) return
 
@@ -70,6 +71,9 @@ export function SocialLogin() {
                           token: credential.identityToken,
                         },
                       })
+                      tracker.userLogin({
+                        type: "social",
+                      })
                     } else {
                       throw new Error("No identityToken.")
                     }
@@ -80,16 +84,19 @@ export function SocialLogin() {
                   return
                 }
 
-                signIn.social({
+                await signIn.social({
                   provider: providerInfo.id as any,
                   callbackURL: "/",
+                })
+                tracker.userLogin({
+                  type: "social",
                 })
               }}
               disabled={!data?.[providerInfo.id]}
             >
               <providerInfo.icon
-                width={24}
-                height={24}
+                width={26}
+                height={26}
                 color={colorScheme === "dark" ? providerInfo.darkColor : providerInfo.color}
               />
             </TouchableOpacity>

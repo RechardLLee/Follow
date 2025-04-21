@@ -37,6 +37,7 @@ export const App = () => {
   const entry = useAtomValue(entryAtom, { store })
   const readerRenderInlineStyle = useAtomValue(readerRenderInlineStyleAtom, { store })
   const noMedia = useAtomValue(noMediaAtom, { store })
+
   return (
     <Provider store={store}>
       <HTML

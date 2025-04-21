@@ -1,6 +1,7 @@
-import { env } from "@follow/shared/src/env"
+import { env } from "@follow/shared/src/env.rn"
 import type { FC, PropsWithChildren } from "react"
 import { useMemo } from "react"
+import { useTranslation } from "react-i18next"
 import { Alert, Clipboard } from "react-native"
 
 import { ContextMenu } from "@/src/components/ui/context-menu"
@@ -14,11 +15,12 @@ export const SubscriptionListItemContextMenu: FC<
     id: string
   }
 > = ({ id, children }) => {
+  const { t } = useTranslation()
   const isOwnList = useIsOwnList(id)
   const actions = useMemo(
     () => [
       isOwnList && {
-        title: "Edit",
+        title: t("operation.edit"),
         onSelect: () => {
           const list = getList(id)
           if (!list) return
@@ -26,25 +28,25 @@ export const SubscriptionListItemContextMenu: FC<
         },
       },
       {
-        title: "Copy Link",
+        title: t("operation.copy_link"),
         onSelect: () => {
           const list = getList(id)
           if (!list) return
-          toast.info("Link copied to clipboard")
-          Clipboard.setString(`${env.VITE_WEB_URL}/share/lists/${list.id}`)
+          toast.success("Link copied to clipboard")
+          Clipboard.setString(`${env.WEB_URL}/share/lists/${list.id}`)
         },
       },
       {
-        title: "Unsubscribe",
+        title: t("operation.unfollow"),
         destructive: true,
         onSelect: () => {
-          Alert.alert("Unsubscribe", "Are you sure you want to unsubscribe?", [
+          Alert.alert(t("operation.unfollow"), "Are you sure you want to unsubscribe?", [
             {
               text: "Cancel",
               style: "cancel",
             },
             {
-              text: "Unsubscribe",
+              text: t("operation.unfollow"),
               style: "destructive",
               onPress: () => {
                 subscriptionSyncService.unsubscribe(id)
@@ -54,7 +56,7 @@ export const SubscriptionListItemContextMenu: FC<
         },
       },
     ],
-    [id, isOwnList],
+    [id, isOwnList, t],
   )
 
   return (

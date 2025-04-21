@@ -1,8 +1,5 @@
 import { FeedViewType } from "@follow/constants"
-import { buildSafeHeaders } from "@follow/utils/src/headers"
 import { useQuery } from "@tanstack/react-query"
-import { Image } from "expo-image"
-import { router } from "expo-router"
 import { useAtomValue } from "jotai"
 import type { FC } from "react"
 import type { ListRenderItem, ListRenderItemInfo } from "react-native"
@@ -11,8 +8,12 @@ import { ScrollView } from "react-native-gesture-handler"
 import Animated, { FadeInUp } from "react-native-reanimated"
 
 import { FeedIcon } from "@/src/components/ui/icon/feed-icon"
+import { Image } from "@/src/components/ui/image/Image"
+import { ItemPressableStyle } from "@/src/components/ui/pressable/enum"
 import { ItemPressable } from "@/src/components/ui/pressable/ItemPressable"
 import { apiClient } from "@/src/lib/api-fetch"
+import { useNavigation } from "@/src/lib/navigation/hooks"
+import { FollowScreen } from "@/src/screens/(modal)/FollowScreen"
 import { useSubscriptionByFeedId } from "@/src/store/subscription/hooks"
 
 import { useSearchPageContext } from "../ctx"
@@ -65,13 +66,18 @@ const renderItem: ListRenderItem<SearchResultItem> = (props) => (
 
 const SearchFeedItem: FC<ListRenderItemInfo<SearchResultItem>> = ({ item }) => {
   const isSubscribed = useSubscriptionByFeedId(item.feed?.id ?? "")
+  const navigation = useNavigation()
   return (
     <Animated.View entering={FadeInUp}>
       <ItemPressable
+        itemStyle={ItemPressableStyle.Plain}
         className="py-4"
         onPress={() => {
           if (item.feed?.id) {
-            router.push(`/follow?id=${item.feed.id}`)
+            navigation.presentControllerView(FollowScreen, {
+              id: item.feed.id,
+              type: "feed",
+            })
           }
         }}
       >
@@ -161,12 +167,11 @@ const PreviewItem = ({ entry }: { entry: NonNullable<SearchResultItem["entries"]
       {!!firstMedia && (
         <View className="bg-gray-6 ml-auto size-[52px] shrink-0 overflow-hidden rounded-lg">
           <Image
-            source={{ uri: firstMedia.url, headers: buildSafeHeaders({ url: firstMedia.url }) }}
+            source={{ uri: firstMedia.url }}
             className="size-full rounded-lg"
             contentFit="cover"
-            transition={500}
             placeholder={{
-              blurHash: firstMedia.blurhash,
+              blurhash: firstMedia.blurhash,
             }}
           />
         </View>

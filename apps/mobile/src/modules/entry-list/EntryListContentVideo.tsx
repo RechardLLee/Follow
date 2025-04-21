@@ -1,36 +1,46 @@
 import { useTypeScriptHappyCallback } from "@follow/hooks"
 import type { MasonryFlashListProps } from "@shopify/flash-list"
 import type { ElementRef } from "react"
-import { forwardRef, useMemo } from "react"
+import { forwardRef, useImperativeHandle, useMemo } from "react"
 import { View } from "react-native"
 
 import { useFetchEntriesControls } from "@/src/modules/screen/atoms"
+import { usePrefetchEntryTranslation } from "@/src/store/translation/hooks"
 
 import { TimelineSelectorMasonryList } from "../screen/TimelineSelectorList"
-import { useOnViewableItemsChanged } from "./hooks"
+import { GridEntryListFooter } from "./EntryListFooter"
+import { useOnViewableItemsChanged, usePagerListPerformanceHack } from "./hooks"
 import { EntryVideoItem } from "./templates/EntryVideoItem"
 
 export const EntryListContentVideo = forwardRef<
   ElementRef<typeof TimelineSelectorMasonryList>,
-  { entryIds: string[]; active?: boolean } & Omit<
+  { entryIds: string[] | null; active?: boolean } & Omit<
     MasonryFlashListProps<string>,
     "data" | "renderItem"
   >
->(({ entryIds, active, ...rest }, ref) => {
-  const { fetchNextPage, refetch, isRefetching, isFetching, isLoading } = useFetchEntriesControls()
-  const { onViewableItemsChanged, onScroll } = useOnViewableItemsChanged({
-    disabled: active === false || isLoading,
+>(({ entryIds, active, ...rest }, forwardRef) => {
+  const { onScroll: hackOnScroll, ref, style: hackStyle } = usePagerListPerformanceHack()
+  useImperativeHandle(forwardRef, () => ref.current!)
+  const { fetchNextPage, refetch, isRefetching, isFetching, hasNextPage } =
+    useFetchEntriesControls()
+  const { onViewableItemsChanged, onScroll, viewableItems } = useOnViewableItemsChanged({
+    disabled: active === false || isFetching,
+    onScroll: hackOnScroll,
   })
+
+  usePrefetchEntryTranslation({ entryIds: active ? viewableItems.map((item) => item.key) : [] })
 
   const ListFooterComponent = useMemo(
     () =>
-      isFetching ? (
+      hasNextPage ? (
         <View className="flex flex-row justify-between">
           <EntryItemSkeleton />
           <EntryItemSkeleton />
         </View>
-      ) : null,
-    [isFetching],
+      ) : (
+        <GridEntryListFooter />
+      ),
+    [hasNextPage],
   )
 
   return (
@@ -50,6 +60,7 @@ export const EntryListContentVideo = forwardRef<
       ListFooterComponent={ListFooterComponent}
       {...rest}
       onRefresh={refetch}
+      style={hackStyle}
     />
   )
 })
@@ -62,7 +73,10 @@ export function EntryItemSkeleton() {
   return (
     <View className="m-1 overflow-hidden rounded-md">
       {/* Video thumbnail */}
-      <View className="bg-system-fill aspect-video h-32 w-full animate-pulse rounded-md" />
+      <View
+        className="bg-system-fill h-32 w-full animate-pulse rounded-md"
+        style={{ aspectRatio: 16 / 9 }}
+      />
 
       {/* Description and footer */}
       <View className="my-2 px-2">

@@ -1,8 +1,10 @@
 import dayjs from "dayjs"
 import { useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import type { TextProps } from "react-native"
-import { Pressable } from "react-native"
 import Animated, { FadeOut } from "react-native-reanimated"
+
+import { NativePressable } from "../pressable/NativePressable"
 
 const formatTemplateString = "lll"
 
@@ -47,11 +49,12 @@ interface RelativeDateTimeProps extends TextProps {
 
 export const RelativeDateTime = ({
   date,
-  displayAbsoluteTimeAfterDay,
+  displayAbsoluteTimeAfterDay = 29,
   dateFormatTemplate,
-  postfixText = "ago",
+  postfixText,
   ...props
 }: RelativeDateTimeProps) => {
+  const { t } = useTranslation("common")
   const [relative, setRelative] = useState<string>(() =>
     formatTime(date, displayAbsoluteTimeAfterDay, dateFormatTemplate),
   )
@@ -63,6 +66,7 @@ export const RelativeDateTime = ({
   useEffect(() => {
     if (mode === "absolute") return
     if (!displayAbsoluteTimeAfterDay) return
+    setRelative(formatTime(date, displayAbsoluteTimeAfterDay, dateFormatTemplate))
     const interval = setInterval(
       () => {
         setRelative(formatTime(date, displayAbsoluteTimeAfterDay, dateFormatTemplate))
@@ -73,15 +77,17 @@ export const RelativeDateTime = ({
   }, [date, displayAbsoluteTimeAfterDay, dateFormatTemplate, mode])
 
   return (
-    <Pressable
+    <NativePressable
       hitSlop={10}
       onPress={() => {
         setMode((mode) => (mode === "relative" ? "absolute" : "relative"))
       }}
     >
       <Animated.Text {...props} key={mode} exiting={FadeOut}>
-        {mode === "relative" ? `${relative} ${postfixText}` : memoizedFormatTime}
+        {mode === "relative"
+          ? `${relative}${t("space")}${postfixText ?? t("words.ago")}`
+          : memoizedFormatTime}
       </Animated.Text>
-    </Pressable>
+    </NativePressable>
   )
 }

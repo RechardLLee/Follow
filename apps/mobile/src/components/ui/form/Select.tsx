@@ -10,10 +10,11 @@ import { accentColor } from "@/src/theme/colors"
 import { FormLabel } from "./Label"
 
 interface SelectProps<T> {
-  options: { label: string; value: T }[]
+  options: { label: string; value: T; subLabel?: string }[]
 
   value: T
   onValueChange: (value: T) => void
+  displayValue?: string
 
   wrapperClassName?: string
   wrapperStyle?: StyleProp<ViewStyle>
@@ -24,6 +25,7 @@ export function Select<T>({
   options,
   value,
   onValueChange,
+  displayValue,
   wrapperClassName,
   wrapperStyle,
   label,
@@ -58,11 +60,11 @@ export function Select<T>({
           style={wrapperStyle}
         >
           <Text
-            className="flex-1 text-right font-semibold text-accent"
+            className="text-accent flex-1 text-right font-semibold"
             ellipsizeMode="middle"
             numberOfLines={1}
           >
-            {valueToLabelMap.get(currentValue)}
+            {displayValue || valueToLabelMap.get(currentValue) || "Select"}
           </Text>
           <View className="ml-auto shrink-0 pl-1">
             <MingcuteDownLineIcon color={accentColor} height={18} width={18} />
@@ -84,6 +86,9 @@ export function Select<T>({
               onSelect={handleSelect}
             >
               <DropdownMenu.ItemTitle>{option.label}</DropdownMenu.ItemTitle>
+              {!!option.subLabel && (
+                <DropdownMenu.ItemSubtitle>{option.subLabel}</DropdownMenu.ItemSubtitle>
+              )}
             </DropdownMenu.CheckboxItem>
           )
         })}

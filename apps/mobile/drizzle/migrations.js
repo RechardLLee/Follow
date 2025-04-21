@@ -13,6 +13,14 @@ import m0009 from "./0009_lucky_power_man.sql"
 import m0010 from "./0010_legal_ben_grimm.sql"
 import m0011 from "./0011_mysterious_stark_industries.sql"
 import m0012 from "./0012_magenta_thing.sql"
+import m0013 from "./0013_chunky_stephen_strange.sql"
+import m0014 from "./0014_chemical_shocker.sql"
+import m0015 from "./0015_colorful_warbird.sql"
+import m0016 from "./0016_curious_carnage.sql"
+import m0017 from "./0017_talented_captain_cross.sql"
+import m0018 from "./0018_dashing_the_fury.sql"
+import m0019 from "./0019_wonderful_shape.sql"
+import m0020 from "./0020_little_marauders.sql"
 import journal from "./meta/_journal.json"
 
 export default {
@@ -31,5 +39,13 @@ export default {
     m0010,
     m0011,
     m0012,
+    m0013,
+    m0014,
+    m0015,
+    m0016,
+    m0017,
+    m0018,
+    m0019,
+    m0020,
   },
 }

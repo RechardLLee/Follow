@@ -1,5 +1,7 @@
+import { getGeneralSettings } from "@/src/atoms/settings/general"
 import type { SummarySchema } from "@/src/database/schemas/types"
 import { apiClient } from "@/src/lib/api-fetch"
+import type { SupportedLanguages } from "@/src/lib/language"
 import { summaryService } from "@/src/services/summary"
 
 import { getEntry } from "../entry/getter"
@@ -9,8 +11,9 @@ import { SummaryGeneratingStatus } from "./enum"
 type SummaryModel = Omit<SummarySchema, "createdAt">
 
 interface SummaryData {
-  lang: string
+  lang?: string
   summary: string
+  readabilitySummary: string | null
   lastAccessed: number
 }
 
@@ -38,8 +41,10 @@ class SummaryActions {
     summaries.forEach((summary) => {
       immerSet((state) => {
         state.data[summary.entryId] = {
-          lang: summary.language,
-          summary: summary.summary,
+          lang: summary.language ?? undefined,
+          summary: summary.summary || state.data[summary.entryId]?.summary || "",
+          readabilitySummary:
+            summary.readabilitySummary || state.data[summary.entryId]?.readabilitySummary || null,
           lastAccessed: now,
         }
       })
@@ -56,7 +61,7 @@ class SummaryActions {
     }
   }
 
-  async getSummary(entryId: string) {
+  getSummary(entryId: string) {
     const state = get()
     const summary = state.data[entryId]
 
@@ -92,58 +97,73 @@ class SummaryActions {
 export const summaryActions = new SummaryActions()
 
 class SummarySyncService {
-  async generateSummary(entryId: string) {
+  private pendingPromises: Record<string, Promise<string>> = {}
+
+  async generateSummary(entryId: string, target: "content" | "readabilityContent") {
     const entry = getEntry(entryId)
     if (!entry) return
 
     const state = get()
-    if (state.generatingStatus[entryId] === SummaryGeneratingStatus.Pending) return
+    if (state.generatingStatus[entryId] === SummaryGeneratingStatus.Pending)
+      return this.pendingPromises[entryId]
 
     immerSet((state) => {
       state.generatingStatus[entryId] = SummaryGeneratingStatus.Pending
     })
 
-    // TODO: Use the language of the entry
-    const language = "en"
+    const { actionLanguage } = getGeneralSettings()
+
     // Use Our AI to generate summary
-    const summary = await apiClient.ai.summary
+    const pendingPromise = apiClient.ai.summary
       .$get({
         query: {
           id: entryId,
-
-          language,
+          language: actionLanguage as SupportedLanguages,
+          target,
         },
       })
       .then((summary) => {
         immerSet((state) => {
           if (!summary.data) {
             state.generatingStatus[entryId] = SummaryGeneratingStatus.Error
-            return
+            return ""
           }
 
           state.data[entryId] = {
-            lang: language,
-            summary: summary.data,
+            lang: actionLanguage,
+            summary: target === "content" ? summary.data : state.data[entryId]?.summary || "",
+            readabilitySummary:
+              target === "readabilityContent"
+                ? summary.data
+                : state.data[entryId]?.readabilitySummary || null,
             lastAccessed: Date.now(),
           }
           state.generatingStatus[entryId] = SummaryGeneratingStatus.Success
         })
 
-        return summary.data
+        return summary.data || ""
       })
       .catch((error) => {
         immerSet((state) => {
           state.generatingStatus[entryId] = SummaryGeneratingStatus.Error
         })
+
         throw error
       })
+      .finally(() => {
+        delete this.pendingPromises[entryId]
+      })
+
+    this.pendingPromises[entryId] = pendingPromise
+    const summary = await pendingPromise
 
     if (summary) {
       summaryActions.upsertMany([
         {
           entryId,
-          summary,
-          language,
+          summary: target === "content" ? summary : "",
+          language: actionLanguage ?? null,
+          readabilitySummary: target === "readabilityContent" ? summary : null,
         },
       ])
     }

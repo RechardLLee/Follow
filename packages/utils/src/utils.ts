@@ -1,5 +1,6 @@
 import type { ClassValue } from "clsx"
 import { clsx } from "clsx"
+import dayjs from "dayjs"
 import { twMerge } from "tailwind-merge"
 import { parse } from "tldts"
 
@@ -122,9 +123,9 @@ export function formatXml(xml: string, indent = 4) {
   const PADDING = " ".repeat(indent)
   let formatted = ""
   const regex = /(>)(<)(\/*)/g
-  xml = xml.replaceAll(regex, "$1\r\n$2$3")
+  const xmlStr = xml.replaceAll(regex, "$1\r\n$2$3")
   let pad = 0
-  xml.split("\r\n").forEach((node) => {
+  xmlStr.split("\r\n").forEach((node) => {
     let indent = 0
     if (/.+<\/\w[^>]*>$/.test(node)) {
       indent = 0
@@ -229,23 +230,87 @@ export function isKeyForMultiSelectPressed(e: MouseEvent) {
   return e.ctrlKey || e.shiftKey
 }
 
-export const toScientificNotation = (num: string, threshold: number) => {
-  const cleanNum = num.replaceAll(",", "")
-  const [intPart, decimalPart = ""] = cleanNum.split(".")
-  const numLength = intPart!.replace(/^0+/, "").length
+export const toScientificNotation = (
+  num: readonly [bigint, number] | bigint,
+  threshold: number,
+  locale?: Intl.Locale | string,
+) => {
+  // Handle string input by converting to dnum format
+  let value: bigint
+  let decimals: number
 
-  if (numLength > threshold) {
-    const fullNum = intPart + decimalPart
-    const firstDigit = fullNum.match(/[1-9]/)?.[0] || "0"
-    const position = fullNum.indexOf(firstDigit)
-    const exponent = intPart!.length - position - 1
-
-    const significand = fullNum.slice(position, position + 3)
-    const formattedSignificand = `${significand[0]}.${significand.slice(1)}`
-
-    return `${formattedSignificand}e+${exponent}`
+  if (typeof num === "bigint") {
+    decimals = 0
+    value = num
+  } else {
+    // Extract number from dnum tuple
+    ;[value, decimals] = num
   }
-  return num
+
+  // Convert to decimal string representation
+  const valueAsString = value.toString()
+
+  // Handle zero case
+  if (valueAsString === "0") return "0"
+
+  // Determine length of the integer part
+  const integerLength = valueAsString.length > decimals ? valueAsString.length - decimals : 0
+
+  // Return normal formatted number if below threshold
+  if (integerLength <= threshold) {
+    // Use provided locale or default to en-US
+    const localeString = locale?.toString() || "en-US"
+    const formatter = new Intl.NumberFormat(localeString, {
+      maximumFractionDigits: decimals,
+    })
+
+    // Convert bigint to number with correct decimal places
+    const asNumber = Number(value) / Math.pow(10, decimals)
+    return formatter.format(asNumber)
+  }
+
+  // Format in scientific notation
+  // Insert decimal point at appropriate place
+  let normalizedNumStr = valueAsString
+  if (valueAsString.length <= decimals) {
+    // Need to pad with leading zeros
+    normalizedNumStr = "0".repeat(decimals - valueAsString.length + 1) + valueAsString
+  }
+
+  // Find first non-zero digit
+  const firstNonZeroIndex = normalizedNumStr.search(/[1-9]/)
+  if (firstNonZeroIndex === -1) return "0" // All zeros
+
+  // Get first digits for the significand
+  const significandDigits = normalizedNumStr.slice(
+    firstNonZeroIndex,
+    Math.min(firstNonZeroIndex + 3, normalizedNumStr.length),
+  )
+
+  // Calculate exponent
+  const exponent = integerLength - 1
+
+  // Format significand according to locale
+  const localeString = locale?.toString() || "en-US"
+  const formatter = new Intl.NumberFormat(localeString, {
+    maximumFractionDigits: significandDigits.length - 1,
+  })
+
+  // Create significand as a properly formatted decimal
+  const firstDigit = Number(significandDigits[0])
+  const remainingDigits = significandDigits.slice(1)
+  const significandNumber = Number(`${firstDigit}.${remainingDigits}`)
+  const formattedSignificand = formatter.format(significandNumber)
+
+  // Format the exponent marker according to locale
+  // Many locales use "×10^" notation instead of "e+"
+  const useENotation = localeString.startsWith("en")
+
+  if (useENotation) {
+    return `${formattedSignificand}e+${exponent}`
+  } else {
+    return `${formattedSignificand}×10^${exponent}`
+  }
 }
 
 export function transformShortcut(shortcut: string, platform: OS = getOS()): string {
@@ -253,4 +318,55 @@ export function transformShortcut(shortcut: string, platform: OS = getOS()): str
     return shortcut.replace("Meta", "Ctrl").replace("meta", "ctrl")
   }
   return shortcut
+}
+
+// time like 1:30:00
+export const formatTimeToSeconds = (time?: string | number) => {
+  if (typeof time === "number" || time === undefined) {
+    return time
+  }
+
+  const formats = ["h:mm:ss", "mm:ss", "m:ss"]
+
+  for (const format of formats) {
+    const date = dayjs(time, format)
+    if (date.isValid()) {
+      const totalSeconds = date.hour() * 3600 + date.minute() * 60 + date.second()
+      return totalSeconds
+    }
+  }
+}
+
+export const formatEstimatedMins = (estimatedMins: number) => {
+  const minutesInHour = 60
+  const minutesInDay = minutesInHour * 24
+  const minutesInMonth = minutesInDay * 30
+
+  const months = Math.floor(estimatedMins / minutesInMonth)
+  const days = Math.floor((estimatedMins % minutesInMonth) / minutesInDay)
+  const hours = Math.floor((estimatedMins % minutesInDay) / minutesInHour)
+  const minutes = estimatedMins % minutesInHour
+
+  if (months > 0) {
+    return `${months}M ${days}d`
+  }
+  if (days > 0) {
+    return `${days}d ${hours}h`
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`
+  }
+  return `${estimatedMins} mins`
+}
+
+export const omitShallow = (obj: any, ...keys: string[]) => {
+  if (!obj) return obj
+  if (typeof obj !== "object") return obj
+  if (Array.isArray(obj)) return obj
+
+  const nextObj = { ...obj }
+  for (const key of keys) {
+    Reflect.deleteProperty(nextObj, key)
+  }
+  return nextObj
 }

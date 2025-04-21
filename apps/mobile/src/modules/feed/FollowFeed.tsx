@@ -1,24 +1,25 @@
 import { FeedViewType } from "@follow/constants"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { StackActions } from "@react-navigation/native"
-import { router, Stack, useNavigation } from "expo-router"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
-import { ActivityIndicator, ScrollView, Text, View } from "react-native"
+import { Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { z } from "zod"
 
+import { HeaderSubmitTextButton } from "@/src/components/layouts/header/HeaderElements"
 import {
-  ModalHeaderCloseButton,
-  ModalHeaderSubmitButton,
-} from "@/src/components/common/ModalSharedComponents"
+  NavigationBlurEffectHeaderView,
+  SafeNavigationScrollView,
+} from "@/src/components/layouts/views/SafeNavigationScrollView"
 import { FormProvider } from "@/src/components/ui/form/FormProvider"
 import { FormLabel } from "@/src/components/ui/form/Label"
 import { FormSwitch } from "@/src/components/ui/form/Switch"
 import { TextField } from "@/src/components/ui/form/TextField"
 import { GroupedInsetListCard } from "@/src/components/ui/grouped/GroupedList"
 import { FeedIcon } from "@/src/components/ui/icon/feed-icon"
-import { useIsRouteOnlyOne } from "@/src/hooks/useIsRouteOnlyOne"
+import { PlatformActivityIndicator } from "@/src/components/ui/loading/PlatformActivityIndicator"
+import { useCanDismiss, useNavigation } from "@/src/lib/navigation/hooks"
+import { useSetModalScreenOptions } from "@/src/lib/navigation/ScreenOptionsContext"
 import { FeedViewSelector } from "@/src/modules/feed/view-selector"
 import { useFeed, usePrefetchFeed, usePrefetchFeedByUrl } from "@/src/store/feed/hooks"
 import { useSubscriptionByFeedId } from "@/src/store/subscription/hooks"
@@ -26,12 +27,12 @@ import { subscriptionSyncService } from "@/src/store/subscription/store"
 import type { SubscriptionForm } from "@/src/store/subscription/types"
 
 const formSchema = z.object({
-  view: z.string(),
+  view: z.coerce.number(),
   category: z.string().nullable().optional(),
   isPrivate: z.boolean().optional(),
   title: z.string().optional(),
 })
-const defaultValues = { view: FeedViewType.Articles.toString() }
+const defaultValues = { view: FeedViewType.Articles }
 export function FollowFeed(props: { id: string }) {
   const { id } = props
   const feed = useFeed(id as string)
@@ -40,7 +41,7 @@ export function FollowFeed(props: { id: string }) {
   if (isLoading) {
     return (
       <View className="mt-24 flex-1 flex-row items-start justify-center">
-        <ActivityIndicator />
+        <PlatformActivityIndicator />
       </View>
     )
   }
@@ -56,7 +57,7 @@ export function FollowUrl(props: { url: string }) {
   if (isLoading) {
     return (
       <View className="mt-24 flex-1 flex-row items-start justify-center">
-        <ActivityIndicator />
+        <PlatformActivityIndicator />
       </View>
     )
   }
@@ -80,15 +81,16 @@ function FollowImpl(props: { feedId: string }) {
   })
 
   const [isLoading, setIsLoading] = useState(false)
-  const routeOnlyOne = useIsRouteOnlyOne()
+
   const navigate = useNavigation()
-  const parentRoute = navigate.getParent()
+
+  const canDismiss = useCanDismiss()
   const submit = async () => {
     setIsLoading(true)
     const values = form.getValues()
     const body: SubscriptionForm = {
       url: feed.url,
-      view: Number.parseInt(values.view),
+      view: values.view,
       category: values.category ?? "",
       isPrivate: values.isPrivate ?? false,
       title: values.title ?? "",
@@ -99,12 +101,10 @@ function FollowImpl(props: { feedId: string }) {
       setIsLoading(false)
     })
 
-    if (router.canDismiss()) {
-      router.dismissAll()
-
-      if (!routeOnlyOne) {
-        parentRoute?.dispatch(StackActions.popToTop())
-      }
+    if (canDismiss) {
+      navigate.dismiss()
+    } else {
+      navigate.back()
     }
   }
 
@@ -112,31 +112,36 @@ function FollowImpl(props: { feedId: string }) {
 
   const { isValid, isDirty } = form.formState
 
+  const setScreenOptions = useSetModalScreenOptions()
+  useEffect(() => {
+    setScreenOptions({
+      preventNativeDismiss: isDirty,
+    })
+  }, [isDirty, setScreenOptions])
+
   if (!feed?.id) {
     return <Text className="text-label">Feed ({id}) not found</Text>
   }
 
   return (
-    <ScrollView
+    <SafeNavigationScrollView
       className="bg-system-grouped-background"
-      contentContainerClassName="pt-4 gap-y-4"
+      contentViewClassName="gap-y-4 mt-2"
       contentContainerStyle={{ paddingBottom: insets.bottom }}
-    >
-      <Stack.Screen
-        options={{
-          title: `${isSubscribed ? "Edit" : "Follow"} - ${feed?.title}`,
-          headerLeft: ModalHeaderCloseButton,
-          gestureEnabled: !isDirty,
-          headerRight: () => (
-            <ModalHeaderSubmitButton
+      Header={
+        <NavigationBlurEffectHeaderView
+          title={`${isSubscribed ? "Edit" : "Follow"} - ${feed?.title}`}
+          headerRight={
+            <HeaderSubmitTextButton
               isValid={isValid}
               onPress={form.handleSubmit(submit)}
               isLoading={isLoading}
+              label={isSubscribed ? "Save" : "Follow"}
             />
-          ),
-        }}
-      />
-
+          }
+        />
+      }
+    >
       {/* Group 1 */}
       <GroupedInsetListCard className="px-5 py-4">
         <View className="flex flex-row gap-4">
@@ -213,6 +218,6 @@ function FollowImpl(props: { feedId: string }) {
           </View>
         </FormProvider>
       </GroupedInsetListCard>
-    </ScrollView>
+    </SafeNavigationScrollView>
   )
 }

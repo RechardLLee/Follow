@@ -1,5 +1,6 @@
 import { cn } from "@follow/utils/utils"
 
+import { Folo } from "../icons/folo"
 import { Logo } from "../icons/logo"
 
 export const PoweredByFooter: Component = ({ className }) => (
@@ -8,11 +9,11 @@ export const PoweredByFooter: Component = ({ className }) => (
     <Logo className="size-5" />{" "}
     <a
       href="https://github.com/RSSNext"
-      className="cursor-pointer font-default font-bold text-accent no-underline"
+      className="font-default text-accent cursor-pointer font-bold no-underline"
       target="_blank"
       rel="noreferrer"
     >
-      {APP_NAME}
+      <Folo className="size-8" />
     </a>
   </footer>
 )

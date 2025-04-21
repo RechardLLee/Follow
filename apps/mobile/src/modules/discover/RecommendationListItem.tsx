@@ -1,8 +1,8 @@
 import type { RSSHubCategories } from "@follow/constants"
 import type { RSSHubRouteDeclaration } from "@follow/models/src/rsshub"
-import { router } from "expo-router"
 import type { FC } from "react"
 import { memo, useMemo } from "react"
+import { useTranslation } from "react-i18next"
 import { Clipboard, Text, TouchableOpacity, View } from "react-native"
 import WebView from "react-native-webview"
 import * as ContextMenu from "zeego/context-menu"
@@ -10,14 +10,15 @@ import * as ContextMenu from "zeego/context-menu"
 import { Grid } from "@/src/components/ui/grid"
 import { FeedIcon } from "@/src/components/ui/icon/feed-icon"
 import { openLink } from "@/src/lib/native"
+import { useNavigation } from "@/src/lib/navigation/hooks"
 import { toast } from "@/src/lib/toast"
-
-import { RSSHubCategoryCopyMap } from "./copy"
+import { RsshubFormScreen } from "@/src/screens/(modal)/RsshubFormScreen"
 
 export const RecommendationListItem: FC<{
   data: RSSHubRouteDeclaration
   routePrefix: string
 }> = memo(({ data, routePrefix }) => {
+  const { t } = useTranslation("common")
   const { maintainers, categories } = useMemo(() => {
     const maintainers = new Set<string>()
     const categories = new Set<string>()
@@ -33,9 +34,11 @@ export const RecommendationListItem: FC<{
     categories.delete("popular")
     return {
       maintainers: Array.from(maintainers),
-      categories: Array.from(categories) as typeof RSSHubCategories | string[],
+      categories: Array.from(categories) as unknown as typeof RSSHubCategories,
     }
   }, [data])
+
+  const navigation = useNavigation()
 
   return (
     <View className="flex-row items-center p-4 px-6">
@@ -53,7 +56,7 @@ export const RecommendationListItem: FC<{
                 key={c}
               >
                 <Text className="text-text/60 text-xs" numberOfLines={1}>
-                  {RSSHubCategoryCopyMap[c as keyof typeof RSSHubCategoryCopyMap]}
+                  {t(`discover.category.${c}`)}
                 </Text>
               </View>
             ))}
@@ -78,7 +81,7 @@ export const RecommendationListItem: FC<{
                   key="copyMaintainerName"
                   onSelect={() => {
                     Clipboard.setString(m)
-                    toast.info("Name copied to clipboard")
+                    toast.success("Name copied to clipboard")
                   }}
                 >
                   <ContextMenu.ItemTitle>Copy Maintainer Name</ContextMenu.ItemTitle>
@@ -114,13 +117,10 @@ export const RecommendationListItem: FC<{
             <View className="relative" key={route}>
               <TouchableOpacity
                 onPress={() => {
-                  router.push({
-                    pathname: "/rsshub-form",
-                    params: {
-                      routePrefix,
-                      route: JSON.stringify(data.routes[route]),
-                      name: data.name,
-                    },
+                  navigation.presentControllerView(RsshubFormScreen, {
+                    routePrefix,
+                    route: data.routes[route]!,
+                    name: data.name,
                   })
                 }}
                 className="bg-gray-6 h-10 flex-row items-center justify-center overflow-hidden rounded-xl px-2"

@@ -1,18 +1,18 @@
 import { FeedViewType } from "@follow/constants"
 import { jotaiStore } from "@follow/utils"
+import { EventBus } from "@follow/utils/src/event-bus"
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai"
-import { createContext, useCallback, useContext, useMemo } from "react"
+import { selectAtom } from "jotai/utils"
+import { createContext, useCallback, useContext, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { views } from "@/src/constants/views"
+import { getFetchEntryPayload } from "@/src/store/entry/getter"
 import { usePrefetchEntries } from "@/src/store/entry/hooks"
-import type { FetchEntriesProps } from "@/src/store/entry/types"
 import { FEED_COLLECTION_LIST } from "@/src/store/entry/utils"
 import { useFeed } from "@/src/store/feed/hooks"
 import { useInbox } from "@/src/store/inbox/hooks"
 import { useList } from "@/src/store/list/hooks"
-import { getSubscriptionByCategory } from "@/src/store/subscription/getter"
-import { useSubscription } from "@/src/store/subscription/hooks"
-
 // drawer open state
 
 const drawerOpenAtom = atom<boolean>(false)
@@ -42,48 +42,12 @@ export function useSetDrawerSwipeDisabled() {
   return useSetAtom(isDrawerSwipeDisabledAtom)
 }
 
-// collection panel selected state
-
-type CollectionPanelState =
-  | {
-      type: "view"
-      viewId: FeedViewType
-    }
-  | {
-      type: "list"
-      listId: string
-    }
-
-const collectionPanelStateAtom = atom<CollectionPanelState>({
-  type: "view",
-  viewId: FeedViewType.Articles,
-})
-
-export function useSelectedCollection() {
-  return useAtomValue(collectionPanelStateAtom)
-}
-export const selectCollection = (state: CollectionPanelState) => {
-  jotaiStore.set(collectionPanelStateAtom, state)
-  if (state.type === "view" || state.type === "list") {
-    jotaiStore.set(selectedTimelineAtom, state)
-  }
-}
-
 // feed panel selected state
 
-export type SelectedTimeline =
-  | {
-      type: "view"
-      viewId: FeedViewType
-    }
-  | {
-      type: "list"
-      listId: string
-    }
-  | {
-      type: "inbox"
-      inboxId: string
-    }
+export type SelectedTimeline = {
+  type: "view"
+  viewId: FeedViewType
+}
 
 export type SelectedFeed =
   | {
@@ -93,6 +57,14 @@ export type SelectedFeed =
   | {
       type: "category"
       categoryName: string
+    }
+  | {
+      type: "list"
+      listId: string
+    }
+  | {
+      type: "inbox"
+      inboxId: string
     }
   | null
 
@@ -111,77 +83,45 @@ export const useEntryListContext = () => {
 }
 
 export function useSelectedView() {
-  const selectedTimeLine = useAtomValue(selectedTimelineAtom)
-  const selectedFeed = useAtomValue(selectedFeedAtom)
-
-  const list = useList(selectedTimeLine.type === "list" ? selectedTimeLine.listId : "")
-  const subscription = useSubscription(
-    selectedFeed && selectedFeed.type === "feed" ? selectedFeed.feedId : "",
-  )
-
-  if (selectedTimeLine.type === "view") {
-    return selectedTimeLine.viewId
-  }
-  if (selectedTimeLine.type === "list") {
-    return list?.view
-  }
-  if (selectedFeed?.type === "feed") {
-    return subscription?.view
-  }
+  return useAtomValue(useMemo(() => selectAtom(selectedTimelineAtom, (state) => state.viewId), []))
 }
 
-function getFetchEntryPayload(
-  selectedFeed: SelectedTimeline | SelectedFeed,
-): FetchEntriesProps | null {
-  if (!selectedFeed) {
-    return null
-  }
-
-  let payload: FetchEntriesProps = {}
-  switch (selectedFeed.type) {
-    case "view": {
-      payload = { view: selectedFeed.viewId }
-      break
-    }
-    case "feed": {
-      payload = { feedId: selectedFeed.feedId }
-      break
-    }
-    case "category": {
-      payload = { feedId: getSubscriptionByCategory(selectedFeed.categoryName).join(",") }
-      break
-    }
-    case "list": {
-      payload = { listId: selectedFeed.listId }
-      break
-    }
-    case "inbox": {
-      payload = { inboxId: selectedFeed.inboxId }
-      break
-    }
-    // No default
-  }
-  const isCollection =
-    selectedFeed && selectedFeed.type === "feed" && selectedFeed?.feedId === FEED_COLLECTION_LIST
-  if (isCollection) {
-    payload.isCollection = true
-  }
-
-  return payload
+export const getSelectedView = () => {
+  return jotaiStore.get(selectedTimelineAtom).viewId
 }
 
-export function useSelectedFeed() {
+export function useSelectedFeed(): SelectedTimeline | SelectedFeed
+export function useSelectedFeed<T>(
+  selector?: (selectedFeed: SelectedTimeline | SelectedFeed) => T,
+): T | null
+export function useSelectedFeed<T>(
+  selector?: (selectedFeed: SelectedTimeline | SelectedFeed) => T,
+) {
   const entryListContext = useEntryListContext()
 
-  const selectedTimeline = useAtomValue(selectedTimelineAtom)
-  const selectedFeed = useAtomValue(selectedFeedAtom)
-  return entryListContext.type === "feed" ? selectedFeed : selectedTimeline
+  const [stableSelector] = useState(() => selector)
+  return useAtomValue(
+    useMemo(
+      () =>
+        atom((get) => {
+          const selectedTimeline = get(selectedTimelineAtom)
+          const selectedFeed = get(selectedFeedAtom)
+          const result = entryListContext.type === "feed" ? selectedFeed : selectedTimeline
+          if (stableSelector) {
+            return stableSelector(result)
+          }
+          return result
+        }),
+      [entryListContext, stableSelector],
+    ),
+  )
 }
 
 export function useFetchEntriesControls() {
   const selectedFeed = useSelectedFeed()
+  const view = useSelectedView()
 
-  const payload = getFetchEntryPayload(selectedFeed)
+  const payload = getFetchEntryPayload(selectedFeed, view)
   return usePrefetchEntries(payload)
 }
 
@@ -194,6 +134,7 @@ export const useSelectedFeedTitle = () => {
   const feed = useFeed(selectedFeed && selectedFeed.type === "feed" ? selectedFeed.feedId : "")
   const list = useList(selectedFeed && selectedFeed.type === "list" ? selectedFeed.listId : "")
   const inbox = useInbox(selectedFeed && selectedFeed.type === "inbox" ? selectedFeed.inboxId : "")
+  const { t } = useTranslation("common")
 
   if (!selectedFeed) {
     return ""
@@ -201,7 +142,7 @@ export const useSelectedFeedTitle = () => {
 
   switch (selectedFeed.type) {
     case "view": {
-      return viewDef?.name
+      return viewDef?.name ? t(viewDef.name) : ""
     }
     case "feed": {
       return selectedFeed.feedId === FEED_COLLECTION_LIST ? "Collections" : (feed?.title ?? "")
@@ -213,13 +154,26 @@ export const useSelectedFeedTitle = () => {
       return list?.title
     }
     case "inbox": {
-      return inbox?.title ?? "Inbox"
+      return inbox?.title ?? t("words.inbox")
     }
   }
 }
 
-export const selectTimeline = (state: SelectedTimeline) => {
+declare module "@follow/utils/src/event-bus" {
+  export interface CustomEvent {
+    SELECT_TIMELINE: {
+      view: SelectedTimeline
+      target: string | undefined
+    }
+  }
+}
+
+export const selectTimeline = (state: SelectedTimeline, target?: string) => {
   jotaiStore.set(selectedTimelineAtom, state)
+  EventBus.dispatch("SELECT_TIMELINE", {
+    view: state,
+    target,
+  })
 }
 
 export const selectFeed = (state: SelectedFeed) => {

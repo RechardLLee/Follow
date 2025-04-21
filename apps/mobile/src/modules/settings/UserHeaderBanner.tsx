@@ -1,28 +1,41 @@
 import { cn, getLuminance } from "@follow/utils"
 import { LinearGradient } from "expo-linear-gradient"
 import { useMemo } from "react"
-import { StyleSheet, Text, View } from "react-native"
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import type { SharedValue } from "react-native-reanimated"
 import ReAnimated, { FadeIn, FadeOut, interpolate, useAnimatedStyle } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useColor } from "react-native-uikit-colors"
 
 import { UserAvatar } from "@/src/components/ui/avatar/UserAvatar"
+import { useNavigation } from "@/src/lib/navigation/hooks"
+import { LoginScreen } from "@/src/screens/(modal)/LoginScreen"
 import { useImageColors, usePrefetchImageColors } from "@/src/store/image/hooks"
-import { useWhoami } from "@/src/store/user/hooks"
+import { useUser } from "@/src/store/user/hooks"
 
 const defaultGradientColors = ["#000", "#100", "#200"]
 
-export const UserHeaderBanner = ({ scrollY }: { scrollY: SharedValue<number> }) => {
-  const whoami = useWhoami()
-  usePrefetchImageColors(whoami?.image)
+export const UserHeaderBanner = ({
+  scrollY,
+  userId,
+}: {
+  scrollY: SharedValue<number>
+  userId?: string
+}) => {
+  const bgColor = useColor("systemGroupedBackground")
+  const avatarIconColor = useColor("secondaryLabel")
+
+  const user = useUser(userId)
+  usePrefetchImageColors(user?.image)
   const insets = useSafeAreaInsets()
 
   const MAX_PULL = 100
   const SCALE_FACTOR = 1.8
 
-  const imageColors = useImageColors(whoami?.image)
+  const imageColors = useImageColors(user?.image)
   const gradientColors = useMemo(() => {
-    if (!imageColors || imageColors.platform === "web") return defaultGradientColors
+    if (!imageColors || imageColors.platform === "web")
+      return user ? defaultGradientColors : [bgColor, bgColor, bgColor]
     if (imageColors.platform === "android") {
       return [
         imageColors.dominant,
@@ -31,7 +44,7 @@ export const UserHeaderBanner = ({ scrollY }: { scrollY: SharedValue<number> }) 
       ]
     }
     return [imageColors.primary, imageColors.secondary, imageColors.background]
-  }, [imageColors])
+  }, [bgColor, imageColors, user])
 
   const gradientLight = useMemo(() => {
     if (!imageColors) return false
@@ -51,7 +64,7 @@ export const UserHeaderBanner = ({ scrollY }: { scrollY: SharedValue<number> }) 
     if (!gradientColors) return {}
     return {
       transform: [{ scale: scaleValue }],
-      height: 250 + (scrollY.value < 0 ? -scrollY.value : 0),
+      height: 250,
     }
   })
 
@@ -75,7 +88,8 @@ export const UserHeaderBanner = ({ scrollY }: { scrollY: SharedValue<number> }) 
     }
   })
 
-  if (!whoami) return null
+  const navigation = useNavigation()
+
   return (
     <View
       className="relative h-[200px] items-center justify-center"
@@ -104,21 +118,45 @@ export const UserHeaderBanner = ({ scrollY }: { scrollY: SharedValue<number> }) 
         )}
       </ReAnimated.View>
       <ReAnimated.View
-        className="bg-system-background overflow-hidden rounded-full"
         style={avatarStyles}
+        className="bg-system-background overflow-hidden rounded-full"
       >
-        <UserAvatar image={whoami.image} name={whoami.name!} size={60} />
+        <UserAvatar
+          image={user?.image}
+          name={user?.name}
+          size={60}
+          className={!user?.name ? "bg-system-grouped-background" : ""}
+          color={avatarIconColor}
+        />
       </ReAnimated.View>
 
-      <View className="mt-2">
-        <Text className={cn("text-2xl font-bold", gradientLight ? "text-black" : "text-white/95")}>
-          {whoami.name}
-        </Text>
-        {!!whoami.handle && (
-          <Text className={cn(gradientLight ? "text-black/70" : "text-white/70")}>
-            @{whoami.handle}
+      <View className="mt-2 items-center">
+        {user?.name ? (
+          <Text
+            numberOfLines={1}
+            className={cn(
+              "px-8 text-2xl font-bold",
+              gradientLight ? "text-black" : "text-white/95",
+            )}
+          >
+            {user.name}
           </Text>
+        ) : (
+          <Text className="text-text text-2xl font-bold">Folo Account</Text>
         )}
+
+        {user?.handle ? (
+          <Text className={cn(gradientLight ? "text-black/70" : "text-white/70")}>
+            @{user.handle}
+          </Text>
+        ) : !user ? (
+          <TouchableOpacity
+            className="mx-auto"
+            onPress={() => navigation.presentControllerView(LoginScreen)}
+          >
+            <Text className="text-accent m-[6] text-[16px]">Sign in to your account</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   )

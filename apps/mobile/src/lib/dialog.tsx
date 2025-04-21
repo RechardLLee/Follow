@@ -1,4 +1,5 @@
 import { cn } from "@follow/utils"
+import { t } from "i18next"
 import type { Dispatch, FC, ReactElement, ReactNode, SetStateAction } from "react"
 import {
   cloneElement,
@@ -18,6 +19,8 @@ import { useColor } from "react-native-uikit-colors"
 
 import { FullWindowOverlay } from "../components/common/FullWindowOverlay"
 import { Overlay } from "../components/ui/overlay/Overlay"
+import { Navigation } from "./navigation/Navigation"
+import { NavigationInstanceContext } from "./navigation/NavigationInstanceContext"
 
 export interface DialogProps<Ctx> {
   title?: string
@@ -37,11 +40,22 @@ export interface DialogProps<Ctx> {
   id: string
 }
 
-const entering = SlideInUp.springify().damping(15).stiffness(100)
+interface ShowDialogOptions<Ctx> {
+  override?: {
+    onClose?: (ctx: Ctx & DialogContextType) => void
+    onConfirm?: (ctx: Ctx & DialogContextType) => void
+    cancelText?: string
+    confirmText?: string
+  }
+}
+
+const entering = SlideInUp.springify().damping(16.5).stiffness(100)
 const exiting = SlideOutUp.duration(200)
 
 type DialogContextType = {
   dismiss: () => void
+  bizOnConfirm: (() => void) | null
+  bizOnCancel: (() => void) | null
 }
 
 const DialogDynamicButtonActionContext = createContext<{
@@ -61,10 +75,10 @@ const SetDialogDynamicButtonActionContext = createContext<{
 })
 
 const DialogContext = createContext<DialogContextType | null>(null)
-export type DialogComponent<Ctx = unknown> = FC<DialogContextType & { ctx: Ctx }> &
-  Omit<DialogProps<Ctx>, "content">
+export type DialogComponent<Ctx = unknown> = FC<{ ctx: Ctx }> & Omit<DialogProps<Ctx>, "content">
 class DialogStatic {
   useDialogContext = () => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     return useContext(DialogContext)
   }
 
@@ -72,8 +86,10 @@ class DialogStatic {
 
   // Components
   DialogConfirm: FC<{ onPress: () => void }> = ({ onPress }) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { setOnConfirm } = useContext(SetDialogDynamicButtonActionContext)
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
       setOnConfirm(() => {
         return onPress
@@ -83,9 +99,12 @@ class DialogStatic {
   }
 
   DialogCancel: FC<{ onPress: () => void }> = ({ onPress }) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { setOnCancel } = useContext(SetDialogDynamicButtonActionContext)
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { dismiss } = useContext(DialogContext)!
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
       let timeout: NodeJS.Timeout
       setOnCancel(() => {
@@ -104,8 +123,13 @@ class DialogStatic {
     return null
   }
 
-  show<Ctx>(propsOrComponent: DialogProps<Ctx> | DialogComponent<Ctx>) {
+  show<Ctx>(
+    propsOrComponent: DialogProps<Ctx> | DialogComponent<Ctx>,
+    options?: ShowDialogOptions<Ctx>,
+  ) {
     const isExist = this.currentStackedDialogs.has(propsOrComponent.id)
+
+    const override = options?.override
     if (isExist) {
       return
     }
@@ -116,7 +140,19 @@ class DialogStatic {
 
     const dismiss = () => this.destroy(props.id, siblings)
 
-    const reactCtx = { dismiss }
+    const reactCtx: DialogContextType = {
+      dismiss,
+      get bizOnConfirm() {
+        return () => {
+          handleConfirm()
+        }
+      },
+      get bizOnCancel() {
+        return () => {
+          handleClose()
+        }
+      },
+    }
 
     const mergeCtx = (ctx: Ctx) => ({ ...ctx, ...reactCtx })
 
@@ -125,15 +161,27 @@ class DialogStatic {
       "content" in propsOrComponent
         ? propsOrComponent.content
         : createElement(propsOrComponent, {
-            dismiss,
             ctx,
           })
 
     const handleClose = () => {
       dismiss()
       setTimeout(() => {
-        props.onClose?.(mergeCtx(ctx))
+        if (override?.onClose) {
+          override.onClose(mergeCtx(ctx))
+        } else {
+          props.onClose?.(mergeCtx(ctx))
+        }
       }, 16)
+    }
+
+    const handleConfirm = () => {
+      if (override?.onConfirm) {
+        override.onConfirm(mergeCtx(ctx))
+      } else {
+        props.onConfirm?.(mergeCtx(ctx))
+        handleClose()
+      }
     }
 
     const Header = props.HeaderComponent ? (
@@ -141,44 +189,47 @@ class DialogStatic {
         title: props.title ?? "",
         onClose: handleClose,
       })
-    ) : (
+    ) : props.title ? (
       <DefaultHeader title={props.title} headerIcon={props.headerIcon} />
-    )
+    ) : null
 
     const siblings = new RootSiblings(
       (
-        <FullWindowOverlay>
-          <Overlay onPress={handleClose} />
-          <Animated.View
-            className="bg-secondary-system-background absolute inset-x-0 -top-8 pt-8"
-            entering={entering}
-            exiting={exiting}
-          >
-            <SafeInsetTop />
-            <DialogDynamicButtonActionProvider>
-              {Header}
-              <View className="px-6 py-4">
-                <DialogContext.Provider value={reactCtx}>{children}</DialogContext.Provider>
-              </View>
+        <NavigationInstanceContext.Provider value={Navigation.rootNavigation}>
+          <FullWindowOverlay>
+            <Overlay onPress={handleClose} />
+            <Animated.View
+              className="bg-secondary-system-background absolute inset-x-0 -top-8 pt-8"
+              entering={entering}
+              exiting={exiting}
+            >
+              <SafeInsetTop />
+              <DialogDynamicButtonActionProvider>
+                {Header}
+                <View className={cn("px-6 pb-4", Header ? "pt-4" : "pt-0")}>
+                  <DialogContext.Provider value={reactCtx}>{children}</DialogContext.Provider>
+                </View>
 
-              <View className="flex-row gap-4 px-6 pb-4">
-                <DialogDynamicButtonAction
-                  fallbackCaller={handleClose}
-                  text={props.cancelText ?? "Cancel"}
-                  type="cancel"
-                />
+                <View className="flex-row gap-4 px-6 pb-4">
+                  <DialogDynamicButtonAction
+                    fallbackCaller={handleClose}
+                    text={override?.cancelText ?? props.cancelText ?? t("common:words.cancel")}
+                    type="cancel"
+                    textClassName={cn(props.variant === "destructive" && "font-bold")}
+                  />
 
-                <DialogDynamicButtonAction
-                  fallbackCaller={handleClose}
-                  text={props.confirmText ?? "Confirm"}
-                  type="confirm"
-                  className={props.variant === "destructive" ? "bg-red" : "bg-accent"}
-                  textClassName="text-white"
-                />
-              </View>
-            </DialogDynamicButtonActionProvider>
-          </Animated.View>
-        </FullWindowOverlay>
+                  <DialogDynamicButtonAction
+                    fallbackCaller={handleConfirm}
+                    text={override?.confirmText ?? props.confirmText ?? t("common:words.confirm")}
+                    type="confirm"
+                    className={props.variant === "destructive" ? "bg-red" : "bg-accent"}
+                    textClassName={cn("text-white", props.variant !== "destructive" && "font-bold")}
+                  />
+                </View>
+              </DialogDynamicButtonActionProvider>
+            </Animated.View>
+          </FullWindowOverlay>
+        </NavigationInstanceContext.Provider>
       ),
     )
 

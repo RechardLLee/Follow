@@ -6,7 +6,9 @@ import type { ToastProps } from "../components/ui/toast/types"
 
 export const toastInstance = new ToastManager()
 
-type CommandToastOptions = Partial<Pick<ToastProps, "duration" | "icon" | "render" | "message">>
+type CommandToastOptions = Partial<
+  Pick<ToastProps, "duration" | "icon" | "render" | "message" | "position">
+>
 type Toast = {
   // [key in "error" | "success" | "info"]: (message: string) => void;
   show: typeof toastInstance.show
@@ -23,6 +25,7 @@ interface NativeToasterOptions {
    * seconds
    */
   duration?: number
+  position?: "top" | "center" | "bottom"
 }
 export const toast = {
   show: toastInstance.show.bind(toastInstance),
@@ -32,10 +35,11 @@ export const toast = {
     if (Platform.OS === "ios") {
       const NativeToaster = requireNativeModule("Toaster")
       NativeToaster.toast({
-        title: "",
+        // title: message,
         message,
         type,
         duration: options.duration ? options.duration / 1000 : 1.5,
+        position: options.position,
       } as NativeToasterOptions)
       return
     }

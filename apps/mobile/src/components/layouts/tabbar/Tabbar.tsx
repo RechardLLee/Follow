@@ -1,8 +1,6 @@
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs"
-import { getLabel } from "@react-navigation/elements"
-import { CommonActions, NavigationContext, NavigationRouteContext } from "@react-navigation/native"
+import { useAtom, useAtomValue } from "jotai"
 import type { FC } from "react"
-import { Fragment, memo, useContext, useEffect } from "react"
+import { memo, useCallback, useContext, useEffect, useMemo } from "react"
 import type { StyleProp, TextStyle } from "react-native"
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import Animated, {
@@ -12,26 +10,33 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useEventCallback } from "usehooks-ts"
 
 import { SetBottomTabBarHeightContext } from "@/src/components/layouts/tabbar/contexts/BottomTabBarHeightContext"
 import { gentleSpringPreset, quickSpringPreset, softSpringPreset } from "@/src/constants/spring"
+import { BottomTabContext } from "@/src/lib/navigation/bottom-tab/BottomTabContext"
+import type { TabbarIconProps, TabScreenProps } from "@/src/lib/navigation/bottom-tab/types"
 import { PlayerTabBar } from "@/src/modules/player/PlayerTabBar"
-import { accentColor, useColor } from "@/src/theme/colors"
+import { accentColor } from "@/src/theme/colors"
 
 import { ThemedBlurView } from "../../common/ThemedBlurView"
 import { Grid } from "../../ui/grid"
 import { BottomTabBarBackgroundContext } from "./contexts/BottomTabBarBackgroundContext"
 import { BottomTabBarVisibleContext } from "./contexts/BottomTabBarVisibleContext"
 
-export const Tabbar: FC<BottomTabBarProps> = (props) => {
-  const { state, navigation, descriptors } = props
-  const { routes } = state
+export const Tabbar: FC<{
+  onPress?: (index: number) => void
+}> = ({ onPress: onPressProp }) => {
   const setTabBarHeight = useContext(SetBottomTabBarHeightContext)
 
   const insets = useSafeAreaInsets()
   const tabBarVisible = useContext(BottomTabBarVisibleContext)
 
+  const tabContext = useContext(BottomTabContext)
+  const tabScreens = useAtomValue(tabContext.tabScreensAtom)
+  const [selectedIndex, setSelectedIndex] = useAtom(tabContext.currentIndexAtom)
   const translateY = useSharedValue(0)
+
   useEffect(() => {
     cancelAnimation(translateY)
     translateY.value = withSpring(
@@ -39,12 +44,32 @@ export const Tabbar: FC<BottomTabBarProps> = (props) => {
       !tabBarVisible ? quickSpringPreset : softSpringPreset,
     )
   }, [tabBarVisible, translateY])
+
+  const placeholderTabScreens = useMemo<TabScreenProps[]>(() => {
+    return [
+      {
+        tabScreenIndex: 0,
+        title: "",
+        renderIcon: () => <View className="size-5" />,
+        identifier: "placeholder",
+      },
+    ]
+  }, [])
+
+  const renderTabScreens = tabScreens.length > 0 ? tabScreens : placeholderTabScreens
+
+  const onPress = useEventCallback((index: number) => {
+    setSelectedIndex(index)
+    onPressProp?.(index)
+  })
+
   return (
     <Animated.View
+      pointerEvents={tabScreens.length > 0 ? "auto" : "none"}
       accessibilityRole="tablist"
       className="absolute inset-x-0 bottom-0 z-10"
       style={{
-        paddingBottom: insets.bottom,
+        paddingBottom: Math.max(insets.bottom, 8),
         transform: [{ translateY }],
       }}
       onLayout={(e) => {
@@ -52,102 +77,84 @@ export const Tabbar: FC<BottomTabBarProps> = (props) => {
       }}
     >
       <TabBarBackground />
+
       <PlayerTabBar />
-      <Grid columns={routes.length} gap={10} className="mt-[7]">
-        {routes.map((route, index) => {
-          const focused = index === state.index
-          const { options } = descriptors[route.key]!
+      <Grid columns={renderTabScreens.length} gap={10} className="mt-[7]">
+        {renderTabScreens.map((route, index) => {
+          const focused = index === selectedIndex
+          const label = route.title
 
-          const inactiveTintColor = "#999"
-          const onPress = () => {
-            const event = navigation.emit({
-              type: "tabPress",
-              target: route.key,
-              canPreventDefault: true,
-            })
-
-            if (!focused && !event.defaultPrevented) {
-              navigation.dispatch({
-                ...CommonActions.navigate(route),
-                target: state.key,
-              })
-            }
-          }
-          const tabButton = options?.tabBarButton
-          const label =
-            typeof options?.tabBarLabel === "function"
-              ? options?.tabBarLabel
-              : getLabel({ label: options?.tabBarLabel, title: options?.title }, route.name)
-
-          const accessibilityLabel =
-            options?.tabBarAccessibilityLabel !== undefined
-              ? options?.tabBarAccessibilityLabel
-              : typeof label === "string" && Platform.OS === "ios"
-                ? `${label}, tab, ${index + 1} of ${routes.length}`
-                : undefined
-
-          const renderIcon = ({ focused }: { focused: boolean }) => {
-            const iconSize = ICON_SIZE_ROUND
-            return (
-              <TabIcon
-                focused={focused}
-                iconSize={iconSize}
-                inactiveTintColor={inactiveTintColor}
-                renderIcon={options.tabBarIcon!}
-              />
-            )
-          }
-
-          const renderLabel = ({ focused }: { focused: boolean }) => {
-            const color = focused ? accentColor : accentColor
-
-            if (typeof label !== "string") {
-              const labelString = getLabel(
-                {
-                  label: typeof options?.tabBarLabel === "string" ? options.tabBarLabel : undefined,
-                  title: options?.title,
-                },
-                route.name,
-              )
-
-              return label({
-                focused,
-                color,
-                position: "beside-icon",
-                children: labelString,
-              })
-            }
-
-            return (
-              <TextLabel
-                focused={focused}
-                accessibilityLabel={accessibilityLabel}
-                label={label}
-                inactiveTintColor={inactiveTintColor}
-                style={styles.labelBeneath}
-              />
-            )
-          }
-
-          const TabButton = tabButton ?? Fragment
           return (
-            <TabButton key={route.key}>
-              <TabItem
-                route={route}
-                focused={focused}
-                descriptors={descriptors}
-                onPress={onPress}
-                originalRenderIcon={renderIcon}
-                originalRenderLabel={renderLabel}
-                accessibilityLabel={accessibilityLabel}
-              />
-            </TabButton>
+            <MemoedTabItem
+              key={route.tabScreenIndex}
+              focused={focused}
+              index={index}
+              label={label}
+              renderIcon={route.renderIcon}
+              onPress={onPress}
+            />
           )
         })}
       </Grid>
     </Animated.View>
   )
 }
+
+const MemoedTabItem: FC<{
+  focused: boolean
+  index: number
+  label: string
+  renderIcon?: (options: TabbarIconProps) => React.ReactNode
+  onPress: (index: number) => void
+}> = memo(({ focused, index, label, renderIcon: renderIconFn, onPress: onPressProp }) => {
+  const inactiveTintColor = "#999"
+  const onPress = () => {
+    onPressProp?.(index)
+  }
+
+  const accessibilityLabel =
+    typeof label === "string" && Platform.OS === "ios" ? `${label}, tab` : undefined
+
+  const renderIcon = useCallback(
+    ({ focused }: { focused: boolean }) => {
+      const iconSize = ICON_SIZE_ROUND
+      return (
+        <TabIcon
+          focused={focused}
+          iconSize={iconSize}
+          inactiveTintColor={inactiveTintColor}
+          renderIcon={renderIconFn || noop}
+        />
+      )
+    },
+    [renderIconFn],
+  )
+
+  const renderLabel = useCallback(
+    ({ focused }: { focused: boolean }) => {
+      return (
+        <TextLabel
+          focused={focused}
+          accessibilityLabel={accessibilityLabel}
+          label={label}
+          inactiveTintColor={inactiveTintColor}
+          style={styles.labelBeneath}
+        />
+      )
+    },
+    [label, accessibilityLabel, inactiveTintColor],
+  )
+
+  return (
+    <TabItem
+      focused={focused}
+      onPress={onPress}
+      originalRenderIcon={renderIcon}
+      originalRenderLabel={renderLabel}
+      accessibilityLabel={accessibilityLabel}
+    />
+  )
+})
 
 const TextLabel = (props: {
   focused: boolean
@@ -178,38 +185,15 @@ const TabIcon = ({
   focused: boolean
   iconSize: number
   inactiveTintColor: string
-  renderIcon: (options: { focused: boolean; size: number; color: string }) => React.ReactNode
+  renderIcon: (options: TabbarIconProps) => React.ReactNode
 }) => {
   const activeOpacity = focused ? 1 : 0
   const inactiveOpacity = focused ? 0 : 1
 
-  const opacity = useSharedValue(focused ? 1 : 0.8)
-  const scale = useSharedValue(focused ? 1 : 0.92)
-  const rotate = useSharedValue(focused ? 0 : 0.2)
-
-  useEffect(() => {
-    if (focused) {
-      opacity.value = withSpring(1)
-      scale.value = withSpring(1)
-      rotate.value = withSpring(0)
-    } else {
-      opacity.value = 0.8
-      scale.value = 0.92
-      rotate.value = 0.2
-    }
-  }, [focused, opacity, scale, rotate])
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: opacity.value,
-      transform: [{ scale: scale.value }, { rotate: `${rotate.value}rad` }],
-    }
-  })
-
   return (
     <View style={styles.wrapperUikit}>
       {focused && (
-        <Animated.View style={[styles.icon, { opacity: activeOpacity }, animatedStyle]}>
+        <Animated.View style={[styles.icon, { opacity: activeOpacity }]}>
           {renderIcon({
             focused: true,
             size: iconSize,
@@ -242,7 +226,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     overflow: "hidden",
     backgroundColor: "transparent",
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
   icon: {
     // We render the icon twice at the same position on top of each other:
@@ -261,7 +244,6 @@ const styles = StyleSheet.create({
   },
 })
 
-const AnimatedThemedBlurView = Animated.createAnimatedComponent(ThemedBlurView)
 const TabBarBackground = () => {
   const { opacity } = useContext(BottomTabBarBackgroundContext)
 
@@ -269,27 +251,41 @@ const TabBarBackground = () => {
     opacity: opacity.value,
     ...styles.blurEffect,
   }))
-  const borderColor = useColor("opaqueSeparator")
-  return <AnimatedThemedBlurView style={[styles.blurEffect, animatedStyle, { borderColor }]} />
+  const separatorStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }))
+  return (
+    <View style={styles.blurEffect}>
+      <Animated.View style={[styles.blurEffect, animatedStyle]}>
+        <ThemedBlurView style={styles.blurEffect} />
+      </Animated.View>
+      <Animated.View
+        className="bg-non-opaque-separator dark:bg-opaque-separator/50 absolute top-0 w-full"
+        style={[
+          separatorStyle,
+          {
+            height: StyleSheet.hairlineWidth,
+          },
+        ]}
+      />
+    </View>
+  )
 }
 
 const TabItem = memo(
-  // eslint-disable-next-line @eslint-react/no-unstable-context-value
   ({
-    route,
     focused,
-    descriptors,
+
     onPress,
     originalRenderIcon,
     originalRenderLabel,
     accessibilityLabel,
   }: {
-    route: any
     focused: boolean
-    descriptors: any
+
     onPress: () => void
-    originalRenderIcon: (scene: { route: any; focused: boolean }) => React.ReactNode
-    originalRenderLabel: (scene: { route: any; focused: boolean }) => React.ReactNode
+    originalRenderIcon: (scene: { focused: boolean }) => React.ReactNode
+    originalRenderLabel: (scene: { focused: boolean }) => React.ReactNode
     accessibilityLabel?: string
   }) => {
     const pressed = useSharedValue(0)
@@ -300,29 +296,36 @@ const TabItem = memo(
       }
     })
 
-    const scene = { route, focused }
+    const scene = { focused }
 
     return (
-      <NavigationContext.Provider value={descriptors[route.key]?.navigation}>
-        <NavigationRouteContext.Provider value={route}>
-          <Pressable
-            onPress={onPress}
-            onPressIn={() => {
-              pressed.value = withSpring(1, gentleSpringPreset)
-            }}
-            onPressOut={() => {
-              pressed.value = withSpring(0, gentleSpringPreset)
-            }}
-            className="flex-1 flex-col items-center justify-center"
-            accessibilityLabel={accessibilityLabel}
-            accessibilityRole="button"
-            accessibilityState={{ selected: focused }}
-          >
-            <Animated.View style={animatedStyle}>{originalRenderIcon(scene)}</Animated.View>
-            {originalRenderLabel(scene)}
-          </Pressable>
-        </NavigationRouteContext.Provider>
-      </NavigationContext.Provider>
+      <Pressable
+        onPress={() => {
+          onPress()
+          cancelAnimation(pressed)
+          pressed.value = withSpring(0, quickSpringPreset)
+        }}
+        onPressIn={() => {
+          pressed.value = withSpring(1, gentleSpringPreset)
+        }}
+        onPressOut={() => {
+          cancelAnimation(pressed)
+          pressed.value = withSpring(0, quickSpringPreset)
+        }}
+        className="flex-1 flex-col items-center justify-center"
+        accessibilityLabel={accessibilityLabel}
+        accessibilityRole="button"
+        accessibilityState={{ selected: focused }}
+      >
+        <Animated.View style={animatedStyle}>
+          {useMemo(() => {
+            return originalRenderIcon(scene)
+          }, [JSON.stringify(scene), originalRenderIcon])}
+        </Animated.View>
+        {originalRenderLabel(scene)}
+      </Pressable>
     )
   },
 )
+
+const noop = () => null

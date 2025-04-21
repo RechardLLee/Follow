@@ -2,8 +2,8 @@ import { useMobile } from "@follow/components/hooks/useMobile.js"
 import { LoadingCircle } from "@follow/components/ui/loading/index.jsx"
 import { cn } from "@follow/utils/utils"
 import type { VariantProps } from "class-variance-authority"
-import type { HTMLMotionProps } from "framer-motion"
-import { m } from "framer-motion"
+import type { HTMLMotionProps } from "motion/react"
+import { m } from "motion/react"
 import * as React from "react"
 
 import { styledButtonVariant } from "./variants"
@@ -114,7 +114,7 @@ export const IconButton = React.forwardRef<
         styledButtonVariant({
           variant: "ghost",
         }),
-        "group relative gap-2 bg-accent/10 px-4 hover:bg-accent dark:bg-accent/20 dark:hover:bg-accent/60",
+        "bg-accent/10 hover:bg-accent dark:bg-accent/20 dark:hover:bg-accent/60 group relative gap-2 px-4",
         rest.className,
       )}
     >

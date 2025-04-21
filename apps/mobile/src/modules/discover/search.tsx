@@ -1,9 +1,7 @@
-import { RSSHubCategories } from "@follow/constants"
-import { getDefaultHeaderHeight } from "@react-navigation/elements"
-import { router } from "expo-router"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
 import type { FC } from "react"
 import { useContext, useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import type { Animated as RnAnimated, LayoutChangeEvent } from "react-native"
 import { Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native"
 import Animated, {
@@ -15,12 +13,15 @@ import Animated, {
 import { useSafeAreaFrame, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { BlurEffect } from "@/src/components/common/BlurEffect"
-import { TabBar } from "@/src/components/ui/tabview/TabBar"
+import { getDefaultHeaderHeight } from "@/src/components/layouts/utils"
 import { Search2CuteReIcon } from "@/src/icons/search_2_cute_re"
+import { useScreenIsInSheetModal } from "@/src/lib/navigation/hooks"
+import { Navigation } from "@/src/lib/navigation/Navigation"
+import { ScreenItemContext } from "@/src/lib/navigation/ScreenItemContext"
+import SearchScreen from "@/src/screens/(headless)/search"
 import { accentColor, useColor } from "@/src/theme/colors"
 
 import { AddFeedButton } from "../screen/action"
-import { RSSHubCategoryCopyMap } from "./copy"
 import { useSearchPageContext } from "./ctx"
 import { DiscoverContext } from "./DiscoverContext"
 import { SearchTabBar } from "./SearchTabBar"
@@ -31,7 +32,9 @@ export const SearchHeader: FC<{
 }> = ({ animatedX, onLayout }) => {
   const frame = useSafeAreaFrame()
   const insets = useSafeAreaInsets()
-  const headerHeight = getDefaultHeaderHeight(frame, false, insets.top)
+
+  const sheetModal = useScreenIsInSheetModal()
+  const headerHeight = getDefaultHeaderHeight(frame, sheetModal, insets.top)
 
   return (
     <View
@@ -50,9 +53,9 @@ export const SearchHeader: FC<{
 }
 
 const DynamicBlurEffect = () => {
-  const { animatedY } = useContext(DiscoverContext)
+  const { reAnimatedScrollY } = useContext(ScreenItemContext)
   const blurStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, Math.min(1, animatedY.value / 50)),
+    opacity: Math.max(0, Math.min(1, reAnimatedScrollY.value / 50)),
   }))
   return (
     <Animated.View className="absolute inset-0 flex-1" style={blurStyle} pointerEvents={"none"}>
@@ -60,15 +63,14 @@ const DynamicBlurEffect = () => {
     </Animated.View>
   )
 }
+
 export const DiscoverHeader = () => {
-  return <DiscoverHeaderImpl />
-}
-const DiscoverHeaderImpl = () => {
   const frame = useSafeAreaFrame()
   const insets = useSafeAreaInsets()
-  const headerHeight = getDefaultHeaderHeight(frame, false, insets.top)
-  const { animatedX, currentTabAtom, headerHeightAtom } = useContext(DiscoverContext)
-  const setCurrentTab = useSetAtom(currentTabAtom)
+  const sheetModal = useScreenIsInSheetModal()
+  const headerHeight = getDefaultHeaderHeight(frame, sheetModal, insets.top)
+  const { headerHeightAtom } = useContext(DiscoverContext)
+
   const setHeaderHeight = useSetAtom(headerHeightAtom)
 
   return (
@@ -81,38 +83,23 @@ const DiscoverHeaderImpl = () => {
     >
       <DynamicBlurEffect />
 
-      <View style={[styles.header, styles.discoverHeader]}>
+      <View style={styles.header}>
         <PlaceholerSearchBar />
-
-        {/* Right actions group */}
-        <View className="ml-2">
-          <AddFeedButton />
-        </View>
+        <AddFeedButton />
       </View>
-
-      <TabBar
-        tabs={RSSHubCategories.map((category) => ({
-          name: RSSHubCategoryCopyMap[category],
-          value: category,
-        }))}
-        tabScrollContainerAnimatedX={animatedX}
-        onTabItemPress={(index) => {
-          setCurrentTab(index)
-        }}
-        tabbarClassName="border-b border-b-quaternary-system-fill"
-      />
     </View>
   )
 }
 
 const PlaceholerSearchBar = () => {
   const labelColor = useColor("secondaryLabel")
+  const { t } = useTranslation("common")
   return (
     <Pressable
       style={styles.searchbar}
       className="bg-tertiary-system-fill"
       onPress={() => {
-        router.push("/search")
+        Navigation.rootNavigation.pushControllerView(SearchScreen)
       }}
     >
       <View
@@ -121,7 +108,7 @@ const PlaceholerSearchBar = () => {
       >
         <Search2CuteReIcon color={labelColor} height={18} width={18} />
         <Text className="text-secondary-label ml-1" style={styles.searchPlaceholderText}>
-          Search
+          {t("words.search")}
         </Text>
       </View>
     </Pressable>
@@ -142,18 +129,19 @@ const ComposeSearchBar = () => {
           setIsFocused(false)
           setSearchValue("")
 
-          if (router.canGoBack()) {
-            router.back()
+          if (Navigation.rootNavigation.canGoBack()) {
+            Navigation.rootNavigation.back()
           }
         }}
       >
-        <Text className="ml-3 text-lg font-medium text-accent">Cancel</Text>
+        <Text className="text-accent ml-3 text-lg font-medium">Cancel</Text>
       </TouchableOpacity>
     </>
   )
 }
 
 const SearchInput = () => {
+  const { t } = useTranslation("common")
   const { searchFocusedAtom, searchValueAtom } = useSearchPageContext()
   const [isFocused, setIsFocused] = useAtom(searchFocusedAtom)
   const placeholderTextColor = useColor("secondaryLabel")
@@ -227,7 +215,7 @@ const SearchInput = () => {
           <Search2CuteReIcon color={placeholderTextColor} height={18} width={18} />
           {!searchValue && !tempSearchValue && (
             <Text className="text-secondary-label ml-2" style={styles.searchPlaceholderText}>
-              Search
+              {t("words.search")}
             </Text>
           )}
         </Animated.View>
@@ -255,7 +243,7 @@ const SearchInput = () => {
       <Animated.View style={skeletonAnimatedStyle} pointerEvents="none">
         <Search2CuteReIcon color={placeholderTextColor} height={18} width={18} />
         <Text className="text-secondary-label ml-1" style={styles.searchPlaceholderText}>
-          Search
+          {t("words.search")}
         </Text>
       </Animated.View>
     </View>
@@ -269,10 +257,6 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     marginHorizontal: 16,
     position: "relative",
-  },
-
-  discoverHeader: {
-    marginRight: 0,
   },
 
   searchbar: {

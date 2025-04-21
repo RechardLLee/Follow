@@ -1,27 +1,26 @@
+/**
+ * This env for apps/desktop
+ */
 import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
 
-export const isDev =
-  "process" in globalThis ? process.env.NODE_ENV === "development" : import.meta.env.DEV
+import { DEFAULT_VALUES } from "./env.common"
+
 export const env = createEnv({
   clientPrefix: "VITE_",
   client: {
-    VITE_WEB_URL: z.string().url().default("https://app.follow.is"),
-    VITE_API_URL: z.string(),
+    VITE_WEB_URL: z.string().url().default(DEFAULT_VALUES.PROD.WEB_URL),
+    VITE_API_URL: z.string().default(DEFAULT_VALUES.PROD.API_URL),
     VITE_DEV_PROXY: z.string().optional(),
     VITE_SENTRY_DSN: z.string().optional(),
-    VITE_INBOXES_EMAIL: z.string().default("@follow.re"),
+    VITE_INBOXES_EMAIL: z.string().default(DEFAULT_VALUES.PROD.INBOXES_EMAIL),
     VITE_FIREBASE_CONFIG: z.string().optional(),
 
     VITE_OPENPANEL_CLIENT_ID: z.string().optional(),
     VITE_OPENPANEL_API_URL: z.string().url().optional(),
 
-    // For external, use api_url if you don't want to fill it in.
-    VITE_EXTERNAL_PROD_API_URL: z.string().optional(),
-    VITE_EXTERNAL_DEV_API_URL: z.string().optional(),
-    VITE_EXTERNAL_API_URL: z.string().optional(),
-    VITE_WEB_PROD_URL: z.string().optional(),
-    VITE_WEB_DEV_URL: z.string().optional(),
+    VITE_RECAPTCHA_V2_SITE_KEY: z.string().default(DEFAULT_VALUES.PROD.RECAPTCHA_V2_SITE_KEY),
+    VITE_RECAPTCHA_V3_SITE_KEY: z.string().default(DEFAULT_VALUES.PROD.RECAPTCHA_V3_SITE_KEY),
   },
 
   emptyStringAsUndefined: true,

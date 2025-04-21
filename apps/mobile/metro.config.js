@@ -18,11 +18,18 @@ config.resolver.nodeModulesPaths = [
   path.resolve(__dirname, "../../node_modules"),
 ]
 
+config.resolver.extraNodeModules = {
+  ...config.resolver.extraNodeModules,
+  "@locales": path.resolve(__dirname, "../../locales"),
+}
+
+config.watchFolders = [...config.watchFolders, path.resolve(__dirname, "../../locales")]
+
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   const result = context.resolveRequest(context, moduleName, platform)
   if (result.type === "sourceFile") {
     const lastDotIndex = result.filePath.lastIndexOf(".")
-    const mobilePath = `${result.filePath.slice(0, lastDotIndex)}.mobile${result.filePath.slice(lastDotIndex)}`
+    const mobilePath = `${result.filePath.slice(0, lastDotIndex)}.rn${result.filePath.slice(lastDotIndex)}`
     const file = context.fileSystemLookup(mobilePath)
     if (file.exists) {
       return {

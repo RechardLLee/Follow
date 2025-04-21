@@ -2,7 +2,7 @@ import { useInputComposition } from "@follow/hooks"
 import { stopPropagation } from "@follow/utils/dom"
 import { cn } from "@follow/utils/utils"
 import clsx from "clsx"
-import { useMotionValue } from "framer-motion"
+import { useMotionValue } from "motion/react"
 import type { DetailedHTMLProps, PropsWithChildren, TextareaHTMLAttributes } from "react"
 import { forwardRef, useCallback, useState } from "react"
 
@@ -50,10 +50,10 @@ export const TextArea = forwardRef<
   return (
     <div
       className={cn(
-        "group relative h-full border ring-0 ring-accent/20 duration-200",
+        "ring-accent/20 group relative h-full border ring-0 duration-200",
         roundedMap[rounded],
 
-        "border-transparent hover:border-accent/60",
+        "hover:border-accent/60 border-transparent",
         isFocus && "!border-accent/80 ring-2",
 
         "placeholder:text-theme-placeholder-text dark:text-zinc-200",
@@ -64,7 +64,7 @@ export const TextArea = forwardRef<
       {bordered && (
         <div
           className={clsx(
-            "pointer-events-none absolute inset-0 z-0 border border-border",
+            "border-border pointer-events-none absolute inset-0 z-0 border",
             roundedMap[rounded],
           )}
           aria-hidden="true"
